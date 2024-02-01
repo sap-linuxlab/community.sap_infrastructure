@@ -1,0 +1,185 @@
+---
+
+- name: Ansible Task block for Terraform apply of multiple Terraform Modules
+  block:
+
+    # Do not use ansible.builtin.copy as this will cause error 'not writable' on localhost (even if user has permissions)
+    - name: Copy Terraform Template files to temporary directory in current Ansible Playbook directory
+      ansible.builtin.shell: |
+        mkdir -p {{ sap_vm_provision_terraform_work_dir_path }}
+        cp -r {{ role_path }}/tasks/platform_ansible_to_terraform/{{ sap_vm_provision_iac_platform }}/tf_template/* {{ sap_vm_provision_terraform_work_dir_path }}
+
+    - name: Terraform Template for SAP - MS Azure
+      register: terraform_template1_result
+      cloud.terraform.terraform:
+        project_path: "{{ sap_vm_provision_terraform_work_dir_path }}"
+        state: "{{ sap_vm_provision_terraform_state }}"
+        force_init: true
+        complex_vars: true
+        variables:
+          az_app_client_id: "{{ sap_vm_provision_msazure_app_client_id }}"
+          az_app_client_secret: "{{ sap_vm_provision_msazure_app_client_secret }}"
+          az_subscription_id: "{{ sap_vm_provision_msazure_subscription_id }}"
+          az_tenant_id: "{{ sap_vm_provision_msazure_tenant_id }}"
+          az_location_availability_zone_no: "{{ sap_vm_provision_msazure_location_availability_zone_no }}"
+          az_location_region: "{{ sap_vm_provision_msazure_location_region }}"
+          az_resource_group_name: "{{ sap_vm_provision_msazure_resource_group_name }}"
+          az_vnet_name: "{{ sap_vm_provision_msazure_vnet_name }}"
+          az_vnet_subnet_name: "{{ sap_vm_provision_msazure_vnet_subnet_name }}"
+          sap_vm_provision_resource_prefix: "{{ sap_vm_provision_resource_prefix }}"
+          sap_vm_provision_dns_root_domain: "{{ sap_vm_provision_dns_root_domain }}"
+          sap_vm_provision_bastion_os_image: "{{ sap_vm_provision_bastion_os_image }}"
+          sap_vm_provision_bastion_user: "{{ sap_vm_provision_bastion_user }}"
+          sap_vm_provision_bastion_ssh_port: "{{ sap_vm_provision_bastion_ssh_port }}"
+          map_os_image_regex: "{{ lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_os_image_dictionary') }}"
+          map_host_specifications: "{{ lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary') }}"
+          sap_vm_provision_host_specification_plan: "{{ sap_vm_provision_host_specification_plan }}"
+          sap_vm_provision_msazure_vm_host_os_image: "{{ sap_vm_provision_msazure_vm_host_os_image }}"
+          sap_software_download_directory: "{{ sap_software_download_directory }}"
+          sap_hana_install_instance_nr: "{{ sap_hana_install_instance_nr | default('') }}"
+          sap_nwas_abap_ascs_instance_no: "{{ sap_swpm_ascs_instance_nr | default('') }}"
+          sap_nwas_abap_pas_instance_no: "{{ sap_swpm_pas_instance_nr | default('') }}"
+
+    - name: Terraform Template output
+      ansible.builtin.debug:
+        var: terraform_template1_result
+
+
+    # - name: Execute Ansible Role cloud.terraform.inventory_from_outputs
+    #   register: terraform_output_to_ansible_inventory
+    #   ansible.builtin.include_role:
+    #     name: cloud.terraform.inventory_from_outputs
+    #   vars:
+    #     project_path: "{{ sap_vm_provision_terraform_work_dir_path }}"
+    #     mapping_variables:
+    #       host_list: sap_host_list
+    #       name: output_host_name
+    #       ip: output_host_ip
+    #       user: output_host_os_user
+    #       group: output_ansible_inventory_group
+
+
+    - name: Read outputs from project path
+      when: sap_vm_provision_terraform_state == "present"
+      cloud.terraform.terraform_output:
+        project_path: "{{ sap_vm_provision_terraform_work_dir_path }}"
+      register: terraform_output_project_path
+
+    - name: Add hosts from terraform_output to the group defined in terraform_output
+      when: sap_vm_provision_terraform_state == "present"
+      register: terraform_add_hosts
+      ansible.builtin.add_host:
+        name: "{{ item['output_host_name'] }}"
+        groups: "{{ item['output_ansible_inventory_group'] }}"
+        ansible_host: "{{ item['output_host_ip'] }}"
+        ansible_user: "{{ item['output_host_os_user'] }}"
+        ansible_ssh_private_key_file: "{{ sap_vm_provision_terraform_work_dir_path }}/ssh/hosts_rsa"
+        ansible_ssh_common_args: -o ConnectTimeout=180 -o ControlMaster=auto -o ControlPersist=3600s -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ForwardX11=no -o ProxyCommand='ssh -W %h:%p {{ terraform_output.outputs['bastion_os_user'].value }}@{{ terraform_output.outputs['sap_vm_provision_bastion_public_ip'].value }} -p {{ terraform_output.outputs['bastion_port'].value }} -i {{ sap_vm_provision_terraform_work_dir_path }}/ssh/bastion_rsa -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null'
+      loop: "{{ terraform_output.outputs['sap_host_list'].value }}"
+      vars:
+        # even skipped tasks register variables, so we need to choose one explicitly
+        terraform_output: "{{ (terraform_output_project_path is defined and terraform_output_project_path is success) |
+                              ternary(terraform_output_project_path, terraform_output_state_file) }}"
+
+
+# Cannot override any variables from extravars input, see https://docs.ansible.com/ansible/latest/playbook_guide/playbooks_variables.html#understanding-variable-precedence
+# Ensure no default value exists for any prompted variable before execution of Ansible Playbook
+
+    - name: Set fact to hold all inventory hosts in all groups
+      ansible.builtin.set_fact:
+        groups_merged_list: "{{ [ [ groups['hana_primary'] | default([]) ] , [ groups['hana_secondary'] | default([]) ] , [ groups['nwas_ascs'] | default([]) ] , [ groups['nwas_ers'] | default([]) ] , [ groups['nwas_pas'] | default([]) ] , [ groups['nwas_aas'] | default([]) ] , [ groups['anydb_primary'] | default([]) ] , [ groups['anydb_secondary'] | default([]) ] ] | flatten | select() }}"
+
+    - name: Set facts for all hosts - use facts from localhost for NFS
+      when: sap_vm_provision_terraform_state == "present"
+      ansible.builtin.set_fact:
+        sap_vm_provision_nfs_mount_point: "{{ terraform_output.outputs['sap_vm_provision_nfs_mount_point'].value | default('') }}"
+        sap_vm_provision_nfs_mount_point_separate_sap_transport_dir: "{{ terraform_output.outputs['sap_vm_provision_nfs_mount_point_separate_sap_transport_dir'].value | default('') }}"
+        sap_vm_provision_nfs_mount_point_type: "{{ terraform_output.outputs['sap_vm_provision_nfs_mount_point_type'].value | default('') }}"
+        sap_vm_provision_nfs_mount_point_opts: "{{ terraform_output.outputs['sap_vm_provision_nfs_mount_point_opts'].value | default('') }}"
+      delegate_to: "{{ item }}"
+      delegate_facts: true
+      loop: "{{ groups_merged_list }}"
+      vars:
+        # even skipped tasks register variables, so we need to choose one explicitly
+        terraform_output: "{{ (terraform_output_project_path is defined and terraform_output_project_path is success) |
+                              ternary(terraform_output_project_path, terraform_output_state_file) }}"
+
+    - name: Set facts for all hosts - use facts from localhost for host specification dictionary
+      when: sap_vm_provision_terraform_state == "present"
+      ansible.builtin.set_fact:
+        host_specifications_dictionary: "{{ lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary') }}"
+      delegate_to: "{{ item }}"
+      delegate_facts: true
+      loop: "{{ groups_merged_list }}"
+      vars:
+        # even skipped tasks register variables, so we need to choose one explicitly
+        terraform_output: "{{ (terraform_output_project_path is defined and terraform_output_project_path is success) |
+                              ternary(terraform_output_project_path, terraform_output_state_file) }}"
+
+    - name: Set Ansible Vars
+      register: register_set_ansible_vars
+      ansible.builtin.include_tasks:
+        file: common/set_ansible_vars.yml
+      args:
+        apply:
+          delegate_to: "{{ item }}"
+      run_once: true # Otherwise tasks will run twice per host
+      loop: "{{ groups_merged_list }}"
+
+    # Required to collect the remote host's facts for further processing
+    # in the following steps
+    - name: Gather host facts
+      ansible.builtin.setup:
+      delegate_to: "{{ item }}"
+      delegate_facts: true
+      loop: "{{ groups_merged_list }}"
+
+    # Must be set to short hostname,
+    # so that command 'hostname' and 'hostname -s' return the short hostname only;
+    # otherwise may cause error with SAP SWPM using name.domain.com.domain.com
+    - name: Change system hostname (must be set to short name and not FQDN, as required by SAP)
+      ansible.builtin.hostname:
+        name: "{{ inventory_hostname_short }}"
+      delegate_to: "{{ item }}"
+      delegate_facts: true
+      loop: "{{ groups_merged_list }}"
+
+    - name: Set /etc/hosts
+      register: register_etc_hosts_file
+      ansible.builtin.include_tasks:
+        file: common/set_etc_hosts.yml
+      args:
+        apply:
+          delegate_to: "{{ item }}"
+      run_once: true # Otherwise tasks will run twice per host
+      loop: "{{ groups_merged_list }}"
+
+    - name: Set /etc/hosts for HA
+      register: register_etc_hosts_file_ha
+      ansible.builtin.include_tasks:
+        file: common/set_etc_hosts_ha.yml
+      when:
+        - (groups["hana_secondary"] is defined and (groups["hana_secondary"] | length>0)) or (groups["nwas_ers"] is defined and (groups["nwas_ers"] | length>0)) or (groups["anydb_secondary"] is defined and (groups["anydb_secondary"] | length>0))
+      args:
+        apply:
+          delegate_to: "{{ item }}"
+      run_once: true # Otherwise tasks will run twice per host
+      loop: "{{ groups_merged_list }}"
+
+    - name: Set /etc/hosts for Scale-Out
+      register: register_etc_hosts_file_scaleout
+      ansible.builtin.include_tasks:
+        file: common/set_etc_hosts_scaleout.yml
+      when:
+        - (groups["hana_primary"] is defined and (groups["hana_primary"] | length>0)) and (sap_hana_scaleout_active_coordinator is defined or sap_hana_scaleout_active_worker is defined or sap_hana_scaleout_standby is defined)
+      args:
+        apply:
+          delegate_to: "{{ item }}"
+      run_once: true # Otherwise tasks will run twice per host
+      loop: "{{ groups_merged_list }}"
+
+    - name: Set vars for sap_storage_setup Ansible Role
+      when: sap_vm_provision_terraform_state == "present"
+      register: register_ansible_vars_storage
+      ansible.builtin.include_tasks:
+        file: common/set_ansible_vars_storage.yml

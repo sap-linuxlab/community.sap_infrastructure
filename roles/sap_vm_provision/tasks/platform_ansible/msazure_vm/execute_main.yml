@@ -1,0 +1,167 @@
+---
+
+- name: Ansible Task block for looped provisioning of MS Azure VMs
+  environment:
+    ANSIBLE_AZURE_AUTH_SOURCE: "env"
+    AZURE_SUBSCRIPTION_ID: "{{ sap_vm_provision_msazure_subscription_id }}"
+    AZURE_TENANT: "{{ sap_vm_provision_msazure_tenant_id }}"
+    AZURE_CLIENT_ID: "{{ sap_vm_provision_msazure_app_client_id }}"
+    AZURE_SECRET: "{{ sap_vm_provision_msazure_app_client_secret }}"
+  block:
+
+    - name: Set fact to hold loop variables from include_tasks
+      ansible.builtin.set_fact:
+        register_provisioned_host_all: []
+
+    - name: Provision hosts to MS Azure
+      register: register_provisioned_hosts
+      ansible.builtin.include_tasks:
+        file: "{{ 'platform_' + sap_vm_provision_iac_type }}/{{ sap_vm_provision_iac_platform }}/execute_provision.yml"
+        apply:
+          environment:
+            ANSIBLE_AZURE_AUTH_SOURCE: "env"
+            AZURE_SUBSCRIPTION_ID: "{{ sap_vm_provision_msazure_subscription_id }}"
+            AZURE_TENANT: "{{ sap_vm_provision_msazure_tenant_id }}"
+            AZURE_CLIENT_ID: "{{ sap_vm_provision_msazure_app_client_id }}"
+            AZURE_SECRET: "{{ sap_vm_provision_msazure_app_client_secret }}"
+
+    - name: Add hosts provisioned to the Ansible Inventory
+      register: register_add_hosts
+      ansible.builtin.add_host:
+        name: "{{ add_item[0].host_node }}"
+        groups: "{{ add_item[0].sap_system_type + '_' if (add_item[0].sap_system_type != '') }}{{ add_item[0].sap_host_type }}"
+        ansible_host: "{{ add_item[0].ansible_facts.azure_vm.properties.networkProfile.networkInterfaces[0].properties.ipConfigurations[0].properties.privateIPAddress }}"
+        ansible_user: "root"
+        ansible_ssh_private_key_file: "{{ sap_vm_provision_ssh_host_private_key_file_path }}"
+        ansible_ssh_common_args: -o ConnectTimeout=180 -o ControlMaster=auto -o ControlPersist=3600s -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ForwardX11=no -o ProxyCommand='ssh -W %h:%p {{ sap_vm_provision_bastion_user }}@{{ sap_vm_provision_bastion_public_ip }} -p {{ sap_vm_provision_bastion_ssh_port }} -i {{ sap_vm_provision_ssh_bastion_private_key_file_path }} -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null'
+      loop: "{{ ansible_play_hosts | map('extract', hostvars, 'register_provisioned_host_all')  }}"
+      loop_control:
+        label: "{{ add_item[0].host_node }}"
+        loop_var: add_item
+
+
+# Cannot override any variables from extravars input, see https://docs.ansible.com/ansible/latest/playbook_guide/playbooks_variables.html#understanding-variable-precedence
+# Ensure no default value exists for any prompted variable before execution of Ansible Playbook
+
+    - name: Set fact to hold all inventory hosts in all groups
+      ansible.builtin.set_fact:
+        groups_merged_list: "{{ [ [ groups['hana_primary'] | default([]) ] , [ groups['hana_secondary'] | default([]) ] , [ groups['nwas_ascs'] | default([]) ] , [ groups['nwas_ers'] | default([]) ] , [ groups['nwas_pas'] | default([]) ] , [ groups['nwas_aas'] | default([]) ] ] | flatten | select() }}"
+
+    - name: Set Ansible Vars
+      register: register_set_ansible_vars
+      ansible.builtin.include_tasks:
+        file: common/set_ansible_vars.yml
+
+    # Create "A" (IPv4 Address) Resource Record to map IPv4 address as hostname / subdomain of the root domain name
+    - name: Ansible MS Azure Private DNS Records for hosts
+      azure.azcollection.azure_rm_privatednsrecordset:
+        resource_group: "{{ sap_vm_provision_msazure_resource_group_name }}"
+        zone_name: "{{ hostvars[inventory_hostname].sap_vm_provision_dns_root_domain }}"
+        relative_name: "{{ inventory_hostname }}"
+        record_type: A
+        records:
+          - entry: "{{ hostvars[inventory_hostname].ansible_host }}"
+
+  #  - ansible.builtin.debug:
+  #      var: register_add_hosts.results
+
+- name: Ansible Task block to execute on target inventory hosts
+  delegate_to: "{{ inventory_hostname }}"
+  block:
+
+    # Required to collect the remote host's facts for further processing
+    # in the following steps
+    - name: Gather host facts
+      ansible.builtin.setup:
+
+    # Must be set to short hostname,
+    # so that command 'hostname' and 'hostname -s' return the short hostname only;
+    # otherwise may cause error with SAP SWPM using name.domain.com.domain.com
+    - name: Change system hostname (must be set to short name and not FQDN, as required by SAP)
+      ansible.builtin.hostname:
+        name: "{{ inventory_hostname_short }}"
+
+    - name: Set /etc/hosts
+      register: register_etc_hosts_file
+      ansible.builtin.include_tasks:
+        file: common/set_etc_hosts.yml
+
+    - name: Set /etc/hosts for HA
+      register: register_etc_hosts_file_ha
+      ansible.builtin.include_tasks:
+        file: common/set_etc_hosts_ha.yml
+      when:
+        - (groups["hana_secondary"] is defined and (groups["hana_secondary"] | length>0)) or (groups["nwas_ers"] is defined and (groups["nwas_ers"] | length>0)) or (groups["anydb_secondary"] is defined and (groups["anydb_secondary"] | length>0))
+
+    - name: Set /etc/hosts for Scale-Out
+      register: register_etc_hosts_file_scaleout
+      ansible.builtin.include_tasks:
+        file: common/set_etc_hosts_scaleout.yml
+      when:
+        - (groups["hana_primary"] is defined and (groups["hana_primary"] | length>0)) and (sap_hana_scaleout_active_coordinator is defined or sap_hana_scaleout_active_worker is defined or sap_hana_scaleout_standby is defined)
+
+    - name: Set vars for sap_storage_setup Ansible Role
+      register: register_ansible_vars_storage
+      ansible.builtin.include_tasks:
+        file: common/set_ansible_vars_storage.yml
+
+
+- name: Ansible Task block to execute on target inventory hosts - High Availability
+  delegate_to: "{{ inventory_hostname }}"
+  when:
+    - sap_ha_pacemaker_cluster_msazure_resource_group is defined
+    - (groups["hana_secondary"] is defined and (groups["hana_secondary"] | length>0)) or (groups["nwas_ers"] is defined and (groups["nwas_ers"] | length>0)) or (groups["anydb_secondary"] is defined and (groups["anydb_secondary"] | length>0))
+  block:
+
+    # Do not enable TCP timestamps on Azure VMs placed behind Azure Load Balancer.
+    # Enabling TCP timestamps will cause the health probes to fail.
+    # Set parameter net.ipv4.tcp_timestamps to 0. For details see Load Balancer health probes:
+    # https://learn.microsoft.com/en-us/azure/load-balancer/load-balancer-custom-probe-overview
+    - name: Adjust system tcp_timestamps
+      ansible.posix.sysctl:
+        name: net.ipv4.tcp_timestamps
+        value: "0"
+        state: present
+
+    - name: Stop firewalld on all hosts before setup of Azure Load Balancer
+      ansible.builtin.systemd:
+        name: firewalld
+        state: stopped
+        enabled: false
+
+    # Ensure Primary Active Network Interface is used for Linux Pacemaker configuration (e.g. eth0), see documentation for Accelerated Networking
+    - name: Identify Primary Active Network Interface
+      register: __msazure_primary_active_vnic
+      ansible.builtin.shell: |
+        set -o pipefail && ip route show default 0.0.0.0/0 | awk '/default/ {print $5}'
+
+    - name: Set facts on each host - Primary Active Network Interface for HA/DR
+      ansible.builtin.set_fact:
+        sap_ha_pacemaker_cluster_vip_client_interface: "{{ __msazure_primary_active_vnic.stdout }}"
+      when: __msazure_primary_active_vnic is defined
+
+
+- name: Ansible Task block for provisioning of High Availability resources for MS Azure VMs
+  delegate_to: localhost
+  run_once: true
+  environment:
+    ANSIBLE_AZURE_AUTH_SOURCE: "env"
+    AZURE_SUBSCRIPTION_ID: "{{ sap_vm_provision_msazure_subscription_id }}"
+    AZURE_TENANT: "{{ sap_vm_provision_msazure_tenant_id }}"
+    AZURE_CLIENT_ID: "{{ sap_vm_provision_msazure_app_client_id }}"
+    AZURE_SECRET: "{{ sap_vm_provision_msazure_app_client_secret }}"
+  when:
+    - sap_ha_pacemaker_cluster_msazure_resource_group is defined
+    - (groups["hana_secondary"] is defined and (groups["hana_secondary"] | length>0)) or (groups["nwas_ers"] is defined and (groups["nwas_ers"] | length>0)) or (groups["anydb_secondary"] is defined and (groups["anydb_secondary"] | length>0))
+  block:
+
+    - name: Provision High Availability resources for MS Azure VM hosts
+      ansible.builtin.include_tasks:
+        file: "{{ 'platform_' + sap_vm_provision_iac_type }}/{{ sap_vm_provision_iac_platform }}/execute_setup_ha.yml"
+        apply:
+          environment:
+            ANSIBLE_AZURE_AUTH_SOURCE: "env"
+            AZURE_SUBSCRIPTION_ID: "{{ sap_vm_provision_msazure_subscription_id }}"
+            AZURE_TENANT: "{{ sap_vm_provision_msazure_tenant_id }}"
+            AZURE_CLIENT_ID: "{{ sap_vm_provision_msazure_app_client_id }}"
+            AZURE_SECRET: "{{ sap_vm_provision_msazure_app_client_secret }}"

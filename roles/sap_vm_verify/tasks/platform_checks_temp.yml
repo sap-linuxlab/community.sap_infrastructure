@@ -1,0 +1,11 @@
+---
+
+####
+# Google Cloud
+####
+
+# Add check that Google Cloud VPC Firewall rules do not block Google Cloud Backend Service connections, otherwise Health Status will be UNHEALTHY
+
+# Add check that Google Cloud NAT Gateway is configured for enough parallelisation
+# Use "160 as the minimum number of ports per VM" under Advanced Configurations in the Google Cloud NAT Gateway instance
+# Otherwise "Certain operating system updates run concurrent processes that might exceed the Cloud NAT default for the number of ports, which can result in activation or download errors."

@@ -1,0 +1,20 @@
+---
+
+- name: SAP virtual machine detect platform
+  ansible.builtin.include_tasks: "{{ role_path }}/tasks/detect_platform/main.yml"
+  when: sap_vm_platform_detect or sap_vm_platform_detect_only
+
+- name: SAP virtual machine preconfigure - Include Defaults Vars for {{ sap_vm_platform }}
+  ansible.builtin.include_vars: "{{ role_path }}/vars/platform_defaults_{{ sap_vm_platform }}.yml"
+  when: not sap_vm_platform_detect_only
+
+    # # Reduce swapping by amending vm.swappiness to 5% of free memory before swap is activated (default is 60%)
+    # - name: Adjust system swappiness
+    #   ansible.posix.sysctl:
+    #     name: vm.swappiness
+    #     value: "5"
+    #     state: present
+
+- name: SAP virtual machine preconfigure - Include Tasks for {{ sap_vm_platform }}
+  ansible.builtin.include_tasks: "{{ role_path }}/tasks/platform/{{ sap_vm_platform }}/main.yml"
+  when: not sap_vm_platform_detect_only

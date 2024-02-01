@@ -1,0 +1,176 @@
+---
+
+- name: Ansible Task block for looped provisioning of IBM Cloud Virtual Servers
+  environment:
+    IC_API_KEY: "{{ sap_vm_provision_ibmcloud_api_key }}"
+    IC_REGION: "{{ sap_vm_provision_ibmcloud_region }}"
+  block:
+
+    - name: Identify Resource Group info
+      register: register_ibmcloud_resource_group
+      ibm.cloudcollection.ibm_resource_group_info:
+        name: "{{ sap_vm_provision_ibmcloud_resource_group_name }}"
+
+    - name: Identify pre-loaded SSH Public Key info
+      register: register_ibmcloud_ssh_public_key
+      ibm.cloudcollection.ibm_is_ssh_key_info:
+        name: "{{ sap_vm_provision_ibmcloud_key_pair_name_ssh_host_public_key }}"
+
+    - name: Identify VPC Subnet info
+      register: register_ibmcloud_vpc_subnet
+      ibm.cloudcollection.ibm_is_subnet_info:
+        name: "{{ sap_vm_provision_ibmcloud_vpc_subnet_name }}"
+
+    - name: Identify VPC Security Group info
+      register: register_ibmcloud_vpc_sg
+      ibm.cloudcollection.ibm_is_security_group_info:
+        name: "{{ item }}"
+      loop: "{{ sap_vm_provision_ibmcloud_vpc_sg_names | split(',') }}"
+
+    - name: Identify Private DNS instance
+      register: register_ibmcloud_pdns_service_instance
+      ibm.cloudcollection.ibm_resource_instance_info:
+        resource_group_id: "{{ register_ibmcloud_resource_group.resource.id }}"
+        location: global
+        service: dns-svcs
+        name: "{{ sap_vm_provision_ibmcloud_private_dns_instance_name }}"
+
+    - name: Identify Private DNS Zone info
+      register: register_ibmcloud_pdns
+      ibm.cloudcollection.ibm_dns_zones_info:
+        instance_id: "{{ register_ibmcloud_pdns_service_instance.resource.guid }}"
+
+    - name: Identify OS Image list
+      register: register_ibmcloud_os_image_list
+      ibm.cloudcollection.ibm_is_images_info:
+        status: available
+
+    - name: Set fact to hold loop variables from include_tasks
+      ansible.builtin.set_fact:
+        register_provisioned_host_all: []
+
+    - name: Provision hosts to IBM Cloud
+      register: register_provisioned_hosts
+      ansible.builtin.include_tasks:
+        file: "{{ 'platform_' + sap_vm_provision_iac_type }}/{{ sap_vm_provision_iac_platform }}/execute_provision.yml"
+        apply:
+          environment:
+            IC_API_KEY: "{{ sap_vm_provision_ibmcloud_api_key }}"
+            IC_REGION: "{{ sap_vm_provision_ibmcloud_region }}"
+
+    - name: Add hosts provisioned to the Ansible Inventory
+      register: register_add_hosts
+      ansible.builtin.add_host:
+        name: "{{ add_item[0].host_node }}"
+        groups: "{{ add_item[0].sap_system_type + '_' if (add_item[0].sap_system_type != '') }}{{ add_item[0].sap_host_type }}"
+        ansible_host: "{{ add_item[0].resource.primary_network_interface[0].primary_ipv4_address }}"
+        ansible_user: "root"
+        ansible_ssh_private_key_file: "{{ sap_vm_provision_ssh_host_private_key_file_path }}"
+        ansible_ssh_common_args: -o ConnectTimeout=180 -o ControlMaster=auto -o ControlPersist=3600s -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ForwardX11=no -o ProxyCommand='ssh -W %h:%p {{ sap_vm_provision_bastion_user }}@{{ sap_vm_provision_bastion_public_ip }} -p {{ sap_vm_provision_bastion_ssh_port }} -i {{ sap_vm_provision_ssh_bastion_private_key_file_path }} -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null'
+      loop: "{{ ansible_play_hosts | map('extract', hostvars, 'register_provisioned_host_all')  }}"
+      loop_control:
+        label: "{{ add_item[0].host_node }}"
+        loop_var: add_item
+
+
+# Cannot override any variables from extravars input, see https://docs.ansible.com/ansible/latest/playbook_guide/playbooks_variables.html#understanding-variable-precedence
+# Ensure no default value exists for any prompted variable before execution of Ansible Playbook
+
+    - name: Set fact to hold all inventory hosts in all groups
+      ansible.builtin.set_fact:
+        groups_merged_list: "{{ [ [ groups['hana_primary'] | default([]) ] , [ groups['hana_secondary'] | default([]) ] , [ groups['nwas_ascs'] | default([]) ] , [ groups['nwas_ers'] | default([]) ] , [ groups['nwas_pas'] | default([]) ] , [ groups['nwas_aas'] | default([]) ] ] | flatten | select() }}"
+
+    - name: Set Ansible Vars
+      register: register_set_ansible_vars
+      ansible.builtin.include_tasks:
+        file: common/set_ansible_vars.yml
+
+    - name: IBM Cloud Private DNS Record for hosts
+      register: register_ibmcloud_pdns_record
+      ibm.cloudcollection.ibm_dns_resource_record:
+        instance_id: "{{ register_ibmcloud_pdns_service_instance.resource.guid }}"
+        zone_id: "{{ (register_ibmcloud_pdns.resource.dns_zones | selectattr('name', '==', sap_vm_provision_dns_root_domain) | first).zone_id }}"
+        name: "{{ inventory_hostname }}.{{ hostvars[inventory_hostname].sap_vm_provision_dns_root_domain }}" # Host FQDN
+        rdata: "{{ hostvars[inventory_hostname].ansible_host }}" # IP Address
+        type: A
+        ttl: 7200
+      failed_when: not register_ibmcloud_pdns_record.rc == 0 and not 'The record already exists' in register_ibmcloud_pdns_record.stderr
+
+  #  - ansible.builtin.debug:
+  #      var: register_add_hosts.results
+
+- name: Ansible Task block to execute on target inventory hosts
+  delegate_to: "{{ inventory_hostname }}"
+  block:
+
+    # Required to collect the remote host's facts for further processing
+    # in the following steps
+    - name: Gather host facts
+      ansible.builtin.setup:
+
+    # Must be set to short hostname,
+    # so that command 'hostname' and 'hostname -s' return the short hostname only;
+    # otherwise may cause error with SAP SWPM using name.domain.com.domain.com
+    - name: Change system hostname (must be set to short name and not FQDN, as required by SAP)
+      ansible.builtin.hostname:
+        name: "{{ inventory_hostname_short }}"
+
+    - name: Set /etc/hosts
+      register: register_etc_hosts_file
+      ansible.builtin.include_tasks:
+        file: common/set_etc_hosts.yml
+
+    - name: Set /etc/hosts for Scale-Out
+      register: register_etc_hosts_file_scaleout
+      ansible.builtin.include_tasks:
+        file: common/set_etc_hosts_scaleout.yml
+      when:
+        - (groups["hana_primary"] is defined and (groups["hana_primary"] | length>0)) and (sap_hana_scaleout_active_coordinator is defined or sap_hana_scaleout_active_worker is defined or sap_hana_scaleout_standby is defined)
+
+    - name: Set vars for sap_storage_setup Ansible Role
+      register: register_ansible_vars_storage
+      ansible.builtin.include_tasks:
+        file: common/set_ansible_vars_storage.yml
+
+
+# - name: Ansible Task block to execute on target inventory hosts - High Availability
+#   delegate_to: "{{ inventory_hostname }}"
+#   when:
+#     - sap_ha_pacemaker_cluster_ibmcloud_region is defined
+#     - (groups["hana_secondary"] is defined and (groups["hana_secondary"] | length>0)) or (groups["nwas_ers"] is defined and (groups["nwas_ers"] | length>0)) or (groups["anydb_secondary"] is defined and (groups["anydb_secondary"] | length>0))
+#   block:
+
+
+- name: Ansible Task block for looped provisioning of High Availability resources for IBM Cloud VS instances
+  delegate_to: localhost
+  run_once: true
+  environment:
+    IC_API_KEY: "{{ sap_vm_provision_ibmcloud_api_key }}" # For legacy Ansible Collection
+    IBMCLOUD_API_KEY: "{{ sap_vm_provision_ibmcloud_api_key }}" # For IBM Cloud CLI quiet login
+    IC_REGION: "{{ sap_vm_provision_ibmcloud_region }}"
+  when:
+    - sap_ha_pacemaker_cluster_ibmcloud_region is defined
+    - (groups["hana_secondary"] is defined and (groups["hana_secondary"] | length>0)) or (groups["nwas_ers"] is defined and (groups["nwas_ers"] | length>0)) or (groups["anydb_secondary"] is defined and (groups["anydb_secondary"] | length>0))
+  block:
+
+    - name: Provision High Availability resources for IBM Cloud hosts
+      ansible.builtin.include_tasks:
+        file: "{{ 'platform_' + sap_vm_provision_iac_type }}/{{ sap_vm_provision_iac_platform }}/execute_setup_ha.yml"
+        apply:
+          environment:
+            IC_API_KEY: "{{ sap_vm_provision_ibmcloud_api_key }}" # For legacy Ansible Collection
+            IBMCLOUD_API_KEY: "{{ sap_vm_provision_ibmcloud_api_key }}" # For IBM Cloud CLI quiet login
+            IC_REGION: "{{ sap_vm_provision_ibmcloud_region }}"
+
+
+- name: Ansible Task block to execute on target inventory hosts for HA
+  delegate_to: "{{ inventory_hostname }}"
+  when:
+    - sap_ha_pacemaker_cluster_ibmcloud_region is defined
+    - (groups["hana_secondary"] is defined and (groups["hana_secondary"] | length>0)) or (groups["nwas_ers"] is defined and (groups["nwas_ers"] | length>0)) or (groups["anydb_secondary"] is defined and (groups["anydb_secondary"] | length>0))
+  block:
+
+    - name: Set /etc/hosts for HA
+      register: register_etc_hosts_file_ha
+      ansible.builtin.include_tasks:
+        file: common/set_etc_hosts_ha.yml

@@ -1,0 +1,19 @@
+---
+
+#    - name: Check directories exist
+# /hana/data
+# /hana/log
+# /hana/shared
+# /usr/sap
+# /sapmnt
+
+#    - name: Check directories have minimum quantities
+# /hana/data
+# /hana/log
+# /hana/shared
+# /usr/sap
+# /sapmnt
+
+#    - name: Check swap (partition or file)
+# /swap
+# swapfile

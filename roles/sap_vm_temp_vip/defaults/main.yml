@@ -1,0 +1,8 @@
+---
+
+sap_vm_temp_vip_hana_primary: "{{ sap_ha_pacemaker_cluster_vip_hana_primary_ip_address | default('') }}"
+sap_vm_temp_vip_anydb_primary: ""
+sap_vm_temp_vip_nwas_abap_ascs: "{{ sap_ha_pacemaker_cluster_vip_nwas_abap_ascs_ip_address | default('') }}"
+sap_vm_temp_vip_nwas_abap_ers: "{{ sap_ha_pacemaker_cluster_vip_nwas_abap_ers_ip_address | default('') }}"
+# sap_vm_temp_vip_nwas_abap_pas: "{{ sap_ha_pacemaker_cluster_vip_nwas_abap_pas_ip_address | default('') }}"
+# sap_vm_temp_vip_nwas_abap_aas: "{{ sap_ha_pacemaker_cluster_vip_nwas_abap_aas_ip_address | default('') }}"

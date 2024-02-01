@@ -1,0 +1,22 @@
+---
+
+- name: Begin Virtual Machine Verification preflight checks before SAP Software installation
+  block:
+
+    - name: Execute Storage Checks - Generic
+      ansible.builtin.include_tasks: "check_storage_generic.yml"
+
+    - name: Execute Storage Checks - NFS
+      ansible.builtin.include_tasks: "check_storage_nfs.yml"
+
+    - name: Execute Network Checks - Interconnectivity
+      ansible.builtin.include_tasks: "check_network_interconnectivity.yml"
+
+    - name: Execute Storage Checks - Performance
+      ansible.builtin.include_tasks: "check_storage_performance.yml"
+
+    - name: Execute Network Checks - Performance
+      ansible.builtin.include_tasks: "check_network_performance.yml"
+
+    # - name: Execute Infrastructure Platform Checks
+    #   ansible.builtin.include_tasks: "platform/{{ sap_vm_verify_platform }}/main.yml"

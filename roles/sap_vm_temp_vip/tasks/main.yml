@@ -1,0 +1,14 @@
+---
+
+- name: Setup temporary Virtual IP (VIP)
+  block:
+
+    # - name: Identify OS Primary Network Interface
+    #   ansible.builtin.include_tasks: "identify_network_interface.yml"
+
+    - name: Execute temporary set of a Virtual IP (VIP) prior to Linux Pacemaker ownership
+      ansible.builtin.include_tasks: "set_temp_vip.yml"
+
+    - name: Set Health Check Probe Listener for Virtual IP when Load Balancer
+      ansible.builtin.include_tasks: "set_temp_vip_lb_listener.yml"
+      when: (ansible_product_name == 'Google Compute Engine') or (ansible_chassis_asset_tag == 'ibmcloud') or (ansible_chassis_vendor == 'Microsoft Corporation' and ansible_product_name == 'Virtual Machine')

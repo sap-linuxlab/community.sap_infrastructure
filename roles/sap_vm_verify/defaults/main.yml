@@ -1,0 +1,26 @@
+---
+
+sap_vm_verify_host_hana_primary: ""
+sap_vm_verify_host_hana_secondary: ""
+sap_vm_verify_host_anydb_primary: ""
+sap_vm_verify_host_anydb_secondary: ""
+sap_vm_verify_host_nwas_ascs: ""
+sap_vm_verify_host_nwas_ers: ""
+sap_vm_verify_host_nwas_pas: ""
+sap_vm_verify_host_nwas_aas: ""
+
+sap_vm_verify_instance_nr_db: "{{ sap_swpm_db_instance_nr | default('') }}"
+sap_vm_verify_instance_nr_nwas_abap_ascs: "{{ sap_swpm_ascs_instance_nr | default('') }}"
+sap_vm_verify_instance_nr_nwas_abap_ers: "{{ sap_swpm_ers_instance_nr | default('') }}"
+sap_vm_verify_instance_nr_nwas_abap_pas: "{{ sap_swpm_pas_instance_nr | default('') }}"
+sap_vm_verify_instance_nr_nwas_abap_aas: "{{ sap_swpm_aas_instance_nr | default('') }}"
+
+sap_vm_verify_vip_hana_primary: "{{ sap_ha_pacemaker_cluster_vip_hana_primary_ip_address | default('') }}"
+sap_vm_verify_vip_anydb_primary: ""
+sap_vm_verify_vip_nwas_abap_ascs: "{{ sap_ha_pacemaker_cluster_vip_nwas_abap_ascs_ip_address | default('') }}"
+sap_vm_verify_vip_nwas_abap_ers: "{{ sap_ha_pacemaker_cluster_vip_nwas_abap_ers_ip_address | default('') }}"
+# sap_vm_verify_vip_nwas_abap_pas: "{{ sap_ha_pacemaker_cluster_vip_nwas_abap_pas_ip_address | default('') }}"
+# sap_vm_verify_vip_nwas_abap_aas: "{{ sap_ha_pacemaker_cluster_vip_nwas_abap_aas_ip_address | default('') }}"
+
+sap_vm_verify_nfs_mount_point: "{{ sap_vm_provision_nfs_mount_point | default('') }}"
+sap_vm_verify_nfs_mount_point_transport_dir: "{{ sap_vm_provision_nfs_mount_point_separate_sap_transport_dir | default('') }}"

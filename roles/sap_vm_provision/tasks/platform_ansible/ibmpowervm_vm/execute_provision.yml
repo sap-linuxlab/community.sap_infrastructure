@@ -1,0 +1,357 @@
+---
+# The tasks in this file are executed in a loop over the defined hosts
+
+# NOTE: Pre-requisite to create IBM PowerVC Storage Templates (OpenStack Cinder Volume Type), which is not possible from Ansible Collection for Openstack
+# https://www.ibm.com/docs/en/powervc/1.4.3?topic=apis-supported-volume-type-extra-specs
+### Show IBM PowerVC Storage list
+### openstack --insecure volume service list --service cinder-volume
+### Show IBM PowerVC Storage Template list
+### openstack --insecure volume type list
+
+# When SAP HANA Scale-Out is used, if host name is not in original specifications then strip suffix node number from host name
+- name: Set fact when performing SAP HANA Scale-Out
+  ansible.builtin.set_fact:
+    scaleout_origin_host_spec: "{{ inventory_hostname | regex_replace('^(.+?)\\d*$', '\\1') }}"
+  when:
+    - sap_hana_scaleout_active_coordinator is defined
+    - not inventory_hostname in lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan].keys()
+
+- name: Check if VM exists
+  register: register_check_vm_exists
+  openstack.cloud.server_info:
+    auth: "{{ openstack_auth_delegate }}"
+    validate_certs: false # Allow Self-Signed Certificate
+    name: "{{ inventory_hostname }}"
+
+- name: Check OS Image available in IBM PowerVM
+  register: register_ibmpowervm_available_os
+  openstack.cloud.image_info:
+    auth: "{{ openstack_auth_delegate }}"
+    validate_certs: false # Allow Self-Signed Certificate
+    image: "{{ sap_vm_provision_ibmpowervm_vm_host_os_image }}"
+
+- name: Check network available in IBM PowerVM
+  openstack.cloud.networks_info:
+    auth: "{{ openstack_auth }}"
+    validate_certs: false # Allow Self-Signed Certificate
+    name: "{{ sap_vm_provision_ibmpowervm_network_name }}"
+  register: register_ibmpowervm_available_network
+
+
+# VM creation block:
+# This block is run when the VM does not exist yet.
+#
+- name: Block that provisions the VM
+  when:
+    - register_check_vm_exists.servers is defined
+    - register_check_vm_exists.servers | length == 0
+  block:
+
+    # See documented IBM PowerVM Compute Template (OpenStack Flavor) extra specs - https://www.ibm.com/docs/en/powervc-cloud/latest?topic=apis-flavors-extra-specs
+    - name: Create IBM PowerVM Compute Template
+      register: register_ibmpowervm_compute_template
+      openstack.cloud.compute_flavor:
+        auth: "{{ openstack_auth }}"
+        validate_certs: false # Allow Self-Signed Certificate
+
+        state: present
+        name: "{{ inventory_hostname }}-compute-template"
+
+        ## Virtual Machine main resources definition
+        # Assume SMT-8, 1 IBM Power CPU Core therefore divide by 8 = CPU Threads
+        vcpus: "{{ (lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan][inventory_hostname].ibmpowervm_vm_cpu_threads / lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan][inventory_hostname].ibmpowervm_vm_cpu_smt) | round(0, 'common') | int }}" # Virtual Processors (i.e. IBM Power CPU Cores), Desired. API must receive an integer
+        ram: "{{ (lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan][inventory_hostname].ibmpowervm_vm_memory_gib * 1024) | int }}" # Memory (MiB), Desired
+        disk: 0 # Must be set to 0 otherwise conflicts with OS Image template
+        swap: 0 # Must be set to 0 otherwise error "failed with exception: Build of instance xxxx was re-scheduled: list index out of range"
+        is_public: true
+
+        # After creation, modifications to extra_specs parameters may not be identified
+        extra_specs:
+          ####  Virtual Processors (i.e. IBM Power CPU Cores) - for Production systems must be minimum of 4 ####
+          "powervm:min_vcpu": "{{ [((lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan][inventory_hostname].ibmpowervm_vm_cpu_threads / lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan][inventory_hostname].ibmpowervm_vm_cpu_smt) * 0.75) | round(0, 'floor'), 1] | max | int }}" # Virtual Processors (i.e. IBM Power CPU Cores), Minimum. Value of 1 is lowest possible. API must receive an integer
+          "powervm:max_vcpu": "{{ ((lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan][inventory_hostname].ibmpowervm_vm_cpu_threads / lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan][inventory_hostname].ibmpowervm_vm_cpu_smt) * 1.20) | round(0, 'ceil') | int }}" # Virtual Processors (i.e. IBM Power CPU Cores), Maximum. API must receive an integer
+
+          ####  Dynamic LPAR Entitled Capacity of Virtual Processor units (i.e. IBM Power CPU Cores guaranteed to be available)  ####
+          # Processing units set minimum to 80% of the minimum Virtual Processors (i.e. IBM Power CPU Cores)
+          # Processing units set standard to 80% of the Virtual Processors (i.e. IBM Power CPU Cores)
+          # Processing units set maximum to 100% of the maximum Virtual Processors (i.e. IBM Power CPU Cores)
+          "powervm:min_proc_units": "{{ ((((lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan][inventory_hostname].ibmpowervm_vm_cpu_threads / lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan][inventory_hostname].ibmpowervm_vm_cpu_smt) * 0.75) | round(1, 'floor')) * 0.8) | round(2, 'floor') | float }}" # Processing units, Minimum
+          "powervm:proc_units": "{{ ((lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan][inventory_hostname].ibmpowervm_vm_cpu_threads / lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan][inventory_hostname].ibmpowervm_vm_cpu_smt) | round(0, 'common')) * 0.8 | round(2, 'common') | float }}" # Processing units, Desired
+          "powervm:max_proc_units": "{{ ((lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan][inventory_hostname].ibmpowervm_vm_cpu_threads / lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan][inventory_hostname].ibmpowervm_vm_cpu_smt) * 1.20) | round(0, 'ceil') | float }}" # Processing units, Maximum
+
+          "powervm:dedicated_proc": "false"
+          #"powervm:dedicated_sharing_mode": "share_idle_procs" # When 'dedicated_proc' true, share_idle_procs = "Allow processor sharing when the virtual machine is inactive"
+          "powervm:uncapped": "true"
+          "powervm:shared_weight": 128
+          "powervm:shared_proc_pool_name": "{{ sap_vm_provision_ibmpowervm_host_group_shared_procesor_pool_name }}"
+          "powervm:processor_compatibility": "default"
+
+          "powervm:min_mem": "{{ (lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan][inventory_hostname].ibmpowervm_vm_memory_gib * 1024) - (0.25 * (lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan][inventory_hostname].ibmpowervm_vm_memory_gib * 1024)) | round(0, 'ceil') | int }}" # Memory, Minimum. API must receive an integer
+          "powervm:max_mem": "{{ (lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan][inventory_hostname].ibmpowervm_vm_memory_gib * 1024) | round(0, 'ceil') | int }}" # Memory, Maximum. API must receive an integer
+
+          #"powervm:ame_expansion_factor": 0
+          "powervm:enforce_affinity_check": "true"
+          "powervm:enable_lpar_metric": "true"
+          "powervm:availability_priority": 127 # Default is 127, Higher Priority default is 191
+          #"powervm:ppt_ratio": "1:1024"
+          "powervm:secure_boot": 0 # "Disabled"
+          "powervm:srr_capability": "false" # Disable the Simplified Remote Restart
+
+
+    - name: Provision IBM PowerVM vNIC (Network Port)
+      register: register_provisioned_host_vnic_single
+      openstack.cloud.port:
+        auth: "{{ openstack_auth }}"
+        validate_certs: false # Allow Self-Signed Certificate
+        state: present
+        name: "{{ inventory_hostname }}-vnic0"
+        network: "{{ sap_vm_provision_ibmpowervm_network_name }}"
+        # fixed_ips:
+        #   - ip_address: "{{ ansible_host }}"
+        vnic_type: "{{ sap_vm_provision_ibmpowervm_network_vnic_type }}" # vNIC Mode is either 'direct' for SR-IOV, or 'normal' for Shared Ethernet Adapter (SEA)
+        # capacity = vNIC using SR-IOV Minimum Capacity percentage of total SR-IOV Port Bandwidth (must be above '0.02' for 2%)
+        # vnic_required_vfs = vNIC using SR-IOV Port Redundancy level, '1' for Non-Redundant and '2' for Redundant
+        binding_profile: |-
+          {% set vnic_config = [] -%}
+          {%- if sap_vm_provision_ibmpowervm_network_vnic_type == 'normal' -%}
+            {% set map = vnic_config.extend([{
+                'delete_with_instance': '1'
+              }]) -%}
+          {%- elif sap_vm_provision_ibmpowervm_network_vnic_type == 'direct' -%}
+            {% set map = vnic_config.extend([{
+                'delete_with_instance': '1',
+                'capacity': '0.02',
+                'vnic_required_vfs': '2'
+              }]) -%}
+          {%- endif -%}
+          {{ vnic_config[0] }}
+
+    - name: Provision IBM PowerVM Virtual Machine (LPAR)
+      register: register_provisioned_host_single
+      openstack.cloud.server:
+        auth: "{{ openstack_auth }}"
+        validate_certs: false # Allow Self-Signed Certificate
+
+        ## Virtual Machine target Hypervisor definition
+        availability_zone: "{{ sap_vm_provision_ibmpowervm_host_group_name }}" # IBM PowerVM Hypervisor Cluster Host Group Name
+        #region_name: "RegionOne"
+
+        ## Virtual Machine definition
+        state: present
+        wait: true # wait until VM is running before Ansible Module is marked as completed
+        timeout: 1200 # seconds, wait 20 minutes for VM to provision
+        name: "{{ inventory_hostname }}"
+        description: "{{ inventory_hostname }} created by Ansible Playbook for SAP"
+
+        ## Virtual Machine main resources definition
+        flavor: "{{ register_ibmpowervm_compute_template.flavor.id }}"
+        image: "{{ sap_vm_provision_ibmpowervm_vm_host_os_image }}" # Do not set boot_from_volume, boot_volume or volumes parameters when cloning OS Image template
+        terminate_volume: true
+        key_name: "{{ sap_vm_provision_ibmpowervm_key_pair_name_ssh_host_public_key }}"
+
+        ## Virtual Machine Network configuration - vNICs
+        auto_ip: false
+        #network: "{{ sap_vm_provision_ibmpowervm_network_name }}"
+        nics:
+          - port-name: "{{ inventory_hostname }}-vnic0"
+
+        ## Post-provisioning: Virtual Machine post configuration
+        meta:
+          hostname: "{{ inventory_hostname }}"
+        #userdata: | # cloud-init userdata
+
+      # Report VM provisioning complete, only after status is Active (not Building)
+      # If provisioning error occurs (e.g. 'Could not find image XYZ with exclude (deprecated)') then
+      # will show error as 'The conditional check register_provisioned_host_single.server.status == "ACTIVE" failed
+      # and the actual error will be hidden unless the 'until' is commented-out
+      until: register_provisioned_host_single.server.status is defined and register_provisioned_host_single.server.status == "ACTIVE"
+      retries: 120
+      delay: 5
+
+### End of boot disk and VM creation Ansible Task Block
+
+
+- name: Collect info on IBM PowerVM vNIC (Network Port)
+  register: register_provisioned_host_vnic_single
+  openstack.cloud.port_info:
+    auth: "{{ openstack_auth }}"
+    validate_certs: false # Allow Self-Signed Certificate
+    name: "{{ inventory_hostname }}-vnic0"
+
+
+- name: Create fact for delegate host IP
+  ansible.builtin.set_fact:
+    provisioned_private_ip: "{{ register_provisioned_host_vnic_single.ports[0].fixed_ips[0].ip_address }}"
+
+
+# OpenStack APIs cannot query the IBM PowerVC APIs directly,
+# therefore cannot check the VM Health status (Warning or OK) which
+# is based on connection status to RMC (Resource Monitoring and Control subsystem).
+# Ignore checking this fact as it does not reflect VM readiness to execute.
+
+- name: Wait for VM connection readiness
+  ansible.builtin.wait_for:
+    host: "{{ provisioned_private_ip }}"
+    port: 22
+    delay: 10
+    sleep: 10
+    timeout: 600
+
+- name: Collect only facts about hardware
+  register: host_disks_info
+  ansible.builtin.setup:
+    gather_subset:
+      - hardware
+  remote_user: root
+  become: true
+  become_user: root
+  delegate_to: "{{ provisioned_private_ip }}"
+  delegate_facts: false
+  vars:
+    ansible_ssh_private_key_file: "{{ sap_vm_provision_ssh_host_private_key_file_path }}"
+    ansible_ssh_common_args: -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ForwardX11=no
+
+#- name: Output disks
+#  ansible.builtin.debug:
+#    var: hostvars[inventory_hostname].ansible_devices.keys() | list
+
+#- name: Debug Ansible Facts devices used list
+#  ansible.builtin.debug:
+#    msg: "{{ host_disks_info.ansible_facts.ansible_device_links.ids.keys() | list }}"
+
+
+- name: Set fact for available storage volume device names
+  ansible.builtin.set_fact:
+    available_volumes: |-
+      {% set letters = 'bcdefghijklmnopqrstuvwxyz' %}
+      {% set ansible_facts_devices_used_list = host_disks_info.ansible_facts.ansible_device_links.ids.keys() | list %}
+      {% set volumes = [] %}
+      {%- for letter in letters -%}
+        {% for device in ansible_facts_devices_used_list -%}
+          {% if '/dev/sd' + letter not in device -%}
+            {% set dev = volumes.append('/dev/sd' + letter) %}
+          {%- endif %}
+        {%- endfor %}
+      {% endfor %}
+      {{ volumes | list | unique }}
+
+#- name: Debug available_volumes
+#  ansible.builtin.debug:
+#    msg: "{{ available_volumes }}"
+
+# Combination of only the filesystem volume information from the lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')
+# for volume device assignment.
+# This task assigns device names for each volume to be created.
+- name: Set fact for target device map
+  ansible.builtin.set_fact:
+    filesystem_volume_map: |
+      {% set volume_map = [] -%}
+      {% set av_vol = available_volumes -%}
+      {% for storage_item in lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan][scaleout_origin_host_spec | default(inventory_hostname)].storage_definition -%}
+        {% for idx in range(0, storage_item.disk_count | default(1)) -%}
+          {% if (storage_item.filesystem_type is defined) -%}
+            {% if ('swap' in storage_item.filesystem_type and storage_item.swap_path is not defined)
+            or ('swap' not in storage_item.filesystem_type and storage_item.nfs_path is not defined) -%}
+              {% set vol = volume_map.extend([
+              {
+                'definition_key': storage_item.name,
+                'device': av_vol[0],
+                'fstype': storage_item.filesystem_type | default('xfs'),
+                'name': storage_item.name + idx|string,
+                'size': storage_item.disk_size | default(0),
+                'type': storage_item.disk_type | default('')
+              }
+              ]) %}
+            {%- set _ = av_vol.pop(0) -%}
+            {%- endif %}
+          {%- endif %}
+        {%- endfor %}
+      {%- endfor %}
+      {{ volume_map }}
+
+#- name: Debug filesystem_volume_map
+#  ansible.builtin.debug:
+#    msg: "{{ filesystem_volume_map }}"
+
+
+# The volume creation task requires the above task to define the parameter
+# which contains the calculated unique device names.
+- name: Provision Virtual Disk volumes for IBM PowerVM VM filesystems
+  openstack.cloud.volume:
+    auth: "{{ openstack_auth_delegate }}"
+    validate_certs: false # Allow Self-Signed Certificate
+    state: present
+    name: "{{ inventory_hostname }}-vol_{{ vol_item.name }}"
+    # availability_zone: ""
+    # scheduler_hints:
+    #   same_host: fs5200#IC-Cloud
+    #   additional_properties:
+    #     "drivers:multipath": "0"
+    size: "{{ vol_item.size }}"
+    volume_type: "{{ sap_vm_provision_ibmpowervm_storage_template_name }}"
+    is_multiattach: false
+    is_bootable: false
+  loop: "{{ filesystem_volume_map }}"
+  loop_control:
+    loop_var: vol_item
+    index_var: vol_item_index
+    label: "{{ vol_item.definition_key }}: {{ vol_item.name }} (size: {{ vol_item.size }})"
+  when:
+    - vol_item.fstype is defined
+    - vol_item.size > 0
+  register: volume_provisioning
+
+- name: Attach Virtual Disk volumes to the IBM PowerVM VM
+  openstack.cloud.server_volume:
+    auth: "{{ openstack_auth_delegate }}"
+    validate_certs: false # Allow Self-Signed Certificate
+    state: present
+    server: "{{ inventory_hostname }}"
+    volume: "{{ virtual_disk_item.volume.id }}"
+  loop: "{{ volume_provisioning.results }}"
+  loop_control:
+    loop_var: virtual_disk_item
+    index_var: virtual_disk_item_index
+    label: "{{ virtual_disk_item.volume.name }}"
+  retries: 2
+  delay: 5
+
+- name: Re-scan IBM PowerVM VM SCSI Bus
+  ansible.builtin.command: "/usr/bin/rescan-scsi-bus.sh"
+  register: rescan_scsi_bus_output
+  changed_when: rescan_scsi_bus_output.rc != 0
+  remote_user: root
+  become: true
+  become_user: root
+  delegate_to: "{{ provisioned_private_ip }}"
+  delegate_facts: false
+  vars:
+    ansible_ssh_private_key_file: "{{ sap_vm_provision_ssh_host_private_key_file_path }}"
+    ansible_ssh_common_args: -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ForwardX11=no
+
+- name: Wait 10 seconds for the re-scan of IBM PowerVM VM SCSI Bus
+  ansible.builtin.pause:
+    seconds: 10
+    prompt: ""
+
+
+- name: Check VM status
+  register: register_provisioned_host_single_info
+  openstack.cloud.server_info:
+    auth: "{{ openstack_auth_delegate }}"
+    validate_certs: false # Allow Self-Signed Certificate
+    name: "{{ inventory_hostname }}"
+
+# Note: openstack.cloud.server_info Ansible Module can provide:
+# servers[0].metadata.original_host / servers[0].compute_host / servers[0].hypervisor_hostname for IBM PowerVM HMC System 'Machine Type Machine Serial' (MTMS)
+# servers[0].instance_name for IBM PowerVM HMC 'Partition Name' of the Virtual Machine
+# servers[0].vm_uuid for IBM PowerVM HMC 'Partition UUID' of the Virtual Machine
+# servers[0].id for IBM PowerVC 'ID' of the Virtual Machine
+
+- name: Append loop value to register
+  ansible.builtin.set_fact:
+    register_provisioned_host_single: "{{ register_provisioned_host_single_info.servers[0] | combine( { 'host_node' : inventory_hostname } , { 'sap_host_type' : lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan][scaleout_origin_host_spec | default(inventory_hostname)].sap_host_type } , { 'sap_system_type' : (lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan][scaleout_origin_host_spec | default(inventory_hostname)].sap_system_type | default('')) } ) }}"
+
+- name: Append output to merged register
+  ansible.builtin.set_fact:
+    register_provisioned_host_all: "{{ register_provisioned_host_all + [register_provisioned_host_single] }}"

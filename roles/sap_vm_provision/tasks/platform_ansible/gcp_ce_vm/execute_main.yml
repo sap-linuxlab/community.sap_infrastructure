@@ -1,0 +1,260 @@
+---
+
+- name: Ansible Task block for looped provisioning of Google Cloud CE VMs
+  environment:
+    GCP_AUTH_KIND: "serviceaccount"
+    GCP_SERVICE_ACCOUNT_FILE: "{{ sap_vm_provision_gcp_credentials_json }}"
+  block:
+
+    # # Must be GlobalOnly or ZonalPreferred. The default is ZonalOnly
+    # - name: GCP Project metadata - check VmDnsSetting variable
+
+    - name: Identify GCP OS Image
+      register: register_gcp_os_image
+      google.cloud.gcp_compute_image_info:
+        project: "{{ lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_os_image_dictionary')[sap_vm_provision_gcp_ce_vm_host_os_image].project }}"
+        filters:
+          - family = "{{ lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_os_image_dictionary')[sap_vm_provision_gcp_ce_vm_host_os_image].family }}"
+          - -deprecated.state = DEPRECATED
+
+    - name: Identify GCP Network (VPC)
+      google.cloud.gcp_compute_network_info:
+        project: "{{ sap_vm_provision_gcp_project }}"
+        filters:
+          - name = "{{ sap_vm_provision_gcp_vpc_name }}"
+      register: gcp_vpc_info
+
+    - name: Identify GCP Subnetwork (VPC Subnet)
+      google.cloud.gcp_compute_subnetwork_info:
+        project: "{{ sap_vm_provision_gcp_project }}"
+        region: "{{ sap_vm_provision_gcp_region }}"
+        filters:
+          - name = "{{ sap_vm_provision_gcp_vpc_subnet_name }}"
+      register: gcp_vpc_subnet_info
+
+    - name: Set fact to hold loop variables from include_tasks
+      ansible.builtin.set_fact:
+        register_provisioned_host_all: []
+
+    - name: Provision hosts to Google Cloud
+      register: register_provisioned_hosts
+      ansible.builtin.include_tasks:
+        file: "{{ 'platform_' + sap_vm_provision_iac_type }}/{{ sap_vm_provision_iac_platform }}/execute_provision.yml"
+        apply:
+          environment:
+            GCP_AUTH_KIND: "serviceaccount"
+            GCP_SERVICE_ACCOUNT_FILE: "{{ sap_vm_provision_gcp_credentials_json }}"
+
+    - name: Add hosts provisioned to the Ansible Inventory
+      register: register_add_hosts
+      ansible.builtin.add_host:
+        name: "{{ add_item[0].host_node }}"
+        groups: "{{ add_item[0].sap_system_type + '_' if (add_item[0].sap_system_type != '') }}{{ add_item[0].sap_host_type }}"
+        ansible_host: "{{ add_item[0].networkInterfaces[0].networkIP }}"
+        ansible_user: "root"
+        ansible_ssh_private_key_file: "{{ sap_vm_provision_ssh_host_private_key_file_path }}"
+        ansible_ssh_common_args: -o ConnectTimeout=180 -o ControlMaster=auto -o ControlPersist=3600s -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ForwardX11=no -o ProxyCommand='ssh -W %h:%p {{ sap_vm_provision_bastion_user }}@{{ sap_vm_provision_bastion_public_ip }} -p {{ sap_vm_provision_bastion_ssh_port }} -i {{ sap_vm_provision_ssh_bastion_private_key_file_path }} -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null'
+      loop: "{{ ansible_play_hosts | map('extract', hostvars, 'register_provisioned_host_all')  }}"
+      loop_control:
+        label: "{{ add_item[0].host_node }}"
+        loop_var: add_item
+
+
+# Cannot override any variables from extravars input, see https://docs.ansible.com/ansible/latest/playbook_guide/playbooks_variables.html#understanding-variable-precedence
+# Ensure no default value exists for any prompted variable before execution of Ansible Playbook
+
+    - name: Set fact to hold all inventory hosts in all groups
+      ansible.builtin.set_fact:
+        groups_merged_list: "{{ [ [ groups['hana_primary'] | default([]) ] , [ groups['hana_secondary'] | default([]) ] , [ groups['nwas_ascs'] | default([]) ] , [ groups['nwas_ers'] | default([]) ] , [ groups['nwas_pas'] | default([]) ] , [ groups['nwas_aas'] | default([]) ] ] | flatten | select() }}"
+
+    - name: Set Ansible Vars
+      register: register_set_ansible_vars
+      ansible.builtin.include_tasks:
+        file: common/set_ansible_vars.yml
+
+    - name: Gather GCP VM information
+      google.cloud.gcp_compute_instance_info:
+        project: "{{ sap_vm_provision_gcp_project }}"
+        zone: "{{ sap_vm_provision_gcp_region_zone }}"
+        filters:
+          - name = {{ inventory_hostname }}
+      register: gcp_vm_info
+
+    - name: Gather GCP VPC Subnet information
+      google.cloud.gcp_compute_subnetwork_info:
+        project: "{{ sap_vm_provision_gcp_project }}"
+        region: "{{ sap_vm_provision_gcp_region }}"
+        filters:
+          - name = {{ sap_vm_provision_gcp_vpc_subnet_name }}
+      register: gcp_vpc_subnet_info
+
+    - name: Gather GCP Private DNS information
+      google.cloud.gcp_dns_managed_zone_info:
+        project: "{{ sap_vm_provision_gcp_project }}"
+        dns_name: "{{ sap_vm_provision_dns_root_domain }}."
+      register: gcp_pdns_info
+
+    # - name: Gather information about GCP Router and table for the VPC Subnet
+    #   google.cloud.gcp_compute_router_info:
+    #     project: "{{ sap_vm_provision_gcp_project }}"
+    #     region: "{{ sap_vm_provision_gcp_region }}"
+    #     filters:
+    #       - network = "{{ gcp_vpc_info.resources[0].selfLink }}"
+    #     #  - name = sap-vpc-router
+    #   register: gcp_router_info
+
+    # - name: Verify IP Forwarding for GCP VMs
+    #   ansible.builtin.fail:
+    #     msg: GCP CE VM does not have IP Forwarding enabled
+    #   when: not gcp_vm_info.resources[0].canIpForward
+
+    - name: GCP Private DNS Records for hosts
+      google.cloud.gcp_dns_resource_record_set:
+        state: present
+        project: "{{ sap_vm_provision_gcp_project }}"
+        managed_zone:
+          name: "{{ gcp_pdns_info.resources[0].name }}"
+          dnsName: "{{ hostvars[inventory_hostname].sap_vm_provision_dns_root_domain }}."
+        name: "{{ inventory_hostname }}.{{ hostvars[inventory_hostname].sap_vm_provision_dns_root_domain }}."
+        target:
+          - "{{ hostvars[inventory_hostname].ansible_host }}"
+        type: A
+        ttl: 7200
+      register: gcp_pdns_records
+      until: not gcp_pdns_records.failed
+      retries: 5
+      delay: 5
+
+#  - ansible.builtin.debug:
+#      var: register_add_hosts.results
+
+- name: Ansible Task block to execute on target inventory hosts
+  delegate_to: "{{ inventory_hostname }}"
+  block:
+
+    # Required to collect the remote host's facts for further processing
+    # in the following steps
+    - name: Gather host facts
+      ansible.builtin.setup:
+
+    # Must be set to short hostname,
+    # so that command 'hostname' and 'hostname -s' return the short hostname only;
+    # otherwise may cause error with SAP SWPM using name.domain.com.domain.com
+    - name: Change system hostname (must be set to short name and not FQDN, as required by SAP)
+      ansible.builtin.hostname:
+        name: "{{ inventory_hostname_short }}"
+
+    # GCP OS Images are missing NetworkManager-config-server package, append NetworkManager config file to ensure DHCP is still used for GCP VM
+    # Primary IP Address by default uses subnet netmask /32 CIDR
+    - name: Ensure network configuration is persistent
+      ansible.builtin.shell: |
+        if grep -q rhel /etc/os-release
+        then
+          #### Override DNS auto configured based on DHCP response
+          #### Re-generate resolv.conf (/run/NetworkManager/resolv.conf and /etc/resolv.conf)
+          # Ignore Auto DNS
+          nmcli device modify eth0 ipv4.ignore-auto-dns yes
+          nmcli connection modify Wired\ connection\ 1 ipv4.ignore-auto-dns yes
+          # Ensure set to Google Cloud Private DNS (169.254.169.254 i.e. ns-gcp-private.googledomains.com)
+          nmcli device modify eth0 ipv4.dns 169.254.169.254
+          nmcli connection modify Wired\ connection\ 1 ipv4.dns 169.254.169.254
+          echo "supersede domain-name-servers 169.254.169.254;" >> /etc/dhcp/dhclient.conf
+          # Set DNS Search domains
+          nmcli device modify eth0 ipv4.dns-search {{ sap_vm_provision_dns_root_domain }},google.internal
+          nmcli connection modify Wired\ connection\ 1 ipv4.dns-search {{ sap_vm_provision_dns_root_domain }},google.internal
+          # Set Hostname and FQDN
+          nmcli device modify eth0 ipv4.dhcp-hostname ""
+          nmcli device modify eth0 ipv4.dhcp-fqdn {{ inventory_hostname }}.{{ sap_vm_provision_dns_root_domain }}
+          nmcli connection modify Wired\ connection\ 1 ipv4.dhcp-hostname ""
+          nmcli connection modify Wired\ connection\ 1 ipv4.dhcp-fqdn {{ inventory_hostname }}.{{ sap_vm_provision_dns_root_domain }}
+          #### Reset network interface for hostname and domain to set
+          # Reload RHEL Network Manager
+          systemctl reload NetworkManager
+          # Restart the connection to enact changes
+          # This will also re-populate /etc/hosts with records for the VM Primary IP and the Google Cloud Instance Metadata Service
+          nmcli connection reload && nmcli con down Wired\ connection\ 1 && nmcli con up Wired\ connection\ 1
+        fi
+      # when: ansible_os_family == 'RedHat' # when is evaluated on the localhost, not on the delegated host
+
+
+    # # GCP OS Images are missing NetworkManager-config-server package, append NetworkManager config file to ensure DHCP is still used for GCP VM
+    # - name: Ensure network configuration is persistent
+    #   ansible.builtin.include_role:
+    #     name: fedora.rhel-system-roles.network
+    #   vars:
+    #     network_provider: nm
+    #     network_connections:
+    #       - name: "{{ ansible_default_ipv4.alias }}"
+    #         mac: "{{ ansible_default_ipv4.macaddress }}"
+    #         interface_name: "{{ ansible_default_ipv4.interface }}"
+    #         type: ethernet
+    #         ip:
+    #           dhcp4: true
+    #           dhcp4_send_hostname: true
+    #   when: ansible_os_family == 'RedHat' # when is evaluated on the localhost, not on the delegated host
+
+    # - name: Workaround - refresh OS Package Repo cache to avoid GCP custom package repo timeouts causing errors in RHEL package updates
+    #   throttle: 1 # Spawn 1 worker only, forcing execute of shell commands to one host at a time and avoiding GCP package repo bandwidth restrictions
+    #   ansible.builtin.shell: |
+    #     yum clean all
+    #     yum makecache
+    #   #when: ansible_os_family == 'RedHat' # when is evaluated on the localhost, not on the delegated host
+
+
+    - name: Set /etc/hosts
+      register: register_etc_hosts_file
+      ansible.builtin.include_tasks:
+        file: common/set_etc_hosts.yml
+
+    - name: Set /etc/hosts for HA
+      register: register_etc_hosts_file_ha
+      ansible.builtin.include_tasks:
+        file: common/set_etc_hosts_ha.yml
+      when:
+        - (groups["hana_secondary"] is defined and (groups["hana_secondary"] | length>0)) or (groups["nwas_ers"] is defined and (groups["nwas_ers"] | length>0)) or (groups["anydb_secondary"] is defined and (groups["anydb_secondary"] | length>0))
+
+    - name: Set /etc/hosts for Scale-Out
+      register: register_etc_hosts_file_scaleout
+      ansible.builtin.include_tasks:
+        file: common/set_etc_hosts_scaleout.yml
+      when:
+        - (groups["hana_primary"] is defined and (groups["hana_primary"] | length>0)) and (sap_hana_scaleout_active_coordinator is defined or sap_hana_scaleout_active_worker is defined or sap_hana_scaleout_standby is defined)
+
+    - name: Set vars for sap_storage_setup Ansible Role
+      register: register_ansible_vars_storage
+      ansible.builtin.include_tasks:
+        file: common/set_ansible_vars_storage.yml
+
+
+- name: Ansible Task block to execute on target inventory hosts - High Availability
+  delegate_to: "{{ inventory_hostname }}"
+  when:
+    - sap_ha_pacemaker_cluster_gcp_region_zone is defined
+    - (groups["hana_secondary"] is defined and (groups["hana_secondary"] | length>0)) or (groups["nwas_ers"] is defined and (groups["nwas_ers"] | length>0)) or (groups["anydb_secondary"] is defined and (groups["anydb_secondary"] | length>0))
+  block:
+
+    - name: Stop firewalld on all hosts before setup of Google Cloud Load Balancer
+      ansible.builtin.systemd:
+        name: firewalld
+        state: stopped
+        enabled: false
+
+
+- name: Ansible Task block for looped provisioning of High Availability resources for Google Cloud CE VMs
+  delegate_to: localhost
+  run_once: true
+  environment:
+    GCP_AUTH_KIND: "serviceaccount"
+    GCP_SERVICE_ACCOUNT_FILE: "{{ sap_vm_provision_gcp_credentials_json }}"
+  when:
+    - sap_ha_pacemaker_cluster_gcp_region_zone is defined
+    - (groups["hana_secondary"] is defined and (groups["hana_secondary"] | length>0)) or (groups["nwas_ers"] is defined and (groups["nwas_ers"] | length>0)) or (groups["anydb_secondary"] is defined and (groups["anydb_secondary"] | length>0))
+  block:
+
+    - name: Provision High Availability resources for GCP CE hosts
+      ansible.builtin.include_tasks:
+        file: "{{ 'platform_' + sap_vm_provision_iac_type }}/{{ sap_vm_provision_iac_platform }}/execute_setup_ha.yml"
+        apply:
+          environment:
+            GCP_AUTH_KIND: "serviceaccount"
+            GCP_SERVICE_ACCOUNT_FILE: "{{ sap_vm_provision_gcp_credentials_json }}"

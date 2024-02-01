@@ -1,0 +1,278 @@
+---
+
+- name: Ansible Task block for amending Load Balancer ports for High Availability - after provisioning MS Azure VM
+  delegate_to: localhost
+  run_once: true
+  environment:
+    ANSIBLE_AZURE_AUTH_SOURCE: "env"
+    AZURE_SUBSCRIPTION_ID: "{{ sap_vm_provision_msazure_subscription_id }}"
+    AZURE_TENANT: "{{ sap_vm_provision_msazure_tenant_id }}"
+    AZURE_CLIENT_ID: "{{ sap_vm_provision_msazure_app_client_id }}"
+    AZURE_SECRET: "{{ sap_vm_provision_msazure_app_client_secret }}"
+  when:
+    - sap_ha_pacemaker_cluster_msazure_resource_group is defined
+    - (groups["hana_secondary"] is defined and (groups["hana_secondary"] | length>0)) or (groups["nwas_ers"] is defined and (groups["nwas_ers"] | length>0)) or (groups["anydb_secondary"] is defined and (groups["anydb_secondary"] | length>0))
+  block:
+
+    - name: Inherit variable - set fact for Azure Load Balancer - VIP Health Check - SAP HANA
+      ansible.builtin.set_fact:
+        lb_frontend_virtual_ip_healthcheck_hana: "{{ sap_ha_pacemaker_cluster_healthcheck_hana_primary_port | default('') }}"
+      when: sap_ha_pacemaker_cluster_healthcheck_hana_primary_port is defined
+
+    - name: Inherit variable - set fact for Azure Load Balancer - VIP Health Check - SAP NWAS ASCS
+      ansible.builtin.set_fact:
+        lb_frontend_virtual_ip_healthcheck_nwas_ascs: "{{ sap_ha_pacemaker_cluster_healthcheck_nwas_abap_ascs_port | default('') }}"
+      when: sap_ha_pacemaker_cluster_healthcheck_nwas_abap_ascs_port is defined
+
+    - name: Inherit variable - set fact for Azure Load Balancer - VIP Health Check - SAP NWAS ERS
+      ansible.builtin.set_fact:
+        lb_frontend_virtual_ip_healthcheck_nwas_ers: "{{ sap_ha_pacemaker_cluster_healthcheck_nwas_abap_ers_port | default('') }}"
+      when: sap_ha_pacemaker_cluster_healthcheck_nwas_abap_ers_port is defined
+
+    - name: Default variable - Set fact for Azure Load Balancer - VIP Health Check - SAP HANA
+      ansible.builtin.set_fact:
+        lb_frontend_virtual_ip_healthcheck_hana: "{{ ('620' + (sap_system_hana_db_instance_nr | default('')) | string) | int }}"
+      when: not sap_ha_pacemaker_cluster_healthcheck_hana_primary_port is defined
+
+    - name: Default variable - Set fact for Azure Load Balancer - VIP Health Check - SAP NWAS ASCS
+      ansible.builtin.set_fact:
+        lb_frontend_virtual_ip_healthcheck_nwas_ascs: "{{ ('620' + (sap_system_nwas_abap_ascs_instance_nr | default('')) | string) | int }}"
+      when: not sap_ha_pacemaker_cluster_healthcheck_nwas_abap_ascs_port is defined
+
+    - name: Default variable - Set fact for Azure Load Balancer - VIP Health Check - SAP NWAS ERS
+      ansible.builtin.set_fact:
+        lb_frontend_virtual_ip_healthcheck_nwas_ers: "{{ ('620' + (sap_system_nwas_abap_ers_instance_nr | default('')) | string) | int }}"
+      when: not sap_ha_pacemaker_cluster_healthcheck_nwas_abap_ers_port is defined
+
+    - name: Gather MS Azure Subnet ID
+      azure.azcollection.azure_rm_subnet_info:
+        resource_group: "{{ sap_vm_provision_msazure_resource_group_name }}"
+        virtual_network_name: "{{ sap_vm_provision_msazure_vnet_name }}"
+        name: "{{ sap_vm_provision_msazure_vnet_subnet_name }}"
+      register: msazure_vnet_subnet_info
+
+
+    - name: Define Ansible Variables for Azure Load Balancer - VIP for SAP HANA
+      ansible.builtin.set_fact:
+        lb_frontend_virtual_ips1: "{{ lb_frontend_virtual_ips1 | default([]) + [__ip_element] }}"
+      vars:
+        __ip_element:
+          name: "lb-vip-hana{{ vip_index_nr }}"
+          private_ip_address: "{{ vip_item | regex_replace('/.*', '') }}"
+          private_ip_allocation_method: "Static"
+          subnet: "{{ msazure_vnet_subnet_info.subnets[0].id }}"
+          zones: ["1", "2", "3"] # Zone-redundant
+      when:
+        - vip_item | length > 0
+        - groups["hana_secondary"] is defined and (groups["hana_secondary"]|length>0)
+      loop:
+        - "{{ sap_ha_pacemaker_cluster_vip_hana_primary_ip_address | default() }}"
+      loop_control:
+        index_var: vip_index_nr
+        loop_var: vip_item
+
+    - name: Define Ansible Variables for Azure Load Balancer - VIP for SAP AnyDB
+      ansible.builtin.set_fact:
+        lb_frontend_virtual_ips1: "{{ lb_frontend_virtual_ips1 | default([]) + [__ip_element] }}"
+      vars:
+        __ip_element:
+          name: "lb-vip-anydb{{ vip_index_nr }}"
+          private_ip_address: "{{ vip_item | regex_replace('/.*', '') }}"
+          private_ip_allocation_method: "Static"
+          subnet: "{{ msazure_vnet_subnet_info.subnets[0].id }}"
+          zones: ["1", "2", "3"] # Zone-redundant
+      when:
+        - vip_item | length > 0
+        - groups["anydb_secondary"] is defined and (groups["anydb_secondary"]|length>0)
+      loop:
+        - "{{ sap_vm_temp_vip_anydb_primary | default() }}"
+      loop_control:
+        index_var: vip_index_nr
+        loop_var: vip_item
+
+    - name: Define Ansible Variables for Azure Load Balancer - VIP for SAP NetWeaver ASCS/ERS
+      ansible.builtin.set_fact:
+        lb_frontend_virtual_ips2: "{{ lb_frontend_virtual_ips2 | default([]) + [__ip_element] }}"
+      vars:
+        __ip_element:
+          name: "lb-vip-nwas{{ vip_index_nr }}"
+          private_ip_address: "{{ vip_item | regex_replace('/.*', '') }}"
+          private_ip_allocation_method: "Static"
+          subnet: "{{ msazure_vnet_subnet_info.subnets[0].id }}"
+          zones: ["1", "2", "3"] # Zone-redundant
+      when:
+        - vip_item | length > 0
+        - groups["nwas_ers"] is defined and (groups["nwas_ers"]|length>0)
+      loop:
+        - "{{ sap_ha_pacemaker_cluster_vip_nwas_abap_ascs_ip_address | default() }}"
+        - "{{ sap_ha_pacemaker_cluster_vip_nwas_abap_ers_ip_address | default() }}"
+      loop_control:
+        index_var: vip_index_nr
+        loop_var: vip_item
+
+
+    - name: Define Ansible Variables for Azure Load Balancer - VIP Health Check for SAP HANA
+      ansible.builtin.set_fact:
+        lb_probes1: "{{ lb_probes1 | default([]) + [__probe_element] }}"
+      vars:
+        __probe_element:
+          name: "lb-probe-hc-vip-hana{{ healthcheck_index_nr }}"
+          protocol: Tcp
+          port: "{{ healthcheck_item }}"
+          interval: 5
+          fail_count: 2
+      when:
+        - healthcheck_item | length > 0
+        - groups["hana_secondary"] is defined and (groups["hana_secondary"]|length>0)
+      loop:
+        - "{{ lb_frontend_virtual_ip_healthcheck_hana | default() }}"
+      loop_control:
+        index_var: healthcheck_index_nr
+        loop_var: healthcheck_item
+
+    - name: Define Ansible Variables for Azure Load Balancer - VIP Health Check for SAP AnyDB
+      ansible.builtin.set_fact:
+        lb_probes1: "{{ lb_probes1 | default([]) + [__probe_element] }}"
+      vars:
+        __probe_element:
+          name: "lb-probe-hc-vip-anydb"
+          protocol: Tcp
+          port: "62700"
+          interval: 5
+          fail_count: 2
+      when:
+        - groups["anydb_secondary"] is defined and (groups["anydb_secondary"]|length>0)
+
+    - name: Define Ansible Variables for Azure Load Balancer - VIP Health Check for SAP NetWeaver ASCS/ERS
+      ansible.builtin.set_fact:
+        lb_probes2: "{{ lb_probes2 | default([]) + [__probe_element] }}"
+      vars:
+        __probe_element:
+          name: "lb-probe-hc-vip-nwas{{ healthcheck_index_nr }}"
+          protocol: Tcp
+          port: "{{ healthcheck_item }}"
+          interval: 5
+          fail_count: 2
+      when:
+        - healthcheck_item | length > 0
+        - groups["nwas_ers"] is defined and (groups["nwas_ers"]|length>0)
+      loop:
+        - "{{ lb_frontend_virtual_ip_healthcheck_nwas_ascs | default() }}"
+        - "{{ lb_frontend_virtual_ip_healthcheck_nwas_ers | default() }}"
+      loop_control:
+        index_var: healthcheck_index_nr
+        loop_var: healthcheck_item
+
+
+    - name: Define Ansible Variables for Azure Load Balancer - LB Rule for SAP HANA
+      ansible.builtin.set_fact:
+        lb_rules1: "{{ lb_rules1 | default([]) + [__rule_element] }}"
+      vars:
+        __rule_element:
+          name: "lb-rule-hana{{ rule_index_nr }}"
+          frontend_ip_configuration: "lb-vip-hana{{ rule_index_nr }}"
+          backend_address_pool: lb-backend-pool-hana
+          protocol: All
+          frontend_port: 0 # High Availability Ports (AnyPort), only on Internal Standard Load Balancer
+          backend_port: 0 # High Availability Ports (AnyPort), only on Internal Standard Load Balancer
+          probe: "lb-probe-hc-vip-hana{{ rule_index_nr }}"
+          load_distribution: Default # Session persistence = None
+          idle_timeout: 30 # 30 minutes
+          enable_floating_ip: true # enable Frontend IP as a Floating IP (aka. Direct Server Return), if disabled then only 1 LB Rule allowed
+      when:
+        - rule_item | length > 0
+        - groups["hana_secondary"] is defined and (groups["hana_secondary"]|length>0)
+      loop:
+        - "{{ sap_ha_pacemaker_cluster_vip_hana_primary_ip_address | default() }}"
+      loop_control:
+        index_var: rule_index_nr
+        loop_var: rule_item
+
+    - name: Define Ansible Variables for Azure Load Balancer - LB Rule for SAP AnyDB
+      ansible.builtin.set_fact:
+        lb_rules1: "{{ lb_rules1 | default([]) + [__rule_element] }}"
+      vars:
+        __rule_element:
+          name: "lb-rule-anydb{{ rule_index_nr }}"
+          frontend_ip_configuration: "lb-vip-anydb{{ rule_index_nr }}"
+          backend_address_pool: lb-backend-pool-anydb
+          protocol: All
+          frontend_port: 0 # High Availability Ports (AnyPort), only on Internal Standard Load Balancer
+          backend_port: 0 # High Availability Ports (AnyPort), only on Internal Standard Load Balancer
+          probe: "lb-probe-hc-vip-anydb"
+          load_distribution: Default # Session persistence = None
+          idle_timeout: 30 # 30 minutes
+          enable_floating_ip: true # enable Frontend IP as a Floating IP (aka. Direct Server Return), if disabled then only 1 LB Rule allowed
+      when:
+        - rule_item | length > 0
+        - groups["anydb_secondary"] is defined and (groups["anydb_secondary"]|length>0)
+      loop:
+        - "{{ sap_vm_temp_vip_anydb_primary | default() }}"
+      loop_control:
+        index_var: rule_index_nr
+        loop_var: rule_item
+
+    - name: Define Ansible Variables for Azure Load Balancer - LB Rule for SAP NetWeaver ASCS/ERS
+      ansible.builtin.set_fact:
+        lb_rules2: "{{ lb_rules2 | default([]) + [__rule_element] }}"
+      vars:
+        __rule_element:
+          name: "lb-rule-nwas{{ rule_index_nr }}"
+          frontend_ip_configuration: "lb-vip-nwas{{ rule_index_nr }}"
+          backend_address_pool: lb-backend-pool-nwas-ascs
+          protocol: All
+          frontend_port: 0 # High Availability Ports (AnyPort), only on Internal Standard Load Balancer
+          backend_port: 0 # High Availability Ports (AnyPort), only on Internal Standard Load Balancer
+          probe: "lb-probe-hc-vip-nwas{{ rule_index_nr }}"
+          load_distribution: Default # Session persistence = None
+          idle_timeout: 30 # 30 minutes
+          enable_floating_ip: true # enable Frontend IP as a Floating IP (aka. Direct Server Return), if disabled then only 1 LB Rule allowed
+      when:
+        - rule_item | length > 0
+        - groups["nwas_ers"] is defined and (groups["nwas_ers"]|length>0)
+      loop:
+        - "{{ sap_ha_pacemaker_cluster_vip_nwas_abap_ascs_ip_address | default() }}"
+        - "{{ sap_ha_pacemaker_cluster_vip_nwas_abap_ers_ip_address | default() }}"
+      loop_control:
+        index_var: rule_index_nr
+        loop_var: rule_item
+
+
+    - name: MS Azure Load Balancer (network L4) - Update NLB for SAP HANA with Virtual IP and Health Probe configuration
+      azure.azcollection.azure_rm_loadbalancer:
+        resource_group: "{{ sap_vm_provision_msazure_resource_group_name }}"
+        name: "lb-sap-hana-ha" # "lb-sap-ha"
+        sku: "Standard" # AnyPort (HA Port) Protocol rule is not allowed for basic SKU load balancer, use standard SKU load balancer instead
+        frontend_ip_configurations: "{{ (lb_frontend_virtual_ips1 | default([])) }}" # "{{ (lb_frontend_virtual_ips1 | default([])) + (lb_frontend_virtual_ips2 | default([])) }}"
+        backend_address_pools:
+          - name: lb-backend-pool-hana
+        probes: "{{ (lb_probes1 | default([])) }}" # "{{ (lb_probes1 | default([])) + (lb_probes2 | default([])) }}"
+        load_balancing_rules: "{{ (lb_rules1 | default([])) }}" # "{{ (lb_rules1 | default([])) + (lb_rules2 | default([])) }}"
+      when: (groups["hana_secondary"] is defined and (groups["hana_secondary"]|length>0))
+      register: msazure_lb1_info
+
+    - name: MS Azure Load Balancer (network L4) - Update NLB for SAP AnyDB with Virtual IP and Health Probe configuration
+      azure.azcollection.azure_rm_loadbalancer:
+        resource_group: "{{ sap_vm_provision_msazure_resource_group_name }}"
+        name: "lb-sap-anydb-ha" # "lb-sap-ha"
+        sku: "Standard" # AnyPort (HA Port) Protocol rule is not allowed for basic SKU load balancer, use standard SKU load balancer instead
+        frontend_ip_configurations: "{{ (lb_frontend_virtual_ips1 | default([])) }}" # "{{ (lb_frontend_virtual_ips1 | default([])) + (lb_frontend_virtual_ips2 | default([])) }}"
+        backend_address_pools:
+          - name: lb-backend-pool-anydb
+        probes: "{{ (lb_probes1 | default([])) }}" # "{{ (lb_probes1 | default([])) + (lb_probes2 | default([])) }}"
+        load_balancing_rules: "{{ (lb_rules1 | default([])) }}" # "{{ (lb_rules1 | default([])) + (lb_rules2 | default([])) }}"
+      when: (groups["anydb_secondary"] is defined and (groups["anydb_secondary"]|length>0))
+      register: msazure_lb1_info
+
+    - name: MS Azure Load Balancer (network L4) - Update NLB for SAP NetWeaver with Virtual IP and Health Probe configuration
+      azure.azcollection.azure_rm_loadbalancer:
+        resource_group: "{{ sap_vm_provision_msazure_resource_group_name }}"
+        name: "lb-sap-nwas-ha"
+        sku: "Standard" # AnyPort (HA Port) Protocol rule is not allowed for basic SKU load balancer, use standard SKU load balancer instead
+        frontend_ip_configurations: "{{ (lb_frontend_virtual_ips2 | default([])) }}"
+        backend_address_pools:
+          - name: lb-backend-pool-nwas-ascs
+        probes: "{{ (lb_probes2 | default([])) }}"
+        load_balancing_rules: "{{ (lb_rules2 | default([])) }}"
+      when: (groups["nwas_ers"] is defined and (groups["nwas_ers"]|length>0))
+      register: msazure_lb2_info

@@ -1,0 +1,31 @@
+---
+
+# RHEL uses NetworkManager as default
+
+# SLES and NetworkManager
+# NetworkManager is only supported by SUSE for desktop workloads with SLED or the Workstation extension.
+# NetworkManager is not supported by SUSE for server workloads.
+# wicked is used for network configuration and all server certifications, and using NetworkManager may invalidate them.
+# wicked does not have an existing Ansible Module/Role
+# source - https://documentation.suse.com/sles/15-SP5/html/SLES-all/cha-nm.html
+
+
+# - name: Find the primary OS network interface adapter
+#   delegate_to: "{{ host_node }}"
+#   delegate_facts: true
+#   ansible.builtin.shell:
+#     # Find network adapter - Works only if 1 adapter is present
+#     #ACTIVE_NETWORK_ADAPTER=$(ip -o link show | awk '{print $2,$9}' | grep UP | awk -F: '{print $1}')
+
+#     # Find network adapter - identify the adapter, by showing which is used for the Default Gateway route
+#     # https://serverfault.com/questions/47915/how-do-i-get-the-default-gateway-in-linux-given-the-destination
+
+#     # Added if statement to catch RHEL installations with route table multiple default entries. EXAMPLE:
+#     ### default via 10.243.1.1 dev eth0
+#     ### default via 10.243.1.1 dev eth0 proto dhcp metric 100
+#     if [[ $(ip route show default 0.0.0.0/0) == *$'\n'* ]]; then
+#     ACTIVE_NETWORK_ADAPTER=$(ip route show default 0.0.0.0/0 | awk '/default/ && !/metric/ {print $5}')
+#     ACTIVE_NETWORK_ADAPTER=${ACTIVE_NETWORK_ADAPTER%;*}
+#     else
+#     ACTIVE_NETWORK_ADAPTER=$(ip route show default 0.0.0.0/0 | awk '/default/ {print $5}')
+#     fi

@@ -1,0 +1,19 @@
+---
+
+- name: Ansible Play to run sap_hypervisor_node_preconfigure Ansible Role
+  hosts: all
+  gather_facts: true
+  serial: 1
+
+  vars:
+    sap_hypervisor_node_platform: redhat_ocp_virt
+    sap_hypervisor_node_kubeconfig: "{{ lookup( 'ansible.builtin.env', 'KUBECONFIG') }}"
+
+  environment:
+    KUBECONFIG: "{{ sap_hypervisor_node_kubeconfig }}"
+    K8S_AUTH_KUBECONFIG: "{{ sap_hypervisor_node_kubeconfig }}"
+
+  tasks:
+    - name: Include sap_hypervisor_node_preconfigure Ansible Role
+      ansible.builtin.include_role:
+        name: sap_hypervisor_node_preconfigure

@@ -1,0 +1,562 @@
+---
+
+# - name: Gather information about MS Azure Route Table for the VNet Subnet
+#   azure.azcollection.azure_rm_routetable_info:
+#     resource_group: "{{ sap_vm_provision_msazure_resource_group_name }}"
+#     name: "name-here"
+#   register: msazure_vnet_subnet_rt_info
+
+# - name: Ansible MS Azure Route Table append route for SAP HANA HA
+#   azure.azcollection.azure_rm_route:
+#     resource_group: "{{ sap_vm_provision_msazure_resource_group_name }}"
+#     route_table_name: "{{ msazure_vnet_subnet_rt_info.route_tables[0].id }}"
+#     name: "{{ sap_swpm_db_host }}-rt"
+#     address_prefix: "{{ sap_ha_pacemaker_cluster_vip_hana_primary_ip_address | default('192.168.1.90/32') }}"
+#     next_hop_type: "virtual_appliance"
+#     next_hop_ip_address: "{{ hostvars[host_node].ansible_host }}"
+#   loop: "{{ (groups['hana_primary'] | default([])) }}"
+#   loop_control:
+#     loop_var: host_node
+#   register: msazure_vnet_subnet_rt_route_sap_hana
+#   when:
+#     - groups["hana_secondary"] is defined and (groups["hana_secondary"] | length>0)
+
+- name: Ansible MS Azure Private DNS Records for SAP HANA HA Virtual Hostname
+  azure.azcollection.azure_rm_privatednsrecordset:
+    resource_group: "{{ sap_vm_provision_msazure_resource_group_name }}"
+    zone_name: "{{ hostvars[host_node].sap_vm_provision_dns_root_domain }}"
+    relative_name: "{{ sap_swpm_db_host }}"
+    record_type: A
+    records:
+      - entry: "{{ (sap_ha_pacemaker_cluster_vip_hana_primary_ip_address | default('192.168.1.90/32')) | regex_replace('/.*', '') }}"
+  loop: "{{ (groups['hana_primary'] | default([])) }}"
+  loop_control:
+    loop_var: host_node
+  when:
+    - groups["hana_secondary"] is defined and (groups["hana_secondary"]|length>0)
+
+
+# - name: Ansible MS Azure Route Table append route for SAP NetWeaver ASCS HA
+#   azure.azcollection.azure_rm_route:
+#     resource_group: "{{ sap_vm_provision_msazure_resource_group_name }}"
+#     route_table_name: "{{ msazure_vnet_subnet_rt_info.route_tables[0].id }}"
+#     name: "{{ sap_swpm_ascs_instance_hostname }}-rt"
+#     address_prefix: "{{ sap_ha_pacemaker_cluster_vip_nwas_abap_ascs_ip_address | default('192.168.2.10/32') }}"
+#     next_hop_type: "virtual_appliance"
+#     next_hop_ip_address: "{{ hostvars[host_node].ansible_host }}"
+#   loop: "{{ (groups['nwas_ascs'] | default([])) }}"
+#   loop_control:
+#     loop_var: host_node
+#   register: msazure_vnet_subnet_rt_route_sap_netweaver_ascs
+#   when:
+#     - groups["nwas_ers"] is defined and (groups["nwas_ers"] | length>0)
+
+- name: Ansible MS Azure Private DNS Records for SAP NetWeaver ASCS HA Virtual Hostname
+  azure.azcollection.azure_rm_privatednsrecordset:
+    resource_group: "{{ sap_vm_provision_msazure_resource_group_name }}"
+    zone_name: "{{ hostvars[host_node].sap_vm_provision_dns_root_domain }}"
+    relative_name: "{{ sap_swpm_ascs_instance_hostname }}"
+    record_type: A
+    records:
+      - entry: "{{ (sap_ha_pacemaker_cluster_vip_nwas_abap_ascs_ip_address | default('192.168.2.10/32')) | regex_replace('/.*', '') }}"
+  loop: "{{ (groups['nwas_ascs'] | default([])) }}"
+  loop_control:
+    loop_var: host_node
+  when:
+    - groups["nwas_ers"] is defined and (groups["nwas_ers"]|length>0)
+
+
+# - name: Ansible MS Azure Route Table append route for SAP NetWeaver ERS HA
+#   azure.azcollection.azure_rm_route:
+#     resource_group: "{{ sap_vm_provision_msazure_resource_group_name }}"
+#     route_table_name: "{{ msazure_vnet_subnet_rt_info.route_tables[0].id }}"
+#     name: "{{ sap_swpm_ers_instance_hostname }}-rt"
+#     address_prefix: "{{ sap_ha_pacemaker_cluster_vip_nwas_abap_ers_ip_address | default('192.168.2.11/32') }}"
+#     next_hop_type: "virtual_appliance"
+#     next_hop_ip_address: "{{ hostvars[host_node].ansible_host }}"
+#   loop: "{{ (groups['nwas_ers'] | default([])) }}"
+#   loop_control:
+#     loop_var: host_node
+#   register: msazure_vnet_subnet_rt_route_sap_netweaver_ers
+#   when:
+#     - groups["nwas_ers"] is defined and (groups["nwas_ers"] | length>0)
+
+- name: Ansible MS Azure Private DNS Records for SAP NetWeaver ERS HA Virtual Hostname
+  azure.azcollection.azure_rm_privatednsrecordset:
+    resource_group: "{{ sap_vm_provision_msazure_resource_group_name }}"
+    zone_name: "{{ hostvars[host_node].sap_vm_provision_dns_root_domain }}"
+    relative_name: "{{ sap_swpm_ers_instance_hostname }}"
+    record_type: A
+    records:
+      - entry: "{{ (sap_ha_pacemaker_cluster_vip_nwas_abap_ers_ip_address | default('192.168.2.11/32')) | regex_replace('/.*', '') }}"
+  loop: "{{ (groups['nwas_ers'] | default([])) }}"
+  loop_control:
+    loop_var: host_node
+  when:
+    - groups["nwas_ers"] is defined and (groups["nwas_ers"]|length>0)
+
+
+## For HA of PAS and AAS, if required
+
+#    - name: Ansible MS Azure Route Table append route for SAP NetWeaver PAS HA
+#      azure.azcollection.azure_rm_route:
+#        resource_group: "{{ sap_vm_provision_msazure_resource_group_name }}"
+#        route_table_name: "{{ msazure_vnet_subnet_rt_info.route_tables[0].id }}"
+#        name: "{{ sap_swpm_pas_instance_hostname }}-rt"
+#        address_prefix: "{{ sap_ha_pacemaker_cluster_vip_nwas_abap_pas_ip_address | default('192.168.2.12/32') }}"
+#        next_hop_type: "virtual_appliance"
+#        next_hop_ip_address: "{{ hostvars[host_node].ansible_host }}"
+#      loop: "{{ (groups['nwas_pas'] | default([])) }}"
+#      loop_control:
+#        loop_var: host_node
+#      register: msazure_vnet_subnet_rt_route_sap_netweaver_pas
+#      when:
+#        - groups["nwas_ers"] is defined and (groups["nwas_ers"] | length>0)
+
+# - name: Ansible MS Azure Private DNS Records for SAP NetWeaver PAS HA Virtual Hostname
+#   azure.azcollection.azure_rm_privatednsrecordset:
+#     resource_group: "{{ sap_vm_provision_msazure_resource_group_name }}"
+#     zone_name: "{{ hostvars[host_node].sap_vm_provision_dns_root_domain }}"
+#     relative_name: "{{ sap_swpm_pas_instance_hostname }}"
+#     record_type: A
+#     records:
+#       - entry: "{{ (sap_ha_pacemaker_cluster_vip_nwas_abap_pas_ip_address | default('192.168.2.12/32')) | regex_replace('/.*', '') }}"
+#   loop: "{{ (groups['nwas_pas'] | default([])) }}"
+#   loop_control:
+#     loop_var: host_node
+#   when:
+#     - groups["nwas_ers"] is defined and (groups["nwas_ers"]|length>0)
+
+
+# - name: Ansible MS Azure Route Table append route for SAP NetWeaver AAS HA
+#   azure.azcollection.azure_rm_route:
+#     resource_group: "{{ sap_vm_provision_msazure_resource_group_name }}"
+#     route_table_name: "{{ msazure_vnet_subnet_rt_info.route_tables[0].id }}"
+#     name: "{{ sap_swpm_aas_instance_hostname }}-rt"
+#     address_prefix: "{{ sap_ha_pacemaker_cluster_vip_nwas_abap_aas_ip_address | default('192.168.2.13/32') }}"
+#     next_hop_type: "virtual_appliance"
+#     next_hop_ip_address: "{{ hostvars[host_node].ansible_host }}"
+#   loop: "{{ (groups['nwas_aas'] | default([])) }}"
+#   loop_control:
+#     loop_var: host_node
+#   register: msazure_vnet_subnet_rt_route_sap_netweaver_aas
+#   when:
+#     - groups["nwas_ers"] is defined and (groups["nwas_ers"] | length>0)
+
+# - name: Ansible MS Azure Private DNS Records for SAP NetWeaver AAS HA Virtual Hostname
+#   azure.azcollection.azure_rm_privatednsrecordset:
+#     resource_group: "{{ sap_vm_provision_msazure_resource_group_name }}"
+#     zone_name: "{{ hostvars[host_node].sap_vm_provision_dns_root_domain }}"
+#     relative_name: "{{ sap_swpm_aas_instance_hostname }}"
+#     record_type: A
+#     records:
+#       - entry: "{{ (sap_ha_pacemaker_cluster_vip_nwas_abap_aas_ip_address | default('192.168.2.13/32')) | regex_replace('/.*', '') }}"
+#   loop: "{{ (groups['nwas_aas'] | default([])) }}"
+#   loop_control:
+#     loop_var: host_node
+#   when:
+#     - groups["nwas_ers"] is defined and (groups["nwas_ers"]|length>0)
+
+
+- name: MS Azure IAM Role - Definition
+  azure.azcollection.azure_rm_roledefinition:
+    name: "Linux Fence Agent Role"
+    description: "Allows to power-off and start virtual machines"
+    #scope: /subscriptions/xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx/resourceGroups/myresourceGroup
+    assignable_scopes:
+      - "/subscriptions/{{ sap_vm_provision_msazure_subscription_id }}"
+    permissions:
+      - actions:
+          - "Microsoft.Compute/*/read"
+          - "Microsoft.Compute/virtualMachines/powerOff/action"
+          - "Microsoft.Compute/virtualMachines/start/action"
+      # - data_actions:
+      # - not_actions:
+      # - not_data_actions:
+  register: msazure_iam_role_fencing
+
+- name: MS Azure - GenericRestClient call to Virtual Machine API to identify Managed Service Identity (MSI)
+  azure.azcollection.azure_rm_resource_info:
+    resource_group: "{{ sap_vm_provision_msazure_resource_group_name }}"
+    provider: Compute
+    resource_type: virtualMachines
+    resource_name: "{{ host_node }}"
+  register: msazure_vm_info_collect
+  loop: "{{ groups_merged_list }}"
+  loop_control:
+    loop_var: host_node
+
+# Assign to the MSI Object ID (Service Principal ID)
+- name: MS Azure IAM Role - Assignment to MS Azure Managed Service Identity (MSI)
+  azure.azcollection.azure_rm_roleassignment:
+    #auth_source: msi
+    role_definition_id:
+      "{{ msazure_iam_role_fencing.id }}"
+    scope: "/subscriptions/{{ sap_vm_provision_msazure_subscription_id }}"
+    assignee_object_id: "{{ host_node.response[0].identity.principalId | default(none) }}"
+  loop: "{{ msazure_vm_info_collect.results }}"
+  loop_control:
+    loop_var: host_node
+    label: "{{ host_node.response[0].name | default(none) }}" # Use default to avoid "Failed to template 'dict object' has no attribute 'response'"
+
+
+# Azure Load Balancer Health Check Probe is the destination port upon connection to the virtual machine to check the virtual machine's health status.
+# Ensure the virtual machine is also listening on this port (that is, the port is open).
+# https://learn.microsoft.com/en-us/azure/load-balancer/manage-probes-how-to
+#
+# As Linux Pacemaker 'azure-lb' Resource Agent is not started before the Load Balancer Rule is created, must instead use a fake health check response
+# Otherwise the Azure Load Balancer Rule will automatically evaluate as all Virtual Machines in the Azure Load Balancer Backend Pool are 'probed DOWN'
+#
+# Note: ICMP ping requests to the Azure Load Balancer Frontend IP (i.e. Virtual IP) are handled by the Azure Load Balancer,
+# the ICMP ping requests are not sent to the Azure Load Balancer Backend Pool virtual machines
+# https://learn.microsoft.com/en-us/azure/load-balancer/load-balancer-test-frontend-reachability#usage-considerations
+#
+# The azure_rm_loadbalancer Ansible Module does not allow backend pool population - https://github.com/ansible-collections/azure/issues/866
+# Must use either workaround:
+# Opt 1. provision Load Balancer first, then assign vNIC at creation to the Load Balancer backend pool. This failed to register healthy VMs.
+# Opt 2. use azure_rm_networkinterface Ansible Module to update-in-place the vNIC and assign to a Load Balancer backend pool.
+# Option selected = Opt 2
+#
+# In addition, the Azure Load Balancer being provisioned before Linux Pacemaker, requires a temporary Health Check Probe port to be used with an an active OS service listening.
+# Therefore the Health Check Port probe will use Port 55550/55551/55552 during initial installation, and be switched after the SAP Installation and Linux Pacemaker installation to the correct port number.
+# This is because an Azure Load Balancer Rule will trigger the Health Check Probe once any host is added to the Backend Pool,
+# and if the host is not listening on the port it will fail, which will mark the resource as unhealthy, the traffic will not be routed to the host and if all hosts fail then the Frontend IP will also fail / not respond to ICMP Ping requests.
+
+
+- name: Ansible Task block for provisioning of Load Balancer for High Availability
+  delegate_to: localhost
+  run_once: true
+  environment:
+    ANSIBLE_AZURE_AUTH_SOURCE: "env"
+    AZURE_SUBSCRIPTION_ID: "{{ sap_vm_provision_msazure_subscription_id }}"
+    AZURE_TENANT: "{{ sap_vm_provision_msazure_tenant_id }}"
+    AZURE_CLIENT_ID: "{{ sap_vm_provision_msazure_app_client_id }}"
+    AZURE_SECRET: "{{ sap_vm_provision_msazure_app_client_secret }}"
+  when:
+    - sap_ha_pacemaker_cluster_msazure_resource_group is defined
+    - (groups["hana_secondary"] is defined and (groups["hana_secondary"] | length>0)) or (groups["nwas_ers"] is defined and (groups["nwas_ers"] | length>0)) or (groups["anydb_secondary"] is defined and (groups["anydb_secondary"] | length>0))
+  block:
+
+    - name: Gather MS Azure Subnet ID
+      azure.azcollection.azure_rm_subnet_info:
+        resource_group: "{{ sap_vm_provision_msazure_resource_group_name }}"
+        virtual_network_name: "{{ sap_vm_provision_msazure_vnet_name }}"
+        name: "{{ sap_vm_provision_msazure_vnet_subnet_name }}"
+      register: msazure_vnet_subnet_info
+
+
+    - name: Define Ansible Variables for Azure Load Balancer - VIP for SAP HANA
+      ansible.builtin.set_fact:
+        lb_frontend_virtual_ips1: "{{ lb_frontend_virtual_ips1 | default([]) + [__ip_element] }}"
+      vars:
+        __ip_element:
+          name: "lb-vip-hana{{ vip_index_nr }}"
+          private_ip_address: "{{ vip_item | regex_replace('/.*', '') }}"
+          private_ip_allocation_method: "Static"
+          subnet: "{{ msazure_vnet_subnet_info.subnets[0].id }}"
+          zones: ["1", "2", "3"] # Zone-redundant
+      when:
+        - vip_item | length > 0
+        - groups["hana_secondary"] is defined and (groups["hana_secondary"]|length>0)
+      loop:
+        - "{{ sap_ha_pacemaker_cluster_vip_hana_primary_ip_address | default() }}"
+      loop_control:
+        index_var: vip_index_nr
+        loop_var: vip_item
+
+    - name: Define Ansible Variables for Azure Load Balancer - VIP for SAP AnyDB
+      ansible.builtin.set_fact:
+        lb_frontend_virtual_ips1: "{{ lb_frontend_virtual_ips1 | default([]) + [__ip_element] }}"
+      vars:
+        __ip_element:
+          name: "lb-vip-anydb{{ vip_index_nr }}"
+          private_ip_address: "{{ vip_item | regex_replace('/.*', '') }}"
+          private_ip_allocation_method: "Static"
+          subnet: "{{ msazure_vnet_subnet_info.subnets[0].id }}"
+          zones: ["1", "2", "3"] # Zone-redundant
+      when:
+        - vip_item | length > 0
+        - groups["anydb_secondary"] is defined and (groups["anydb_secondary"]|length>0)
+      loop:
+        - "{{ sap_vm_temp_vip_anydb_primary | default() }}"
+      loop_control:
+        index_var: vip_index_nr
+        loop_var: vip_item
+
+    - name: Define Ansible Variables for Azure Load Balancer - VIP for SAP NetWeaver ASCS/ERS
+      ansible.builtin.set_fact:
+        lb_frontend_virtual_ips2: "{{ lb_frontend_virtual_ips2 | default([]) + [__ip_element] }}"
+      vars:
+        __ip_element:
+          name: "lb-vip-nwas{{ vip_index_nr }}"
+          private_ip_address: "{{ vip_item | regex_replace('/.*', '') }}"
+          private_ip_allocation_method: "Static"
+          subnet: "{{ msazure_vnet_subnet_info.subnets[0].id }}"
+          zones: ["1", "2", "3"] # Zone-redundant
+      when:
+        - vip_item | length > 0
+        - groups["nwas_ers"] is defined and (groups["nwas_ers"]|length>0)
+      loop:
+        - "{{ sap_ha_pacemaker_cluster_vip_nwas_abap_ascs_ip_address | default() }}"
+        - "{{ sap_ha_pacemaker_cluster_vip_nwas_abap_ers_ip_address | default() }}"
+      loop_control:
+        index_var: vip_index_nr
+        loop_var: vip_item
+
+
+    - name: Define Ansible Variables for Azure Load Balancer - VIP Health Check for SAP HANA
+      ansible.builtin.set_fact:
+        lb_probes1: "{{ lb_probes1 | default([]) + [__probe_element] }}"
+      vars:
+        __probe_element:
+          name: "lb-probe-hc-vip-hana{{ sapinstance_index_nr }}"
+          protocol: Tcp
+          port: "55550" # "{{ ('626' + sapinstance_item | string) | int }}"
+          interval: 5
+          fail_count: 2
+      when:
+        - sapinstance_item | length > 0
+        - groups["hana_secondary"] is defined and (groups["hana_secondary"]|length>0)
+      loop:
+        - "{{ sap_system_hana_db_instance_nr | default() }}"
+      loop_control:
+        index_var: sapinstance_index_nr
+        loop_var: sapinstance_item
+
+    - name: Define Ansible Variables for Azure Load Balancer - VIP Health Check for SAP AnyDB
+      ansible.builtin.set_fact:
+        lb_probes1: "{{ lb_probes1 | default([]) + [__probe_element] }}"
+      vars:
+        __probe_element:
+          name: "lb-probe-hc-vip-anydb"
+          protocol: Tcp
+          port: "55550" # 62700
+          interval: 5
+          fail_count: 2
+      when:
+        - groups["anydb_secondary"] is defined and (groups["anydb_secondary"]|length>0)
+
+    - name: Define Ansible Variables for Azure Load Balancer - VIP Health Check for SAP NetWeaver ASCS/ERS
+      ansible.builtin.set_fact:
+        lb_probes2: "{{ lb_probes2 | default([]) + [__probe_element] }}"
+      vars:
+        __probe_element:
+          name: "lb-probe-hc-vip-nwas{{ sapinstance_index_nr }}"
+          protocol: Tcp
+          port: "{{ ('5555' + (sapinstance_index_nr + 1)) | string | int }}" # "{{ ('626' + sapinstance_item | string) | int }}"
+          interval: 5
+          fail_count: 2
+      when:
+        - sapinstance_item | length > 0
+        - groups["nwas_ers"] is defined and (groups["nwas_ers"]|length>0)
+      loop:
+        - "{{ sap_system_nwas_abap_ascs_instance_nr | default() }}"
+        - "{{ sap_system_nwas_abap_ers_instance_nr | default() }}"
+      loop_control:
+        index_var: sapinstance_index_nr
+        loop_var: sapinstance_item
+
+
+    - name: Define Ansible Variables for Azure Load Balancer - LB Rule for SAP HANA
+      ansible.builtin.set_fact:
+        lb_rules1: "{{ lb_rules1 | default([]) + [__rule_element] }}"
+      vars:
+        __rule_element:
+          name: "lb-rule-hana{{ rule_index_nr }}"
+          frontend_ip_configuration: "lb-vip-hana{{ rule_index_nr }}"
+          backend_address_pool: lb-backend-pool-hana
+          protocol: All
+          frontend_port: 0 # High Availability Ports (AnyPort), only on Internal Standard Load Balancer
+          backend_port: 0 # High Availability Ports (AnyPort), only on Internal Standard Load Balancer
+          probe: "lb-probe-hc-vip-hana{{ rule_index_nr }}"
+          load_distribution: Default # Session persistence = None
+          idle_timeout: 30 # 30 minutes
+          enable_floating_ip: true # enable Frontend IP as a Floating IP (aka. Direct Server Return), if disabled then only 1 LB Rule allowed
+      when:
+        - rule_item | length > 0
+        - groups["hana_secondary"] is defined and (groups["hana_secondary"]|length>0)
+      loop:
+        - "{{ sap_ha_pacemaker_cluster_vip_hana_primary_ip_address | default() }}"
+      loop_control:
+        index_var: rule_index_nr
+        loop_var: rule_item
+
+    - name: Define Ansible Variables for Azure Load Balancer - LB Rule for SAP AnyDB
+      ansible.builtin.set_fact:
+        lb_rules1: "{{ lb_rules1 | default([]) + [__rule_element] }}"
+      vars:
+        __rule_element:
+          name: "lb-rule-anydb{{ rule_index_nr }}"
+          frontend_ip_configuration: "lb-vip-anydb{{ rule_index_nr }}"
+          backend_address_pool: lb-backend-pool-anydb
+          protocol: All
+          frontend_port: 0 # High Availability Ports (AnyPort), only on Internal Standard Load Balancer
+          backend_port: 0 # High Availability Ports (AnyPort), only on Internal Standard Load Balancer
+          probe: "lb-probe-hc-vip-anydb"
+          load_distribution: Default # Session persistence = None
+          idle_timeout: 30 # 30 minutes
+          enable_floating_ip: true # enable Frontend IP as a Floating IP (aka. Direct Server Return), if disabled then only 1 LB Rule allowed
+      when:
+        - rule_item | length > 0
+        - groups["anydb_secondary"] is defined and (groups["anydb_secondary"]|length>0)
+      loop:
+        - "{{ sap_vm_temp_vip_anydb_primary | default() }}"
+      loop_control:
+        index_var: rule_index_nr
+        loop_var: rule_item
+
+    - name: Define Ansible Variables for Azure Load Balancer - LB Rule for SAP NetWeaver ASCS/ERS
+      ansible.builtin.set_fact:
+        lb_rules2: "{{ lb_rules2 | default([]) + [__rule_element] }}"
+      vars:
+        __rule_element:
+          name: "lb-rule-nwas{{ rule_index_nr }}"
+          frontend_ip_configuration: "lb-vip-nwas{{ rule_index_nr }}"
+          backend_address_pool: lb-backend-pool-nwas-ascs
+          protocol: All
+          frontend_port: 0 # High Availability Ports (AnyPort), only on Internal Standard Load Balancer
+          backend_port: 0 # High Availability Ports (AnyPort), only on Internal Standard Load Balancer
+          probe: "lb-probe-hc-vip-nwas{{ rule_index_nr }}"
+          load_distribution: Default # Session persistence = None
+          idle_timeout: 30 # 30 minutes
+          enable_floating_ip: true # enable Frontend IP as a Floating IP (aka. Direct Server Return), if disabled then only 1 LB Rule allowed
+      when:
+        - rule_item | length > 0
+        - groups["nwas_ers"] is defined and (groups["nwas_ers"]|length>0)
+      loop:
+        - "{{ sap_ha_pacemaker_cluster_vip_nwas_abap_ascs_ip_address | default() }}"
+        - "{{ sap_ha_pacemaker_cluster_vip_nwas_abap_ers_ip_address | default() }}"
+      loop_control:
+        index_var: rule_index_nr
+        loop_var: rule_item
+
+    - name: MS Azure Load Balancer (network L4) - Create NLB for SAP HANA with Virtual IP and Health Probe configuration
+      azure.azcollection.azure_rm_loadbalancer:
+        resource_group: "{{ sap_vm_provision_msazure_resource_group_name }}"
+        name: "lb-sap-hana-ha" # "lb-sap-ha"
+        sku: "Standard" # AnyPort (HA Port) Protocol rule is not allowed for basic SKU load balancer, use standard SKU load balancer instead
+        frontend_ip_configurations: "{{ (lb_frontend_virtual_ips1 | default([])) }}" # "{{ (lb_frontend_virtual_ips1 | default([])) + (lb_frontend_virtual_ips2 | default([])) }}"
+        backend_address_pools:
+          - name: lb-backend-pool-hana
+        probes: "{{ (lb_probes1 | default([])) }}" # "{{ (lb_probes1 | default([])) + (lb_probes2 | default([])) }}"
+        load_balancing_rules: "{{ (lb_rules1 | default([])) }}" # "{{ (lb_rules1 | default([])) + (lb_rules2 | default([])) }}"
+      when: (groups["hana_secondary"] is defined and (groups["hana_secondary"]|length>0))
+      register: msazure_lb1a_info
+
+    - name: MS Azure Load Balancer (network L4) - Create NLB for SAP AnyDB with Virtual IP and Health Probe configuration
+      azure.azcollection.azure_rm_loadbalancer:
+        resource_group: "{{ sap_vm_provision_msazure_resource_group_name }}"
+        name: "lb-sap-anydb-ha" # "lb-sap-ha"
+        sku: "Standard" # AnyPort (HA Port) Protocol rule is not allowed for basic SKU load balancer, use standard SKU load balancer instead
+        frontend_ip_configurations: "{{ (lb_frontend_virtual_ips1 | default([])) }}" # "{{ (lb_frontend_virtual_ips1 | default([])) + (lb_frontend_virtual_ips2 | default([])) }}"
+        backend_address_pools:
+          - name: lb-backend-pool-anydb
+        probes: "{{ (lb_probes1 | default([])) }}" # "{{ (lb_probes1 | default([])) + (lb_probes2 | default([])) }}"
+        load_balancing_rules: "{{ (lb_rules1 | default([])) }}" # "{{ (lb_rules1 | default([])) + (lb_rules2 | default([])) }}"
+      when: (groups["anydb_secondary"] is defined and (groups["anydb_secondary"]|length>0))
+      register: msazure_lb1b_info
+
+    - name: MS Azure Load Balancer (network L4) - Define Ansible Variable of Load Balancer for Database Server
+      ansible.builtin.set_fact:
+        msazure_lb1_info: "{{ msazure_lb1a_info if (groups['hana_secondary'] is defined and (groups['hana_secondary']|length>0)) else msazure_lb1b_info if (groups['anydb_secondary'] is defined and (groups['anydb_secondary']|length>0)) }}"
+      when: (groups["hana_secondary"] is defined and (groups["hana_secondary"]|length>0)) or (groups["anydb_secondary"] is defined and (groups["anydb_secondary"]|length>0))
+
+    - name: MS Azure Load Balancer (network L4) - Create NLB for SAP NetWeaver with Virtual IP and Health Probe configuration
+      azure.azcollection.azure_rm_loadbalancer:
+        resource_group: "{{ sap_vm_provision_msazure_resource_group_name }}"
+        name: "lb-sap-nwas-ha"
+        sku: "Standard" # AnyPort (HA Port) Protocol rule is not allowed for basic SKU load balancer, use standard SKU load balancer instead
+        frontend_ip_configurations: "{{ (lb_frontend_virtual_ips2 | default([])) }}"
+        backend_address_pools:
+          - name: lb-backend-pool-nwas-ascs
+        probes: "{{ (lb_probes2 | default([])) }}"
+        load_balancing_rules: "{{ (lb_rules2 | default([])) }}"
+      when: (groups["nwas_ers"] is defined and (groups["nwas_ers"]|length>0))
+      register: msazure_lb2_info
+
+    - name: Set fact to hold loop variables from include_tasks when SAP HANA HA
+      ansible.builtin.set_fact:
+        lb_ha_sap_hana: "{{ msazure_lb1_info.state.backend_address_pools | selectattr('name', '==', 'lb-backend-pool-hana') | map(attribute='id') | first }}"
+      when: (groups["hana_secondary"] is defined and (groups["hana_secondary"]|length>0))
+
+    - name: Set fact to hold loop variables from include_tasks when SAP AnyDB HA
+      ansible.builtin.set_fact:
+        lb_ha_sap_anydb: "{{ msazure_lb1_info.state.backend_address_pools | selectattr('name', '==', 'lb-backend-pool-anydb') | map(attribute='id') | first }}"
+      when: (groups["anyb_secondary"] is defined and (groups["anydb_secondary"]|length>0))
+
+    - name: Set fact to hold loop variables from include_tasks when SAP NetWeaver HA
+      ansible.builtin.set_fact:
+        lb_ha_sap_nwas: "{{ msazure_lb2_info.state.backend_address_pools | selectattr('name', '==', 'lb-backend-pool-nwas-ascs') | map(attribute='id') | first }}"
+      when: (groups["nwas_ers"] is defined and (groups["nwas_ers"]|length>0))
+
+    - name: Update network interfaces for MS Azure VM - for SAP HANA HA with load balancing
+      register: register_provisioned_vnic1
+      azure.azcollection.azure_rm_networkinterface:
+        resource_group: "{{ sap_vm_provision_msazure_resource_group_name }}"
+        location: "{{ sap_vm_provision_msazure_location_region }}"
+        name: "{{ host_node }}-nic"
+        virtual_network: "{{ sap_vm_provision_msazure_vnet_name }}"
+        subnet_name: "{{ sap_vm_provision_msazure_vnet_subnet_name }}"
+        create_with_security_group: false
+        ip_configurations:
+          - name: "{{ host_node }}-nic-ipconfig"
+            primary: true
+            #private_ip_allocation_method: "Static" # When static, must define the specific IP Address
+            load_balancer_backend_address_pools:
+              - "{{ lb_ha_sap_hana }}"
+        enable_accelerated_networking: true
+        enable_ip_forwarding: "{{ lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan][scaleout_origin_host_spec | default(inventory_hostname)].disable_ip_anti_spoofing }}" # When disable the Anti IP Spoofing = true, then Enable IP Forwarding = true
+      loop: "{{ groups_merged_list }}"
+      loop_control:
+        loop_var: host_node
+      when:
+        - "'hana_' in lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan][host_node].sap_host_type" # REPLACE with substring in any of the strings contained in the list
+        - groups["hana_secondary"] is defined and (groups["hana_secondary"]|length>0)
+
+    - name: Update network interfaces for MS Azure VM - for SAP AnyDB HA with load balancing
+      register: register_provisioned_vnic1
+      azure.azcollection.azure_rm_networkinterface:
+        resource_group: "{{ sap_vm_provision_msazure_resource_group_name }}"
+        location: "{{ sap_vm_provision_msazure_location_region }}"
+        name: "{{ host_node }}-nic"
+        virtual_network: "{{ sap_vm_provision_msazure_vnet_name }}"
+        subnet_name: "{{ sap_vm_provision_msazure_vnet_subnet_name }}"
+        create_with_security_group: false
+        ip_configurations:
+          - name: "{{ host_node }}-nic-ipconfig"
+            primary: true
+            #private_ip_allocation_method: "Static" # When static, must define the specific IP Address
+            load_balancer_backend_address_pools:
+              - "{{ lb_ha_sap_anydb }}"
+        enable_accelerated_networking: true
+        enable_ip_forwarding: "{{ lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan][scaleout_origin_host_spec | default(inventory_hostname)].disable_ip_anti_spoofing }}" # When disable the Anti IP Spoofing = true, then Enable IP Forwarding = true
+      loop: "{{ groups_merged_list }}"
+      loop_control:
+        loop_var: host_node
+      when:
+        - "'anydb_' in lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan][host_node].sap_host_type" # REPLACE with substring in any of the strings contained in the list
+        - groups["anydb_secondary"] is defined and (groups["anydb_secondary"]|length>0)
+
+    - name: Update network interfaces for MS Azure VM - for SAP NetWeaver HA ASCS/ERS with load balancing
+      register: register_provisioned_vnic2
+      azure.azcollection.azure_rm_networkinterface:
+        resource_group: "{{ sap_vm_provision_msazure_resource_group_name }}"
+        location: "{{ sap_vm_provision_msazure_location_region }}"
+        name: "{{ host_node }}-nic"
+        virtual_network: "{{ sap_vm_provision_msazure_vnet_name }}"
+        subnet_name: "{{ sap_vm_provision_msazure_vnet_subnet_name }}"
+        create_with_security_group: false
+        ip_configurations:
+          - name: "{{ host_node }}-nic-ipconfig"
+            primary: true
+            #private_ip_allocation_method: "Static" # When static, must define the specific IP Address
+            load_balancer_backend_address_pools:
+              - "{{ lb_ha_sap_nwas }}"
+        enable_accelerated_networking: true
+        enable_ip_forwarding: "{{ lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan][scaleout_origin_host_spec | default(inventory_hostname)].disable_ip_anti_spoofing }}" # When disable the Anti IP Spoofing = true, then Enable IP Forwarding = true
+      loop: "{{ groups_merged_list }}"
+      loop_control:
+        loop_var: host_node
+      when:
+        - "'nwas_ascs' in lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan][host_node].sap_host_type or 'nwas_ers' in lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan][host_node].sap_host_type"  # REPLACE with substring in any of the strings contained in the list
+        - groups["nwas_ers"] is defined and (groups["nwas_ers"]|length>0)

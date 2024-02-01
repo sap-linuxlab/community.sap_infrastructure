@@ -1,0 +1,261 @@
+---
+
+- name: Set fact for IBM Power VS location to the colocated IBM Cloud Availability Zone (VPC)
+  ansible.builtin.set_fact:
+    list_ibmcloud_powervs_location_to_ibmcloud_availability_zone:
+      dal12: "us-south-2"
+      us-south: "us-south-3" # naming of IBM Power VS location 'us-south' was previous naming convention, would otherwise be 'DAL13'
+      us-east: "us-east-1"  # naming of IBM Power VS location 'us-east' was previous naming convention, would otherwise be 'WDC04'
+      # wdc06: "us-east-2" # No Cloud Connection available at this location
+      sao01: "br-sao-1"
+      tor01: "ca-tor-1"
+      eu-de-1: "eu-de-2" # naming of IBM Power VS location 'eu-de-1' was previous naming convention, would otherwise be 'FRA04'
+      eu-de-2: "eu-de-3" # naming of IBM Power VS location 'eu-de-2' was previous naming convention, would otherwise be 'FRA05'
+      lon04: "eu-gb-1"
+      lon06: "eu-gb-3"
+      syd04: "au-syd-2"
+      syd05: "au-syd-3"
+      tok04: "jp-tok-2"
+      osa21: "jp-osa-1"
+
+# IBM Cloud Regional API Endpoint = https://<<sap_vm_provision_ibmcloud_region>>.cloud.ibm.com/
+# IBM Power VS (on IBM Cloud) Regional API Endpoint = https://<<sap_vm_provision_ibmcloud_powervs_region>>.power-iaas.cloud.ibm.com/
+- name: Set fact for IBM Power VS location to the IBM Power VS Region API Endpoints
+  ansible.builtin.set_fact:
+    list_ibmcloud_powervs_location_to_powervs_region:
+      dal12: "us-south"
+      us-south: "us-south"
+      us-east: "us-east"
+      # wdc06: "us-east" # no Cloud Connection available at this location
+      sao01: "sao"
+      tor01: "tor"
+      eu-de-1: "eu-de"
+      eu-de-2: "eu-de"
+      lon04: "lon"
+      lon06: "lon"
+      syd04: "syd"
+      syd05: "syd"
+      tok04: "tok"
+      osa21: "osa"
+
+- name: Set fact for IBM Power Infrastructure location to the colocated IBM Cloud Region
+  ansible.builtin.set_fact:
+    sap_vm_provision_ibmcloud_region: "{{ list_ibmcloud_powervs_location_to_ibmcloud_availability_zone[sap_vm_provision_ibmcloud_powervs_location] | regex_replace('-[0-9]', '') }}"
+    sap_vm_provision_ibmcloud_powervs_region: "{{ list_ibmcloud_powervs_location_to_powervs_region[sap_vm_provision_ibmcloud_powervs_location] }}"
+
+- name: Ansible Task block for looped provisioning of IBM Power Virtual Servers on IBM Cloud
+  environment:
+    IC_API_KEY: "{{ sap_vm_provision_ibmcloud_api_key }}"
+    IC_REGION: "{{ sap_vm_provision_ibmcloud_region }}"
+    IC_ZONE: "{{ sap_vm_provision_ibmcloud_powervs_location }}" # Required only for IBM Power VS, to set IBM Power VS location
+  block:
+
+    - name: Identify Resource Group info
+      register: register_ibmcloud_resource_group
+      ibm.cloudcollection.ibm_resource_group_info:
+        name: "{{ sap_vm_provision_ibmcloud_resource_group_name }}"
+
+    - name: Identify IBM Power Infrastructure Workspace
+      register: register_ibmcloud_power_iaas_workspace_service_instance
+      ibm.cloudcollection.ibm_resource_instance_info:
+        resource_group_id: "{{ register_ibmcloud_resource_group.resource.id }}"
+        location: "{{ sap_vm_provision_ibmcloud_powervs_location }}"
+        service: power-iaas
+        name: "{{ sap_vm_provision_ibmcloud_powervs_workspace_name }}"
+
+    - name: Identify pre-loaded Power Infrastructure SSH Public Key info
+      register: register_ibmcloud_pi_ssh_public_key
+      environment:
+        IC_REGION: "{{ sap_vm_provision_ibmcloud_powervs_region }}"
+      ibm.cloudcollection.ibm_pi_key_info:
+        pi_cloud_instance_id: "{{ register_ibmcloud_power_iaas_workspace_service_instance.resource.guid }}" # must be GUID, not CRN
+        pi_key_name: "{{ sap_vm_provision_ibmcloud_powervs_key_pair_name_ssh_host_public_key }}"
+
+    - name: Identify Power Infrastructure VLAN Subnet info
+      register: register_ibmcloud_pi_subnet
+      environment:
+        IC_REGION: "{{ sap_vm_provision_ibmcloud_powervs_region }}"
+      ibm.cloudcollection.ibm_pi_network_info:
+        pi_cloud_instance_id: "{{ register_ibmcloud_power_iaas_workspace_service_instance.resource.guid }}" # must be GUID, not CRN
+        pi_network_name: "{{ sap_vm_provision_ibmcloud_powervs_vlan_subnet_name }}"
+
+    - name: Identify Power Infrastructure OS Image list
+      register: register_ibmcloud_pi_os_image_list
+      environment:
+        IC_REGION: "{{ sap_vm_provision_ibmcloud_powervs_region }}"
+      ibm.cloudcollection.ibm_pi_catalog_images_info:
+        pi_cloud_instance_id: "{{ register_ibmcloud_power_iaas_workspace_service_instance.resource.guid }}" # must be GUID, not CRN
+
+    - name: Identify Private DNS instance
+      register: register_ibmcloud_pdns_service_instance
+      ibm.cloudcollection.ibm_resource_instance_info:
+        resource_group_id: "{{ register_ibmcloud_resource_group.resource.id }}"
+        location: global
+        service: dns-svcs
+        name: "{{ sap_vm_provision_ibmcloud_private_dns_instance_name }}"
+
+    - name: Identify Private DNS Zone info
+      register: register_ibmcloud_pdns
+      ibm.cloudcollection.ibm_dns_zones_info:
+        instance_id: "{{ register_ibmcloud_pdns_service_instance.resource.guid }}"
+
+    - name: Set fact for latest IBM Power Infrastructure OS Catalog Stock Image
+      ansible.builtin.set_fact:
+        register_ibmcloud_pi_os_image_selected: "{{ register_ibmcloud_pi_os_image_list.resource.images | selectattr('name', 'search', lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_os_image_dictionary')[sap_vm_provision_ibmcloud_powervs_host_os_image]) | sort(reverse=True,case_sensitive=False,attribute='name') | first }}"
+
+    - name: Create Boot Image from IBM Power Infrastructure OS Catalog Stock Image
+      register: register_provisioned_os_image
+      environment:
+        IC_REGION: "{{ sap_vm_provision_ibmcloud_powervs_region }}"
+      ibm.cloudcollection.ibm_pi_image:
+        pi_cloud_instance_id: "{{ register_ibmcloud_power_iaas_workspace_service_instance.resource.guid }}" # must be GUID, not CRN
+        pi_image_id: "{{ register_ibmcloud_pi_os_image_selected.image_id }}"
+        pi_image_name: "{{ sap_vm_provision_ibmcloud_powervs_host_os_image }}-boot"
+      failed_when: not register_provisioned_os_image.rc == 0 and not 'already exists' in register_provisioned_os_image.stderr
+      run_once: true
+
+    # Use check to avoid idempotency issues with legacy ibm.cloudcollection Ansible Collection (until ibm.cloud Ansible Collection is ready)
+    - name: Check for existing Boot Image imported already from IBM Power Infrastructure OS Catalog Stock Image
+      register: register_existing_os_image
+      environment:
+        IC_REGION: "{{ sap_vm_provision_ibmcloud_powervs_region }}"
+      ibm.cloudcollection.ibm_pi_image_info:
+        pi_cloud_instance_id: "{{ register_ibmcloud_power_iaas_workspace_service_instance.resource.guid }}" # must be GUID, not CRN
+        pi_image_name: "{{ register_ibmcloud_pi_os_image_selected.name }}"
+      run_once: true
+
+    - name: Set fact to hold loop variables from include_tasks
+      ansible.builtin.set_fact:
+        register_provisioned_host_all: []
+
+    - name: Provision IBM Power Virtual Server hosts on IBM Cloud
+      register: register_provisioned_hosts
+      ansible.builtin.include_tasks:
+        file: "{{ 'platform_' + sap_vm_provision_iac_type }}/{{ sap_vm_provision_iac_platform }}/execute_provision.yml"
+        apply:
+          environment:
+            IC_API_KEY: "{{ sap_vm_provision_ibmcloud_api_key }}"
+            IC_REGION: "{{ sap_vm_provision_ibmcloud_powervs_region }}"
+            IC_ZONE: "{{ sap_vm_provision_ibmcloud_powervs_location }}" # Required only for IBM Power VS, to set IBM Power VS location
+
+    - name: Add hosts provisioned to the Ansible Inventory
+      register: register_add_hosts
+      ansible.builtin.add_host:
+        name: "{{ add_item[0].host_node }}"
+        groups: "{{ add_item[0].sap_system_type + '_' if (add_item[0].sap_system_type != '') }}{{ add_item[0].sap_host_type }}"
+        ansible_host: "{{ add_item[0].resource.addresses[0].ip }}"
+        ansible_user: "root"
+        ansible_ssh_private_key_file: "{{ sap_vm_provision_ssh_host_private_key_file_path }}"
+        ansible_ssh_common_args: -o ConnectTimeout=180 -o ControlMaster=auto -o ControlPersist=3600s -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ForwardX11=no -o ProxyCommand='ssh -W %h:%p {{ sap_vm_provision_bastion_user }}@{{ sap_vm_provision_bastion_public_ip }} -p {{ sap_vm_provision_bastion_ssh_port }} -i {{ sap_vm_provision_ssh_bastion_private_key_file_path }} -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null'
+      loop: "{{ ansible_play_hosts | map('extract', hostvars, 'register_provisioned_host_all')  }}"
+      loop_control:
+        label: "{{ add_item[0].host_node }}"
+        loop_var: add_item
+
+
+# Cannot override any variables from extravars input, see https://docs.ansible.com/ansible/latest/playbook_guide/playbooks_variables.html#understanding-variable-precedence
+# Ensure no default value exists for any prompted variable before execution of Ansible Playbook
+
+    - name: Set fact to hold all inventory hosts in all groups
+      ansible.builtin.set_fact:
+        groups_merged_list: "{{ [ [ groups['hana_primary'] | default([]) ] , [ groups['hana_secondary'] | default([]) ] , [ groups['nwas_ascs'] | default([]) ] , [ groups['nwas_ers'] | default([]) ] , [ groups['nwas_pas'] | default([]) ] , [ groups['nwas_aas'] | default([]) ] ] | flatten | select() }}"
+
+    - name: Set Ansible Vars
+      register: register_set_ansible_vars
+      ansible.builtin.include_tasks:
+        file: common/set_ansible_vars.yml
+
+    - name: IBM Cloud Private DNS Record for hosts
+      register: register_ibmcloud_pdns_record
+      ibm.cloudcollection.ibm_dns_resource_record:
+        instance_id: "{{ register_ibmcloud_pdns_service_instance.resource.guid }}"
+        zone_id: "{{ (register_ibmcloud_pdns.resource.dns_zones | selectattr('name', '==', sap_vm_provision_dns_root_domain) | first).zone_id }}"
+        name: "{{ inventory_hostname }}.{{ hostvars[inventory_hostname].sap_vm_provision_dns_root_domain }}" # Host FQDN
+        rdata: "{{ hostvars[inventory_hostname].ansible_host }}" # IP Address
+        type: A
+        ttl: 7200
+      failed_when: not register_ibmcloud_pdns_record.rc == 0 and not 'The record already exists' in register_ibmcloud_pdns_record.stderr
+
+  #  - ansible.builtin.debug:
+  #      var: register_add_hosts.results
+
+- name: Ansible Task block to execute on target inventory hosts
+  delegate_to: "{{ inventory_hostname }}"
+  block:
+
+    # Required to collect the remote host's facts for further processing
+    # in the following steps
+    - name: Gather host facts
+      ansible.builtin.setup:
+
+    # Must be set to short hostname,
+    # so that command 'hostname' and 'hostname -s' return the short hostname only;
+    # otherwise may cause error with SAP SWPM using name.domain.com.domain.com
+    - name: Change system hostname (must be set to short name and not FQDN, as required by SAP)
+      ansible.builtin.hostname:
+        name: "{{ inventory_hostname_short }}"
+
+    - name: Set /etc/hosts
+      register: register_etc_hosts_file
+      ansible.builtin.include_tasks:
+        file: common/set_etc_hosts.yml
+
+    - name: Set /etc/hosts for HA
+      register: register_etc_hosts_file_ha
+      ansible.builtin.include_tasks:
+        file: common/set_etc_hosts_ha.yml
+      when:
+        - (groups["hana_secondary"] is defined and (groups["hana_secondary"] | length>0)) or (groups["nwas_ers"] is defined and (groups["nwas_ers"] | length>0)) or (groups["anydb_secondary"] is defined and (groups["anydb_secondary"] | length>0))
+
+    - name: Set /etc/hosts for Scale-Out
+      register: register_etc_hosts_file_scaleout
+      ansible.builtin.include_tasks:
+        file: common/set_etc_hosts_scaleout.yml
+      when:
+        - (groups["hana_primary"] is defined and (groups["hana_primary"] | length>0)) and (sap_hana_scaleout_active_coordinator is defined or sap_hana_scaleout_active_worker is defined or sap_hana_scaleout_standby is defined)
+
+    - name: Set vars for sap_storage_setup Ansible Role
+      register: register_ansible_vars_storage
+      ansible.builtin.include_tasks:
+        file: common/set_ansible_vars_storage.yml
+
+    - name: Append IBM Cloud Private DNS to /etc/resolv.conf
+      ansible.builtin.lineinfile:
+        path: /etc/resolv.conf
+        line: nameserver 161.26.0.10
+
+    - name: Register Web Forward Proxy
+      ansible.builtin.include_tasks:
+        file: common/register_proxy.yml
+
+    # Extract the generated command string and activation key from /usr/share, then execute script from /usr/local/bin
+    # Use nohup to ensure completion, wait 2 minutes
+    # Verify with /var/log/rhsm/rhsm.log if necessary
+    - name: Execute OS Activation Script for IBM Power Virtual Server - RHEL
+      ansible.builtin.shell: |
+        set -o pipefail && web_proxy_ip_port="{{ sap_vm_provision_proxy_web_forward_proxy_ip }}"
+        set -o pipefail && if [[ ! -f /usr/share/powervs-fls/powervs-fls-readme.md ]]; then echo "File does not exist" && exit 1; fi
+        set -o pipefail && activation_script_exec=$(cat /usr/share/powervs-fls/powervs-fls-readme.md | grep networklayer.com | sed "s|Private.proxy.IP.address:3128|$web_proxy_ip_port|" | sed 's|. ||')
+        set -o pipefail && nohup $activation_script_exec >/dev/null 2>&1
+        set -o pipefail && sleep 120
+      when: ansible_os_family == "RedHat"
+
+    # Extract the generated command string and activation key from /usr/share, then execute script from /usr/local/bin
+    # Use nohup to ensure completion, wait 2 minutes
+    - name: Execute OS Activation Script for IBM Power Virtual Server - SLES
+      ansible.builtin.shell: |
+        set -o pipefail && web_proxy_ip_port="{{ sap_vm_provision_proxy_web_forward_proxy_ip }}"
+        set -o pipefail && if [[ ! -f /usr/share/powervs-fls/powervs-fls-readme.md ]]; then echo "File does not exist" && exit 1; fi
+        set -o pipefail && activation_script_exec=$(cat /usr/share/powervs-fls/powervs-fls-readme.md | grep networklayer.com | sed 's|. ||' | sed "s|$|$web_proxy_ip_port|")
+        set -o pipefail && nohup $activation_script_exec >/dev/null 2>&1
+        set -o pipefail && sleep 60
+        set -o pipefail && SUSEConnect --product PackageHub/{{ ansible_distribution_version }}/ppc64le
+      when: ansible_os_family == "Suse"
+
+    # Enusure lock to RHEL major.minor version
+    # Lock using subscription-manager release --set or /var/lib/rhsm/cache/releasever.json, alternatively using /etc/yum/vars/releasever or /etc/dnf/vars/releasever
+
+    - name: Set facts on each host - HA/DR
+      ansible.builtin.set_fact:
+        sap_ha_pacemaker_cluster_vip_client_interface: "{{ ansible_default_ipv4.interface }}" # Assume IBM Power Virtual Server vNIC is set as default (e.g. env2)
+      when: sap_ha_pacemaker_cluster_ibmcloud_api_key is defined

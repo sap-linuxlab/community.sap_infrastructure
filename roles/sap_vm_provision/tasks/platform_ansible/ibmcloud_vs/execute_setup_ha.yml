@@ -1,0 +1,1027 @@
+---
+
+- name: Create IBM Cloud IAM Authorization Policy for IBM Cloud Load Balancer to communicate with IBM Cloud Private DNS
+  register: ibmcloud_iam_auth_policy
+  ibm.cloudcollection.ibm_iam_authorization_policy:
+    roles: Manager
+    source_resource_group_id: "{{ register_ibmcloud_resource_group.resource.id }}"
+    target_resource_group_id: "{{ register_ibmcloud_resource_group.resource.id }}"
+    source_service_name: is
+    source_resource_type: load-balancer
+    target_service_name: dns-svcs
+  failed_when: not ibmcloud_iam_auth_policy.rc == 0 and not 'access policy with identical attributes already exists' in ibmcloud_iam_auth_policy.stderr
+
+
+# The IBM Cloud Load Balancer is provisioned before Linux Pacemaker and requires a temporary Health Check Probe port to be used with an an active OS service listening.
+# During initial installation, the Health Check Port probe will use Port 55550/55551/55552 with netcat listening, and be switched after the SAP Installation and Linux Pacemaker installation to the correct port number.
+#
+# This is because an IBM Cloud Load Balancer Backend Pool Health Check probe is executed to all Backend Pool Members (Server instances) ,
+# and if the host is not listening on the port it will fail, which will mark the resource as unhealthy,
+# the traffic will not be routed to the host and if all hosts fail then the IBM Cloud Load Balancer Frontend IP will also fail causing SAP software failures.
+#
+# NOTE - use of weighted round-robin is to mitigate any potential risk of misconfiguration (both primary and secondary nodes showing as active), by using logic 'for every 100 connections send 1 connection to secondary' when both are hosts are active.
+
+# Private Application Load Balancer (Layer 7), allows for expansion across multiple Availability Zones within a Region. Permits TCP and HTTP/S, does not permit UDP.
+# Private Network Load Balancer (Layer 4), restricts HA within single Availability Zone. Permits TCP and UDP, does not permit HTTP/S.
+# Use async with poll '0' to create all IBM Cloud Load Balancers in parallel
+- name: Create IBM Cloud Load Balancer (Private ALB) for each Virtual Hostname / Virtual IP required
+  register: ibmcloud_lb_provision_parallel
+  ibm.cloudcollection.ibm_is_lb:
+    resource_group: "{{ register_ibmcloud_resource_group.resource.id }}"
+    name: "{{ item }}"
+    type: private
+    subnets: ["{{ register_ibmcloud_vpc_subnet.resource.id }}"]
+    security_groups: "{{ register_ibmcloud_vpc_sg.results | map(attribute='resource.id') }}"
+    #access_tags:
+    logging: true # For ALB L7, not NLB L4
+    #profile: network-fixed / dynamic # For NLB L4, not ALB L7
+    #route_mode: false # For NLB L4, not ALB L7
+    # dns: # Unsupported by legacy Ansible Collection, use IBM Cloud CLI as workaround
+    #   instance_crn: "{{ register_ibmcloud_pdns_service_instance.resource.resource_crn }}"
+    #   zone_id: "{{ (register_ibmcloud_pdns.resource.dns_zones | selectattr('name', '==', sap_vm_provision_dns_root_domain) | first).zone_id }}"
+  loop:
+    - "{{ 'lb-sap-ha-hana' if (groups['hana_secondary'] is defined and (groups['hana_secondary'] | length>0)) else '' }}"
+    - "{{ 'lb-sap-ha-anydb' if (groups['anydb_secondary'] is defined and (groups['anydb_secondary'] | length>0)) else '' }}"
+    - "{{ 'lb-sap-ha-nwas-ascs' if (groups['nwas_ers'] is defined and (groups['nwas_ers'] | length>0)) else '' }}"
+    - "{{ 'lb-sap-ha-nwas-ers' if (groups['nwas_ers'] is defined and (groups['nwas_ers'] | length>0)) else '' }}"
+  loop_control:
+    label: "Waiting for {{ item }}"
+  when: not item == ''
+  async: 1200 # seconds maximum execution
+  poll: 0 # parallel
+
+- name: Wait for IBM Cloud Load Balancer provisioning
+  register: async_status_ibmcloud_lb_provision_parallel
+  ansible.builtin.async_status:
+    jid: "{{ item.ansible_job_id }}"
+  retries: 40
+  delay: 30 # seconds
+  until: async_status_ibmcloud_lb_provision_parallel.finished
+  loop: "{{ ibmcloud_lb_provision_parallel.results | selectattr('ansible_job_id', 'defined') }}"
+  # failed_when: not async_status_ibmcloud_lb_provision_parallel.rc == 0
+
+# Workaround to missing Ansible Module functionality in legacy Ansible Collection
+- name: IBM Cloud CLI append DNS to Load Balancer
+  register: ibmcloud_lb_update_dns
+  ansible.builtin.shell: |
+    ibmcloud config --quiet --check-version false && ibmcloud login -g {{ sap_vm_provision_ibmcloud_resource_group_name }} -r {{ sap_vm_provision_ibmcloud_region }} --quiet
+    ibmcloud plugin install infrastructure-service -f --quiet
+    ibmcloud is load-balancer-update "{{ item }}" --dns-instance-crn "{{ register_ibmcloud_pdns_service_instance.resource.resource_crn }}" --dns-zone-id "{{ (register_ibmcloud_pdns.resource.dns_zones | selectattr('name', '==', sap_vm_provision_dns_root_domain) | first).zone_id }}"
+  loop:
+    - "{{ 'lb-sap-ha-hana' if (groups['hana_secondary'] is defined and (groups['hana_secondary'] | length>0)) else '' }}"
+    - "{{ 'lb-sap-ha-anydb' if (groups['anydb_secondary'] is defined and (groups['anydb_secondary'] | length>0)) else '' }}"
+    - "{{ 'lb-sap-ha-nwas-ascs' if (groups['nwas_ers'] is defined and (groups['nwas_ers'] | length>0)) else '' }}"
+    - "{{ 'lb-sap-ha-nwas-ers' if (groups['nwas_ers'] is defined and (groups['nwas_ers'] | length>0)) else '' }}"
+  when: not item == ''
+  failed_when: not ibmcloud_lb_update_dns.rc == 0 and not 'nothing to update the load balancer with' in ibmcloud_lb_update_dns.stderr
+
+- name: Identify IBM Cloud Virtual Servers info
+  register: ibmcloud_vs_all_info
+  ibm.cloudcollection.ibm_is_instances_info:
+    vpc: "{{ register_ibmcloud_vpc_subnet.resource.vpc }}"
+
+
+# Workaround for bug which populates region and ibmcloud_api_key as TF arguments for ibm_is_lbs_info Ansible Module in legacy Ansible Collection
+- name: IBM Cloud CLI execution to list Load Balancer/s info
+  register: ibmcloud_lbs_all_info_shell
+  ansible.builtin.shell: |
+    ibmcloud config --quiet --check-version false && ibmcloud login -g {{ sap_vm_provision_ibmcloud_resource_group_name }} -r {{ sap_vm_provision_ibmcloud_region }} --quiet
+    #ibmcloud plugin install infrastructure-service -f --quiet
+    ibmcloud is load-balancers --quiet --output json
+
+- name: Set fact for IBM Cloud Load Balancer/s info
+  ansible.builtin.set_fact:
+    ibmcloud_lbs_all_info: "{{ ibmcloud_lbs_all_info_shell.stdout | split('Space:') | last | trim | from_json }}"
+
+
+# Create IBM Cloud Load Balancer Back-end Pools
+
+- name: Create IBM Cloud Load Balancer Back-end Pool for SAP HANA - System DB SQL
+  register: __ibmcloud_lb_pool_hana1
+  ibm.cloudcollection.ibm_is_lb_pool:
+    name: lb-sap-ha-hana-pool-sysdb-sql
+    lb: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', 'lb-sap-ha-hana'))[0].id }}"
+    algorithm: weighted_round_robin
+    protocol: tcp
+    health_delay: 20
+    health_retries: 2
+    health_timeout: 10
+    health_type: tcp
+    health_monitor_port: 55550
+  when: (groups['hana_secondary'] is defined and (groups['hana_secondary'] | length>0))
+
+- name: Create IBM Cloud Load Balancer Back-end Pool for SAP HANA - MDC Tenant 1 SQL
+  register: __ibmcloud_lb_pool_hana2
+  ibm.cloudcollection.ibm_is_lb_pool:
+    name: lb-sap-ha-hana-pool-mdc1-sql
+    lb: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', 'lb-sap-ha-hana'))[0].id }}"
+    algorithm: weighted_round_robin
+    protocol: tcp
+    health_delay: 20
+    health_retries: 2
+    health_timeout: 10
+    health_type: tcp
+    health_monitor_port: 55550
+  when: (groups['hana_secondary'] is defined and (groups['hana_secondary'] | length>0))
+
+- name: Create IBM Cloud Load Balancer Back-end Pool for SAP HANA - startsrv HTTP
+  register: __ibmcloud_lb_pool_hana3
+  ibm.cloudcollection.ibm_is_lb_pool:
+    name: lb-sap-ha-hana-pool-startsrv-http
+    lb: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', 'lb-sap-ha-hana'))[0].id }}"
+    algorithm: weighted_round_robin
+    protocol: tcp
+    health_delay: 20
+    health_retries: 2
+    health_timeout: 10
+    health_type: tcp
+    health_monitor_port: 55550
+  when: (groups['hana_secondary'] is defined and (groups['hana_secondary'] | length>0))
+
+- name: Create IBM Cloud Load Balancer Back-end Pool for SAP HANA - startsrv HTTPS
+  register: __ibmcloud_lb_pool_hana4
+  ibm.cloudcollection.ibm_is_lb_pool:
+    name: lb-sap-ha-hana-pool-startsrv-https
+    lb: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', 'lb-sap-ha-hana'))[0].id }}"
+    algorithm: weighted_round_robin
+    protocol: tcp
+    health_delay: 20
+    health_retries: 2
+    health_timeout: 10
+    health_type: tcp
+    health_monitor_port: 55550
+  when: (groups['hana_secondary'] is defined and (groups['hana_secondary'] | length>0))
+
+- name: Create IBM Cloud Load Balancer Back-end Pool for SAP AnyDB - IBM Db2 Communication Port
+  ibm.cloudcollection.ibm_is_lb_pool:
+    name: lb-sap-ha-anydb-pool-ibmdb2
+    lb: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', 'lb-sap-ha-anydb'))[0].id }}"
+    algorithm: weighted_round_robin
+    protocol: tcp
+    health_delay: 20
+    health_retries: 2
+    health_timeout: 10
+    health_type: tcp
+    health_monitor_port: 55550
+  when: (groups['anydb_secondary'] is defined and (groups['anydb_secondary'] | length>0))
+
+- name: Create IBM Cloud Load Balancer Back-end Pool for SAP NetWeaver ASCS - Dispatcher sapdp<ASCS_NN> process
+  register: __ibmcloud_lb_pool_nwas_ascs1
+  ibm.cloudcollection.ibm_is_lb_pool:
+    name: lb-sap-ha-nwas-ascs-pool-dp
+    lb: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', 'lb-sap-ha-nwas-ascs'))[0].id }}"
+    algorithm: weighted_round_robin
+    protocol: tcp
+    health_delay: 20
+    health_retries: 2
+    health_timeout: 10
+    health_type: tcp
+    health_monitor_port: 55551
+  when: (groups['nwas_ers'] is defined and (groups['nwas_ers'] | length>0))
+
+- name: Create IBM Cloud Load Balancer Back-end Pool for SAP NetWeaver ASCS - Message Server sapms<SAPSID> process
+  register: __ibmcloud_lb_pool_nwas_ascs2
+  ibm.cloudcollection.ibm_is_lb_pool:
+    name: lb-sap-ha-nwas-ascs-pool-ms
+    lb: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', 'lb-sap-ha-nwas-ascs'))[0].id }}"
+    algorithm: weighted_round_robin
+    protocol: tcp
+    health_delay: 20
+    health_retries: 2
+    health_timeout: 10
+    health_type: tcp
+    health_monitor_port: 55551
+  when: (groups['nwas_ers'] is defined and (groups['nwas_ers'] | length>0))
+
+- name: Create IBM Cloud Load Balancer Back-end Pool for SAP NetWeaver ASCS - Enqueue Server sapenq<SAPSID> process
+  register: __ibmcloud_lb_pool_nwas_ascs3
+  ibm.cloudcollection.ibm_is_lb_pool:
+    name: lb-sap-ha-nwas-ascs-pool-enq
+    lb: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', 'lb-sap-ha-nwas-ascs'))[0].id }}"
+    algorithm: weighted_round_robin
+    protocol: tcp
+    health_delay: 20
+    health_retries: 2
+    health_timeout: 10
+    health_type: tcp
+    health_monitor_port: 55551
+  when: (groups['nwas_ers'] is defined and (groups['nwas_ers'] | length>0))
+
+- name: Create IBM Cloud Load Balancer Back-end Pool for SAP NetWeaver ASCS - SAP Start Service (SAPControl SOAP) HTTP sapctrl<ASCS_NN> process
+  register: __ibmcloud_lb_pool_nwas_ascs4
+  ibm.cloudcollection.ibm_is_lb_pool:
+    name: lb-sap-ha-nwas-ascs-pool-sapctrl
+    lb: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', 'lb-sap-ha-nwas-ascs'))[0].id }}"
+    algorithm: weighted_round_robin
+    protocol: tcp
+    health_delay: 20
+    health_retries: 2
+    health_timeout: 10
+    health_type: tcp
+    health_monitor_port: 55551
+  when: (groups['nwas_ers'] is defined and (groups['nwas_ers'] | length>0))
+
+- name: Create IBM Cloud Load Balancer Back-end Pool for SAP NetWeaver ASCS - SAP Start Service (SAPControl SOAP) HTTPS (Secure) sapctrls<ASCS_NN>
+  register: __ibmcloud_lb_pool_nwas_ascs5
+  ibm.cloudcollection.ibm_is_lb_pool:
+    name: lb-sap-ha-nwas-ascs-pool-sapctrls
+    lb: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', 'lb-sap-ha-nwas-ascs'))[0].id }}"
+    algorithm: weighted_round_robin
+    protocol: tcp
+    health_delay: 20
+    health_retries: 2
+    health_timeout: 10
+    health_type: tcp
+    health_monitor_port: 55551
+  when: (groups['nwas_ers'] is defined and (groups['nwas_ers'] | length>0))
+
+# - name: Create IBM Cloud Load Balancer Back-end Pool for SAP NetWeaver ERS - Dispatcher sapdp<ERS_NN> process
+#   register: __ibmcloud_lb_pool_nwas_ers1
+#   ibm.cloudcollection.ibm_is_lb_pool:
+#     name: lb-sap-ha-nwas-ers-pool-dp
+#     lb: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', 'lb-sap-ha-nwas-ers'))[0].id }}"
+#     algorithm: weighted_round_robin
+#     protocol: tcp
+#     health_delay: 20
+#     health_retries: 2
+#     health_timeout: 10
+#     health_type: tcp
+#     health_monitor_port: 55552
+#   when: (groups['nwas_ers'] is defined and (groups['nwas_ers'] | length>0))
+
+# - name: Create IBM Cloud Load Balancer Back-end Pool for SAP NetWeaver ERS - Message Server sapms<SAPSID> process
+#   register: __ibmcloud_lb_pool_nwas_ers2
+#   ibm.cloudcollection.ibm_is_lb_pool:
+#     name: lb-sap-ha-nwas-ers-pool-ms
+#     lb: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', 'lb-sap-ha-nwas-ers'))[0].id }}"
+#     algorithm: weighted_round_robin
+#     protocol: tcp
+#     health_delay: 20
+#     health_retries: 2
+#     health_timeout: 10
+#     health_type: tcp
+#     health_monitor_port: 55552
+#   when: (groups['nwas_ers'] is defined and (groups['nwas_ers'] | length>0))
+
+- name: Create IBM Cloud Load Balancer Back-end Pool for SAP NetWeaver ERS - Enqueue Replication Server sapenqr<SAPSID> process
+  register: __ibmcloud_lb_pool_nwas_ers3
+  ibm.cloudcollection.ibm_is_lb_pool:
+    name: lb-sap-ha-nwas-ers-pool-enqr
+    lb: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', 'lb-sap-ha-nwas-ers'))[0].id }}"
+    algorithm: weighted_round_robin
+    protocol: tcp
+    health_delay: 20
+    health_retries: 2
+    health_timeout: 10
+    health_type: tcp
+    health_monitor_port: 55552
+  when: (groups['nwas_ers'] is defined and (groups['nwas_ers'] | length>0))
+
+- name: Create IBM Cloud Load Balancer Back-end Pool for SAP NetWeaver ERS - SAP Start Service (SAPControl SOAP) HTTP sapctrl<ERS_NN> process
+  register: __ibmcloud_lb_pool_nwas_ers4
+  ibm.cloudcollection.ibm_is_lb_pool:
+    name: lb-sap-ha-nwas-ers-pool-sapctrl
+    lb: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', 'lb-sap-ha-nwas-ers'))[0].id }}"
+    algorithm: weighted_round_robin
+    protocol: tcp
+    health_delay: 20
+    health_retries: 2
+    health_timeout: 10
+    health_type: tcp
+    health_monitor_port: 55552
+  when: (groups['nwas_ers'] is defined and (groups['nwas_ers'] | length>0))
+
+- name: Create IBM Cloud Load Balancer Back-end Pool for SAP NetWeaver ERS - SAP Start Service (SAPControl SOAP) HTTPS (Secure) sapctrls<ERS_NN>
+  register: __ibmcloud_lb_pool_nwas_ers5
+  ibm.cloudcollection.ibm_is_lb_pool:
+    name: lb-sap-ha-nwas-ers-pool-sapctrls
+    lb: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', 'lb-sap-ha-nwas-ers'))[0].id }}"
+    algorithm: weighted_round_robin
+    protocol: tcp
+    health_delay: 20
+    health_retries: 2
+    health_timeout: 10
+    health_type: tcp
+    health_monitor_port: 55552
+  when: (groups['nwas_ers'] is defined and (groups['nwas_ers'] | length>0))
+
+
+# Identify the provisioned IBM Cloud Load Balancer Back-end Pools
+
+- name: Identify IBM Cloud Load Balancer Back-end Pools
+  register: __ibmcloud_lb_pools
+  ibm.cloudcollection.ibm_is_lb_pools_info:
+    lb: "{{ item }}"
+  loop: "{{ ibmcloud_lbs_all_info | map(attribute='id') }}"
+
+
+# Append Server Members to the IBM Cloud Load Balancer Back-end Pools
+
+# Primary
+- name: Create IBM Cloud Load Balancer Back-end Pool Members for SAP HANA - System DB SQL - Member 1
+  register: __ibmcloud_lb_pool_members_hana1
+  ibm.cloudcollection.ibm_is_lb_pool_member:
+    lb: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', 'lb-sap-ha-hana'))[0].id }}"
+    pool: "{{ (__ibmcloud_lb_pools.results | json_query('[*].resource.pools') | flatten | selectattr('name', '==', 'lb-sap-ha-hana-pool-sysdb-sql'))[0].id }}"
+    target_address: "{{ (ibmcloud_vs_all_info.resource.instances | selectattr('name', '==', host_node))[0].primary_network_interface[0].primary_ipv4_address }}"
+    port: "{{ ('3' + sap_system_hana_db_instance_nr + '13') | int }}"
+    weight: 100
+  loop: "{{ (groups['hana_primary'] | default([]) ) }}"
+  loop_control:
+    loop_var: host_node
+  when: (groups['hana_secondary'] is defined and (groups['hana_secondary'] | length>0))
+  failed_when: not __ibmcloud_lb_pool_members_hana1.rc == 0 and not 'already exists in a pool' in __ibmcloud_lb_pool_members_hana1.stderr
+
+# Secondary
+- name: Create IBM Cloud Load Balancer Back-end Pool Members for SAP HANA - System DB SQL - Member 2 (Failover/Secondary)
+  register: __ibmcloud_lb_pool_members_hana2
+  ibm.cloudcollection.ibm_is_lb_pool_member:
+    lb: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', 'lb-sap-ha-hana'))[0].id }}"
+    pool: "{{ (__ibmcloud_lb_pools.results | json_query('[*].resource.pools') | flatten | selectattr('name', '==', 'lb-sap-ha-hana-pool-sysdb-sql'))[0].id }}"
+    target_address: "{{ (ibmcloud_vs_all_info.resource.instances | selectattr('name', '==', host_node))[0].primary_network_interface[0].primary_ipv4_address }}"
+    port: "{{ ('3' + sap_system_hana_db_instance_nr + '13') | int }}"
+    weight: 1
+  loop: "{{ (groups['hana_secondary'] | default([]) ) }}"
+  loop_control:
+    loop_var: host_node
+  when: (groups['hana_secondary'] is defined and (groups['hana_secondary'] | length>0))
+  failed_when: not __ibmcloud_lb_pool_members_hana2.rc == 0 and not 'already exists in a pool' in __ibmcloud_lb_pool_members_hana2.stderr
+
+
+# Primary
+- name: Create IBM Cloud Load Balancer Back-end Pool Members for SAP HANA - MDC Tenant 1 SQL - Member 1
+  register: __ibmcloud_lb_pool_members_hana3
+  ibm.cloudcollection.ibm_is_lb_pool_member:
+    lb: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', 'lb-sap-ha-hana'))[0].id }}"
+    pool: "{{ (__ibmcloud_lb_pools.results | json_query('[*].resource.pools') | flatten | selectattr('name', '==', 'lb-sap-ha-hana-pool-mdc1-sql'))[0].id }}"
+    target_address: "{{ (ibmcloud_vs_all_info.resource.instances | selectattr('name', '==', host_node))[0].primary_network_interface[0].primary_ipv4_address }}"
+    port: "{{ ('3' + sap_system_hana_db_instance_nr + '15') | int }}"
+    weight: 100
+  loop: "{{ (groups['hana_primary'] | default([]) ) }}"
+  loop_control:
+    loop_var: host_node
+  when: (groups['hana_secondary'] is defined and (groups['hana_secondary'] | length>0))
+  failed_when: not __ibmcloud_lb_pool_members_hana3.rc == 0 and not 'already exists in a pool' in __ibmcloud_lb_pool_members_hana3.stderr
+
+# Secondary
+- name: Create IBM Cloud Load Balancer Back-end Pool Members for SAP HANA - MDC Tenant 1 SQL - Member 2 (Failover/Secondary)
+  register: __ibmcloud_lb_pool_members_hana4
+  ibm.cloudcollection.ibm_is_lb_pool_member:
+    lb: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', 'lb-sap-ha-hana'))[0].id }}"
+    pool: "{{ (__ibmcloud_lb_pools.results | json_query('[*].resource.pools') | flatten | selectattr('name', '==', 'lb-sap-ha-hana-pool-mdc1-sql'))[0].id }}"
+    target_address: "{{ (ibmcloud_vs_all_info.resource.instances | selectattr('name', '==', host_node))[0].primary_network_interface[0].primary_ipv4_address }}"
+    port: "{{ ('3' + sap_system_hana_db_instance_nr + '15') | int }}"
+    weight: 1
+  loop: "{{ (groups['hana_secondary'] | default([]) ) }}"
+  loop_control:
+    loop_var: host_node
+  when: (groups['hana_secondary'] is defined and (groups['hana_secondary'] | length>0))
+  failed_when: not __ibmcloud_lb_pool_members_hana4.rc == 0 and not 'already exists in a pool' in __ibmcloud_lb_pool_members_hana4.stderr
+
+
+# Primary
+- name: Create IBM Cloud Load Balancer Back-end Pool Members for SAP HANA - startsrv HTTP - Member 1
+  register: __ibmcloud_lb_pool_members_hana5
+  ibm.cloudcollection.ibm_is_lb_pool_member:
+    lb: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', 'lb-sap-ha-hana'))[0].id }}"
+    pool: "{{ (__ibmcloud_lb_pools.results | json_query('[*].resource.pools') | flatten | selectattr('name', '==', 'lb-sap-ha-hana-pool-startsrv-http'))[0].id }}"
+    target_address: "{{ (ibmcloud_vs_all_info.resource.instances | selectattr('name', '==', host_node))[0].primary_network_interface[0].primary_ipv4_address }}"
+    port: "{{ ('5' + sap_system_hana_db_instance_nr + '13') | int }}"
+    weight: 100
+  loop: "{{ (groups['hana_primary'] | default([]) ) }}"
+  loop_control:
+    loop_var: host_node
+  when: (groups['hana_secondary'] is defined and (groups['hana_secondary'] | length>0))
+  failed_when: not __ibmcloud_lb_pool_members_hana5.rc == 0 and not 'already exists in a pool' in __ibmcloud_lb_pool_members_hana5.stderr
+
+# Secondary
+- name: Create IBM Cloud Load Balancer Back-end Pool Members for SAP HANA - startsrv HTTP - Member 2 (Failover/Secondary)
+  register: __ibmcloud_lb_pool_members_hana6
+  ibm.cloudcollection.ibm_is_lb_pool_member:
+    lb: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', 'lb-sap-ha-hana'))[0].id }}"
+    pool: "{{ (__ibmcloud_lb_pools.results | json_query('[*].resource.pools') | flatten | selectattr('name', '==', 'lb-sap-ha-hana-pool-startsrv-http'))[0].id }}"
+    target_address: "{{ (ibmcloud_vs_all_info.resource.instances | selectattr('name', '==', host_node))[0].primary_network_interface[0].primary_ipv4_address }}"
+    port: "{{ ('5' + sap_system_hana_db_instance_nr + '13') | int }}"
+    weight: 1
+  loop: "{{ (groups['hana_secondary'] | default([]) ) }}"
+  loop_control:
+    loop_var: host_node
+  when: (groups['hana_secondary'] is defined and (groups['hana_secondary'] | length>0))
+  failed_when: not __ibmcloud_lb_pool_members_hana6.rc == 0 and not 'already exists in a pool' in __ibmcloud_lb_pool_members_hana6.stderr
+
+
+# Primary
+- name: Create IBM Cloud Load Balancer Back-end Pool Members for SAP HANA - startsrv HTTPS - Member 1
+  register: __ibmcloud_lb_pool_members_hana7
+  ibm.cloudcollection.ibm_is_lb_pool_member:
+    lb: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', 'lb-sap-ha-hana'))[0].id }}"
+    pool: "{{ (__ibmcloud_lb_pools.results | json_query('[*].resource.pools') | flatten | selectattr('name', '==', 'lb-sap-ha-hana-pool-startsrv-https'))[0].id }}"
+    target_address: "{{ (ibmcloud_vs_all_info.resource.instances | selectattr('name', '==', host_node))[0].primary_network_interface[0].primary_ipv4_address }}"
+    port: "{{ ('5' + sap_system_hana_db_instance_nr + '14') | int }}"
+    weight: 100
+  loop: "{{ (groups['hana_primary'] | default([]) ) }}"
+  loop_control:
+    loop_var: host_node
+  when: (groups['hana_secondary'] is defined and (groups['hana_secondary'] | length>0))
+  failed_when: not __ibmcloud_lb_pool_members_hana7.rc == 0 and not 'already exists in a pool' in __ibmcloud_lb_pool_members_hana7.stderr
+
+# Secondary
+- name: Create IBM Cloud Load Balancer Back-end Pool Members for SAP HANA - startsrv HTTPS - Member 2 (Failover/Secondary)
+  register: __ibmcloud_lb_pool_members_hana8
+  ibm.cloudcollection.ibm_is_lb_pool_member:
+    lb: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', 'lb-sap-ha-hana'))[0].id }}"
+    pool: "{{ (__ibmcloud_lb_pools.results | json_query('[*].resource.pools') | flatten | selectattr('name', '==', 'lb-sap-ha-hana-pool-startsrv-https'))[0].id }}"
+    target_address: "{{ (ibmcloud_vs_all_info.resource.instances | selectattr('name', '==', host_node))[0].primary_network_interface[0].primary_ipv4_address }}"
+    port: "{{ ('5' + sap_system_hana_db_instance_nr + '14') | int }}"
+    weight: 1
+  loop: "{{ (groups['hana_secondary'] | default([]) ) }}"
+  loop_control:
+    loop_var: host_node
+  when: (groups['hana_secondary'] is defined and (groups['hana_secondary'] | length>0))
+  failed_when: not __ibmcloud_lb_pool_members_hana8.rc == 0 and not 'already exists in a pool' in __ibmcloud_lb_pool_members_hana8.stderr
+
+
+# Primary
+- name: Create IBM Cloud Load Balancer Back-end Pool Members for SAP AnyDB - IBM Db2 Communication Port - Member 1
+  register: __ibmcloud_lb_pool_members_anydb1
+  ibm.cloudcollection.ibm_is_lb_pool_member:
+    lb: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', 'lb-sap-ha-anydb'))[0].id }}"
+    pool: "{{ (__ibmcloud_lb_pools.results | json_query('[*].resource.pools') | flatten | selectattr('name', '==', 'lb-sap-ha-anydb-pool-ibmdb2'))[0].id }}"
+    target_address: "{{ (ibmcloud_vs_all_info.resource.instances | selectattr('name', '==', host_node))[0].primary_network_interface[0].primary_ipv4_address }}"
+    port: 5912
+    weight: 100
+  loop: "{{ (groups['anydb_primary'] | default([]) ) }}"
+  loop_control:
+    loop_var: host_node
+  when: (groups['anydb_secondary'] is defined and (groups['anydb_secondary'] | length>0))
+  failed_when: not __ibmcloud_lb_pool_members_anydb1.rc == 0 and not 'already exists in a pool' in __ibmcloud_lb_pool_members_anydb1.stderr
+
+# Secondary
+- name: Create IBM Cloud Load Balancer Back-end Pool Members for SAP AnyDB - IBM Db2 Communication Port - Member 2 (Failover/Secondary)
+  register: __ibmcloud_lb_pool_members_anydb2
+  ibm.cloudcollection.ibm_is_lb_pool_member:
+    lb: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', 'lb-sap-ha-anydb'))[0].id }}"
+    pool: "{{ (__ibmcloud_lb_pools.results | json_query('[*].resource.pools') | flatten | selectattr('name', '==', 'lb-sap-ha-anydb-pool-ibmdb2'))[0].id }}"
+    target_address: "{{ (ibmcloud_vs_all_info.resource.instances | selectattr('name', '==', host_node))[0].primary_network_interface[0].primary_ipv4_address }}"
+    port: 5912
+    weight: 1
+  loop: "{{ (groups['anydb_secondary'] | default([]) ) }}"
+  loop_control:
+    loop_var: host_node
+  when: (groups['anydb_secondary'] is defined and (groups['anydb_secondary'] | length>0))
+  failed_when: not __ibmcloud_lb_pool_members_anydb2.rc == 0 and not 'already exists in a pool' in __ibmcloud_lb_pool_members_anydb2.stderr
+
+
+# Primary
+- name: Create IBM Cloud Load Balancer Back-end Pool Members for SAP NetWeaver ASCS - Dispatcher sapdp<ASCS_NN> process - Member 1
+  register: __ibmcloud_lb_pool_members_nwas_ascs1
+  ibm.cloudcollection.ibm_is_lb_pool_member:
+    lb: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', 'lb-sap-ha-nwas-ascs'))[0].id }}"
+    pool: "{{ (__ibmcloud_lb_pools.results | json_query('[*].resource.pools') | flatten | selectattr('name', '==', 'lb-sap-ha-nwas-ascs-pool-dp'))[0].id }}"
+    target_address: "{{ (ibmcloud_vs_all_info.resource.instances | selectattr('name', '==', host_node))[0].primary_network_interface[0].primary_ipv4_address }}"
+    port: "{{ ('32' + sap_system_nwas_abap_ascs_instance_nr) | int }}"
+    weight: 100
+  loop: "{{ (groups['nwas_ascs'] | default([]) ) }}"
+  loop_control:
+    loop_var: host_node
+  when: (groups['nwas_ers'] is defined and (groups['nwas_ers'] | length>0))
+  failed_when: not __ibmcloud_lb_pool_members_nwas_ascs1.rc == 0 and not 'already exists in a pool' in __ibmcloud_lb_pool_members_nwas_ascs1.stderr
+
+# Secondary
+- name: Create IBM Cloud Load Balancer Back-end Pool Members for SAP NetWeaver ASCS - Dispatcher sapdp<ASCS_NN> process - Member 2 (Failover/Secondary)
+  register: __ibmcloud_lb_pool_members_nwas_ascs2
+  ibm.cloudcollection.ibm_is_lb_pool_member:
+    lb: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', 'lb-sap-ha-nwas-ascs'))[0].id }}"
+    pool: "{{ (__ibmcloud_lb_pools.results | json_query('[*].resource.pools') | flatten | selectattr('name', '==', 'lb-sap-ha-nwas-ascs-pool-dp'))[0].id }}"
+    target_address: "{{ (ibmcloud_vs_all_info.resource.instances | selectattr('name', '==', host_node))[0].primary_network_interface[0].primary_ipv4_address }}"
+    port: "{{ ('32' + sap_system_nwas_abap_ascs_instance_nr) | int }}"
+    weight: 1
+  loop: "{{ (groups['nwas_ers'] | default([]) ) }}"
+  loop_control:
+    loop_var: host_node
+  when: (groups['nwas_ers'] is defined and (groups['nwas_ers'] | length>0))
+  failed_when: not __ibmcloud_lb_pool_members_nwas_ascs2.rc == 0 and not 'already exists in a pool' in __ibmcloud_lb_pool_members_nwas_ascs2.stderr
+
+
+# Primary
+- name: Create IBM Cloud Load Balancer Back-end Pool Members for SAP NetWeaver ASCS - Message Server sapms<SAPSID> process - Member 1
+  register: __ibmcloud_lb_pool_members_nwas_ascs3
+  ibm.cloudcollection.ibm_is_lb_pool_member:
+    lb: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', 'lb-sap-ha-nwas-ascs'))[0].id }}"
+    pool: "{{ (__ibmcloud_lb_pools.results | json_query('[*].resource.pools') | flatten | selectattr('name', '==', 'lb-sap-ha-nwas-ascs-pool-ms'))[0].id }}"
+    target_address: "{{ (ibmcloud_vs_all_info.resource.instances | selectattr('name', '==', host_node))[0].primary_network_interface[0].primary_ipv4_address }}"
+    port: "{{ ('36' + sap_system_nwas_abap_ascs_instance_nr) | int }}"
+    weight: 100
+  loop: "{{ (groups['nwas_ascs'] | default([]) ) }}"
+  loop_control:
+    loop_var: host_node
+  when: (groups['nwas_ers'] is defined and (groups['nwas_ers'] | length>0))
+  failed_when: not __ibmcloud_lb_pool_members_nwas_ascs3.rc == 0 and not 'already exists in a pool' in __ibmcloud_lb_pool_members_nwas_ascs3.stderr
+
+# Secondary
+- name: Create IBM Cloud Load Balancer Back-end Pool Members for SAP NetWeaver ASCS - Message Server sapms<SAPSID> process - Member 2 (Failover/Secondary)
+  register: __ibmcloud_lb_pool_members_nwas_ascs4
+  ibm.cloudcollection.ibm_is_lb_pool_member:
+    lb: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', 'lb-sap-ha-nwas-ascs'))[0].id }}"
+    pool: "{{ (__ibmcloud_lb_pools.results | json_query('[*].resource.pools') | flatten | selectattr('name', '==', 'lb-sap-ha-nwas-ascs-pool-ms'))[0].id }}"
+    target_address: "{{ (ibmcloud_vs_all_info.resource.instances | selectattr('name', '==', host_node))[0].primary_network_interface[0].primary_ipv4_address }}"
+    port: "{{ ('36' + sap_system_nwas_abap_ascs_instance_nr) | int }}"
+    weight: 1
+  loop: "{{ (groups['nwas_ers'] | default([]) ) }}"
+  loop_control:
+    loop_var: host_node
+  when: (groups['nwas_ers'] is defined and (groups['nwas_ers'] | length>0))
+  failed_when: not __ibmcloud_lb_pool_members_nwas_ascs4.rc == 0 and not 'already exists in a pool' in __ibmcloud_lb_pool_members_nwas_ascs4.stderr
+
+
+# Primary
+- name: Create IBM Cloud Load Balancer Back-end Pool Members for SAP NetWeaver ASCS - Enqueue Server sapenq<SAPSID> process - Member 1
+  register: __ibmcloud_lb_pool_members_nwas_ascs5
+  ibm.cloudcollection.ibm_is_lb_pool_member:
+    lb: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', 'lb-sap-ha-nwas-ascs'))[0].id }}"
+    pool: "{{ (__ibmcloud_lb_pools.results | json_query('[*].resource.pools') | flatten | selectattr('name', '==', 'lb-sap-ha-nwas-ascs-pool-enq'))[0].id }}"
+    target_address: "{{ (ibmcloud_vs_all_info.resource.instances | selectattr('name', '==', host_node))[0].primary_network_interface[0].primary_ipv4_address }}"
+    port: "{{ ('39' + sap_system_nwas_abap_ascs_instance_nr) | int }}"
+    weight: 100
+  loop: "{{ (groups['nwas_ascs'] | default([]) ) }}"
+  loop_control:
+    loop_var: host_node
+  when: (groups['nwas_ers'] is defined and (groups['nwas_ers'] | length>0))
+  failed_when: not __ibmcloud_lb_pool_members_nwas_ascs5.rc == 0 and not 'already exists in a pool' in __ibmcloud_lb_pool_members_nwas_ascs5.stderr
+
+# Secondary
+- name: Create IBM Cloud Load Balancer Back-end Pool Members for SAP NetWeaver ASCS - Enqueue Server sapenq<SAPSID> process - Member 2 (Failover/Secondary)
+  register: __ibmcloud_lb_pool_members_nwas_ascs6
+  ibm.cloudcollection.ibm_is_lb_pool_member:
+    lb: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', 'lb-sap-ha-nwas-ascs'))[0].id }}"
+    pool: "{{ (__ibmcloud_lb_pools.results | json_query('[*].resource.pools') | flatten | selectattr('name', '==', 'lb-sap-ha-nwas-ascs-pool-enq'))[0].id }}"
+    target_address: "{{ (ibmcloud_vs_all_info.resource.instances | selectattr('name', '==', host_node))[0].primary_network_interface[0].primary_ipv4_address }}"
+    port: "{{ ('39' + sap_system_nwas_abap_ascs_instance_nr) | int }}"
+    weight: 1
+  loop: "{{ (groups['nwas_ers'] | default([]) ) }}"
+  loop_control:
+    loop_var: host_node
+  when: (groups['nwas_ers'] is defined and (groups['nwas_ers'] | length>0))
+  failed_when: not __ibmcloud_lb_pool_members_nwas_ascs6.rc == 0 and not 'already exists in a pool' in __ibmcloud_lb_pool_members_nwas_ascs6.stderr
+
+
+# Primary
+- name: Create IBM Cloud Load Balancer Back-end Pool Members for SAP NetWeaver ASCS - SAP Start Service (SAPControl SOAP) HTTP sapctrl<ASCS_NN> process - Member 1
+  register: __ibmcloud_lb_pool_members_nwas_ascs7
+  ibm.cloudcollection.ibm_is_lb_pool_member:
+    lb: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', 'lb-sap-ha-nwas-ascs'))[0].id }}"
+    pool: "{{ (__ibmcloud_lb_pools.results | json_query('[*].resource.pools') | flatten | selectattr('name', '==', 'lb-sap-ha-nwas-ascs-pool-sapctrl'))[0].id }}"
+    target_address: "{{ (ibmcloud_vs_all_info.resource.instances | selectattr('name', '==', host_node))[0].primary_network_interface[0].primary_ipv4_address }}"
+    port: "{{ ('5' + sap_system_nwas_abap_ascs_instance_nr + '13') | int }}"
+    weight: 100
+  loop: "{{ (groups['nwas_ascs'] | default([]) ) }}"
+  loop_control:
+    loop_var: host_node
+  when: (groups['nwas_ers'] is defined and (groups['nwas_ers'] | length>0))
+  failed_when: not __ibmcloud_lb_pool_members_nwas_ascs7.rc == 0 and not 'already exists in a pool' in __ibmcloud_lb_pool_members_nwas_ascs7.stderr
+
+# Secondary
+- name: Create IBM Cloud Load Balancer Back-end Pool Members for SAP NetWeaver ASCS - SAP Start Service (SAPControl SOAP) HTTP sapctrl<ASCS_NN> process - Member 2 (Failover/Secondary)
+  register: __ibmcloud_lb_pool_members_nwas_ascs8
+  ibm.cloudcollection.ibm_is_lb_pool_member:
+    lb: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', 'lb-sap-ha-nwas-ascs'))[0].id }}"
+    pool: "{{ (__ibmcloud_lb_pools.results | json_query('[*].resource.pools') | flatten | selectattr('name', '==', 'lb-sap-ha-nwas-ascs-pool-sapctrl'))[0].id }}"
+    target_address: "{{ (ibmcloud_vs_all_info.resource.instances | selectattr('name', '==', host_node))[0].primary_network_interface[0].primary_ipv4_address }}"
+    port: "{{ ('5' + sap_system_nwas_abap_ascs_instance_nr + '13') | int }}"
+    weight: 1
+  loop: "{{ (groups['nwas_ers'] | default([]) ) }}"
+  loop_control:
+    loop_var: host_node
+  when: (groups['nwas_ers'] is defined and (groups['nwas_ers'] | length>0))
+  failed_when: not __ibmcloud_lb_pool_members_nwas_ascs8.rc == 0 and not 'already exists in a pool' in __ibmcloud_lb_pool_members_nwas_ascs8.stderr
+
+
+# Primary
+- name: Create IBM Cloud Load Balancer Back-end Pool Members for SAP NetWeaver ASCS - SAP Start Service (SAPControl SOAP) HTTPS (Secure) sapctrls<ASCS_NN> - Member 1
+  register: __ibmcloud_lb_pool_members_nwas_ascs9
+  ibm.cloudcollection.ibm_is_lb_pool_member:
+    lb: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', 'lb-sap-ha-nwas-ascs'))[0].id }}"
+    pool: "{{ (__ibmcloud_lb_pools.results | json_query('[*].resource.pools') | flatten | selectattr('name', '==', 'lb-sap-ha-nwas-ascs-pool-sapctrls'))[0].id }}"
+    target_address: "{{ (ibmcloud_vs_all_info.resource.instances | selectattr('name', '==', host_node))[0].primary_network_interface[0].primary_ipv4_address }}"
+    port: "{{ ('5' + sap_system_nwas_abap_ascs_instance_nr + '14') | int }}"
+    weight: 100
+  loop: "{{ (groups['nwas_ascs'] | default([]) ) }}"
+  loop_control:
+    loop_var: host_node
+  when: (groups['nwas_ers'] is defined and (groups['nwas_ers'] | length>0))
+  failed_when: not __ibmcloud_lb_pool_members_nwas_ascs9.rc == 0 and not 'already exists in a pool' in __ibmcloud_lb_pool_members_nwas_ascs9.stderr
+
+# Secondary
+- name: Create IBM Cloud Load Balancer Back-end Pool Members for SAP NetWeaver ASCS - SAP Start Service (SAPControl SOAP) HTTPS (Secure) sapctrls<ASCS_NN> - Member 2 (Failover/Secondary)
+  register: __ibmcloud_lb_pool_members_nwas_ascs10
+  ibm.cloudcollection.ibm_is_lb_pool_member:
+    lb: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', 'lb-sap-ha-nwas-ascs'))[0].id }}"
+    pool: "{{ (__ibmcloud_lb_pools.results | json_query('[*].resource.pools') | flatten | selectattr('name', '==', 'lb-sap-ha-nwas-ascs-pool-sapctrls'))[0].id }}"
+    target_address: "{{ (ibmcloud_vs_all_info.resource.instances | selectattr('name', '==', host_node))[0].primary_network_interface[0].primary_ipv4_address }}"
+    port: "{{ ('5' + sap_system_nwas_abap_ascs_instance_nr + '14') | int }}"
+    weight: 1
+  loop: "{{ (groups['nwas_ers'] | default([]) ) }}"
+  loop_control:
+    loop_var: host_node
+  when: (groups['nwas_ers'] is defined and (groups['nwas_ers'] | length>0))
+  failed_when: not __ibmcloud_lb_pool_members_nwas_ascs10.rc == 0 and not 'already exists in a pool' in __ibmcloud_lb_pool_members_nwas_ascs10.stderr
+
+
+# Primary
+# - name: Create IBM Cloud Load Balancer Back-end Pool Members for SAP NetWeaver ERS - Dispatcher sapdp<ERS_NN> process - Member 1
+#   register: __ibmcloud_lb_pool_members_nwas_ers1
+#   ibm.cloudcollection.ibm_is_lb_pool_member:
+#     lb: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', 'lb-sap-ha-nwas-ers'))[0].id }}"
+#     pool: "{{ (__ibmcloud_lb_pools.results | json_query('[*].resource.pools') | flatten | selectattr('name', '==', 'lb-sap-ha-nwas-ers-pool-dp'))[0].id }}"
+#     target_address: "{{ (ibmcloud_vs_all_info.resource.instances | selectattr('name', '==', host_node))[0].primary_network_interface[0].primary_ipv4_address }}"
+#     port: "{{ ('32' + sap_system_nwas_abap_ers_instance_nr) | int }}"
+#     weight: 100
+#   loop: "{{ (groups['nwas_ers'] | default([]) ) }}"
+#   loop_control:
+#     loop_var: host_node
+#   when: (groups['nwas_ers'] is defined and (groups['nwas_ers'] | length>0))
+#   failed_when: not __ibmcloud_lb_pool_members_nwas_ers1.rc == 0 and not 'already exists in a pool' in __ibmcloud_lb_pool_members_nwas_ers1.stderr
+
+# Secondary
+# - name: Create IBM Cloud Load Balancer Back-end Pool Members for SAP NetWeaver ERS - Dispatcher sapdp<ERS_NN> process - Member 2 (Failover/Secondary)
+#   register: __ibmcloud_lb_pool_members_nwas_ers2
+#   ibm.cloudcollection.ibm_is_lb_pool_member:
+#     lb: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', 'lb-sap-ha-nwas-ers'))[0].id }}"
+#     pool: "{{ (__ibmcloud_lb_pools.results | json_query('[*].resource.pools') | flatten | selectattr('name', '==', 'lb-sap-ha-nwas-ers-pool-dp'))[0].id }}"
+#     target_address: "{{ (ibmcloud_vs_all_info.resource.instances | selectattr('name', '==', host_node))[0].primary_network_interface[0].primary_ipv4_address }}"
+#     port: "{{ ('32' + sap_system_nwas_abap_ers_instance_nr) | int }}"
+#     weight: 1
+#   loop: "{{ (groups['nwas_ascs'] | default([]) ) }}"
+#   loop_control:
+#     loop_var: host_node
+#   when: (groups['nwas_ers'] is defined and (groups['nwas_ers'] | length>0))
+#   failed_when: not __ibmcloud_lb_pool_members_nwas_ers2.rc == 0 and not 'already exists in a pool' in __ibmcloud_lb_pool_members_nwas_ers2.stderr
+
+
+# Primary
+# - name: Create IBM Cloud Load Balancer Back-end Pool Members for SAP NetWeaver ERS - Message Server sapms<SAPSID> process - Member 1
+#   register: __ibmcloud_lb_pool_members_nwas_ers3
+#   ibm.cloudcollection.ibm_is_lb_pool_member:
+#     lb: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', 'lb-sap-ha-nwas-ers'))[0].id }}"
+#     pool: "{{ (__ibmcloud_lb_pools.results | json_query('[*].resource.pools') | flatten | selectattr('name', '==', 'lb-sap-ha-nwas-ers-pool-ms'))[0].id }}"
+#     target_address: "{{ (ibmcloud_vs_all_info.resource.instances | selectattr('name', '==', host_node))[0].primary_network_interface[0].primary_ipv4_address }}"
+#     port: "{{ ('36' + sap_system_nwas_abap_ers_instance_nr) | int }}"
+#     weight: 100
+#   loop: "{{ (groups['nwas_ers'] | default([]) ) }}"
+#   loop_control:
+#     loop_var: host_node
+#   when: (groups['nwas_ers'] is defined and (groups['nwas_ers'] | length>0))
+#   failed_when: not __ibmcloud_lb_pool_members_nwas_ers3.rc == 0 and not 'already exists in a pool' in __ibmcloud_lb_pool_members_nwas_ers3.stderr
+
+# Secondary
+# - name: Create IBM Cloud Load Balancer Back-end Pool Members for SAP NetWeaver ERS - Message Server sapms<SAPSID> process - Member 2 (Failover/Secondary)
+#   register: __ibmcloud_lb_pool_members_nwas_ers4
+#   ibm.cloudcollection.ibm_is_lb_pool_member:
+#     lb: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', 'lb-sap-ha-nwas-ers'))[0].id }}"
+#     pool: "{{ (__ibmcloud_lb_pools.results | json_query('[*].resource.pools') | flatten | selectattr('name', '==', 'lb-sap-ha-nwas-ers-pool-ms'))[0].id }}"
+#     target_address: "{{ (ibmcloud_vs_all_info.resource.instances | selectattr('name', '==', host_node))[0].primary_network_interface[0].primary_ipv4_address }}"
+#     port: "{{ ('36' + sap_system_nwas_abap_ers_instance_nr) | int }}"
+#     weight: 1
+#   loop: "{{ (groups['nwas_ascs'] | default([]) ) }}"
+#   loop_control:
+#     loop_var: host_node
+#   when: (groups['nwas_ers'] is defined and (groups['nwas_ers'] | length>0))
+#   failed_when: not __ibmcloud_lb_pool_members_nwas_ers4.rc == 0 and not 'already exists in a pool' in __ibmcloud_lb_pool_members_nwas_ers4.stderr
+
+
+# Primary
+- name: Create IBM Cloud Load Balancer Back-end Pool Members for SAP NetWeaver ERS - Enqueue Replication Server sapenqr<SAPSID> process - Member 1
+  register: __ibmcloud_lb_pool_members_nwas_ers5
+  ibm.cloudcollection.ibm_is_lb_pool_member:
+    lb: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', 'lb-sap-ha-nwas-ers'))[0].id }}"
+    pool: "{{ (__ibmcloud_lb_pools.results | json_query('[*].resource.pools') | flatten | selectattr('name', '==', 'lb-sap-ha-nwas-ers-pool-enqr'))[0].id }}"
+    target_address: "{{ (ibmcloud_vs_all_info.resource.instances | selectattr('name', '==', host_node))[0].primary_network_interface[0].primary_ipv4_address }}"
+    port: "{{ ('39' + sap_system_nwas_abap_ers_instance_nr) | int }}"
+    weight: 100
+  loop: "{{ (groups['nwas_ers'] | default([]) ) }}"
+  loop_control:
+    loop_var: host_node
+  when: (groups['nwas_ers'] is defined and (groups['nwas_ers'] | length>0))
+  failed_when: not __ibmcloud_lb_pool_members_nwas_ers5.rc == 0 and not 'already exists in a pool' in __ibmcloud_lb_pool_members_nwas_ers5.stderr
+
+# Secondary
+- name: Create IBM Cloud Load Balancer Back-end Pool Members for SAP NetWeaver ERS - Enqueue Replication Server sapenqr<SAPSID> process - Member 2 (Failover/Secondary)
+  register: __ibmcloud_lb_pool_members_nwas_ers6
+  ibm.cloudcollection.ibm_is_lb_pool_member:
+    lb: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', 'lb-sap-ha-nwas-ers'))[0].id }}"
+    pool: "{{ (__ibmcloud_lb_pools.results | json_query('[*].resource.pools') | flatten | selectattr('name', '==', 'lb-sap-ha-nwas-ers-pool-enqr'))[0].id }}"
+    target_address: "{{ (ibmcloud_vs_all_info.resource.instances | selectattr('name', '==', host_node))[0].primary_network_interface[0].primary_ipv4_address }}"
+    port: "{{ ('39' + sap_system_nwas_abap_ers_instance_nr) | int }}"
+    weight: 1
+  loop: "{{ (groups['nwas_ascs'] | default([]) ) }}"
+  loop_control:
+    loop_var: host_node
+  when: (groups['nwas_ers'] is defined and (groups['nwas_ers'] | length>0))
+  failed_when: not __ibmcloud_lb_pool_members_nwas_ers6.rc == 0 and not 'already exists in a pool' in __ibmcloud_lb_pool_members_nwas_ers6.stderr
+
+
+# Primary
+- name: Create IBM Cloud Load Balancer Back-end Pool Members for SAP NetWeaver ERS - SAP Start Service (SAPControl SOAP) HTTP sapctrl<ERS_NN> process - Member 1
+  register: __ibmcloud_lb_pool_members_nwas_ers7
+  ibm.cloudcollection.ibm_is_lb_pool_member:
+    lb: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', 'lb-sap-ha-nwas-ers'))[0].id }}"
+    pool: "{{ (__ibmcloud_lb_pools.results | json_query('[*].resource.pools') | flatten | selectattr('name', '==', 'lb-sap-ha-nwas-ers-pool-sapctrl'))[0].id }}"
+    target_address: "{{ (ibmcloud_vs_all_info.resource.instances | selectattr('name', '==', host_node))[0].primary_network_interface[0].primary_ipv4_address }}"
+    port: "{{ ('5' + sap_system_nwas_abap_ers_instance_nr + '13') | int }}"
+    weight: 100
+  loop: "{{ (groups['nwas_ers'] | default([]) ) }}"
+  loop_control:
+    loop_var: host_node
+  when: (groups['nwas_ers'] is defined and (groups['nwas_ers'] | length>0))
+  failed_when: not __ibmcloud_lb_pool_members_nwas_ers7.rc == 0 and not 'already exists in a pool' in __ibmcloud_lb_pool_members_nwas_ers7.stderr
+
+# Secondary
+- name: Create IBM Cloud Load Balancer Back-end Pool Members for SAP NetWeaver ERS - SAP Start Service (SAPControl SOAP) HTTP sapctrl<ERS_NN> process - Member 2 (Failover/Secondary)
+  register: __ibmcloud_lb_pool_members_nwas_ers8
+  ibm.cloudcollection.ibm_is_lb_pool_member:
+    lb: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', 'lb-sap-ha-nwas-ers'))[0].id }}"
+    pool: "{{ (__ibmcloud_lb_pools.results | json_query('[*].resource.pools') | flatten | selectattr('name', '==', 'lb-sap-ha-nwas-ers-pool-sapctrl'))[0].id }}"
+    target_address: "{{ (ibmcloud_vs_all_info.resource.instances | selectattr('name', '==', host_node))[0].primary_network_interface[0].primary_ipv4_address }}"
+    port: "{{ ('5' + sap_system_nwas_abap_ers_instance_nr + '13') | int }}"
+    weight: 1
+  loop: "{{ (groups['nwas_ascs'] | default([]) ) }}"
+  loop_control:
+    loop_var: host_node
+  when: (groups['nwas_ers'] is defined and (groups['nwas_ers'] | length>0))
+  failed_when: not __ibmcloud_lb_pool_members_nwas_ers8.rc == 0 and not 'already exists in a pool' in __ibmcloud_lb_pool_members_nwas_ers8.stderr
+
+
+# Primary
+- name: Create IBM Cloud Load Balancer Back-end Pool Members for SAP NetWeaver ERS - SAP Start Service (SAPControl SOAP) HTTPS (Secure) sapctrls<ERS_NN> - Member 1
+  register: __ibmcloud_lb_pool_members_nwas_ers9
+  ibm.cloudcollection.ibm_is_lb_pool_member:
+    lb: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', 'lb-sap-ha-nwas-ers'))[0].id }}"
+    pool: "{{ (__ibmcloud_lb_pools.results | json_query('[*].resource.pools') | flatten | selectattr('name', '==', 'lb-sap-ha-nwas-ers-pool-sapctrls'))[0].id }}"
+    target_address: "{{ (ibmcloud_vs_all_info.resource.instances | selectattr('name', '==', host_node))[0].primary_network_interface[0].primary_ipv4_address }}"
+    port: "{{ ('5' + sap_system_nwas_abap_ers_instance_nr + '14') | int }}"
+    weight: 100
+  loop: "{{ (groups['nwas_ers'] | default([]) ) }}"
+  loop_control:
+    loop_var: host_node
+  when: (groups['nwas_ers'] is defined and (groups['nwas_ers'] | length>0))
+  failed_when: not __ibmcloud_lb_pool_members_nwas_ers9.rc == 0 and not 'already exists in a pool' in __ibmcloud_lb_pool_members_nwas_ers9.stderr
+
+# Secondary
+- name: Create IBM Cloud Load Balancer Back-end Pool Members for SAP NetWeaver ERS - SAP Start Service (SAPControl SOAP) HTTPS (Secure) sapctrls<ERS_NN> - Member 2 (Failover/Secondary)
+  register: __ibmcloud_lb_pool_members_nwas_ers10
+  ibm.cloudcollection.ibm_is_lb_pool_member:
+    lb: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', 'lb-sap-ha-nwas-ers'))[0].id }}"
+    pool: "{{ (__ibmcloud_lb_pools.results | json_query('[*].resource.pools') | flatten | selectattr('name', '==', 'lb-sap-ha-nwas-ers-pool-sapctrls'))[0].id }}"
+    target_address: "{{ (ibmcloud_vs_all_info.resource.instances | selectattr('name', '==', host_node))[0].primary_network_interface[0].primary_ipv4_address }}"
+    port: "{{ ('5' + sap_system_nwas_abap_ers_instance_nr + '14') | int }}"
+    weight: 1
+  loop: "{{ (groups['nwas_ascs'] | default([]) ) }}"
+  loop_control:
+    loop_var: host_node
+  when: (groups['nwas_ers'] is defined and (groups['nwas_ers'] | length>0))
+  failed_when: not __ibmcloud_lb_pool_members_nwas_ers10.rc == 0 and not 'already exists in a pool' in __ibmcloud_lb_pool_members_nwas_ers10.stderr
+
+
+# Create IBM Cloud Load Balancer Front-end Listeners (open port for Virtual IPs)
+
+- name: Create IBM Cloud Load Balancer Front-end Listener for SAP HANA - System DB SQL
+  register: __ibmcloud_lb_frontend_listener_hana1
+  ibm.cloudcollection.ibm_is_lb_listener:
+    lb: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', 'lb-sap-ha-hana'))[0].id }}"
+    default_pool: "{{ (__ibmcloud_lb_pools.results | json_query('[*].resource.pools') | flatten | selectattr('name', '==', 'lb-sap-ha-hana-pool-sysdb-sql'))[0].id }}"
+    protocol: tcp
+    port: "{{ ('3' + sap_system_hana_db_instance_nr + '13') | int }}"
+  when: (groups['hana_secondary'] is defined and (groups['hana_secondary'] | length>0))
+  failed_when: not __ibmcloud_lb_frontend_listener_hana1.rc == 0 and not 'listener_duplicate_port' in __ibmcloud_lb_frontend_listener_hana1.stderr
+
+- name: Create IBM Cloud Load Balancer Front-end Listener for SAP HANA - MDC Tenant 1 SQL
+  register: __ibmcloud_lb_frontend_listener_hana2
+  ibm.cloudcollection.ibm_is_lb_listener:
+    lb: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', 'lb-sap-ha-hana'))[0].id }}"
+    default_pool: "{{ (__ibmcloud_lb_pools.results | json_query('[*].resource.pools') | flatten | selectattr('name', '==', 'lb-sap-ha-hana-pool-mdc1-sql'))[0].id }}"
+    protocol: tcp
+    port: "{{ ('3' + sap_system_hana_db_instance_nr + '15') | int }}"
+  when: (groups['hana_secondary'] is defined and (groups['hana_secondary'] | length>0))
+  failed_when: not __ibmcloud_lb_frontend_listener_hana2.rc == 0 and not 'listener_duplicate_port' in __ibmcloud_lb_frontend_listener_hana2.stderr
+
+- name: Create IBM Cloud Load Balancer Front-end Listener for SAP HANA - startsrv HTTP
+  register: __ibmcloud_lb_frontend_listener_hana3
+  ibm.cloudcollection.ibm_is_lb_listener:
+    lb: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', 'lb-sap-ha-hana'))[0].id }}"
+    default_pool: "{{ (__ibmcloud_lb_pools.results | json_query('[*].resource.pools') | flatten | selectattr('name', '==', 'lb-sap-ha-hana-pool-startsrv-http'))[0].id }}"
+    protocol: tcp
+    port: "{{ ('5' + sap_system_hana_db_instance_nr + '13') | int }}"
+  when: (groups['hana_secondary'] is defined and (groups['hana_secondary'] | length>0))
+  failed_when: not __ibmcloud_lb_frontend_listener_hana3.rc == 0 and not 'listener_duplicate_port' in __ibmcloud_lb_frontend_listener_hana3.stderr
+
+- name: Create IBM Cloud Load Balancer Front-end Listener for SAP HANA - startsrv HTTPS
+  register: __ibmcloud_lb_frontend_listener_hana4
+  ibm.cloudcollection.ibm_is_lb_listener:
+    lb: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', 'lb-sap-ha-hana'))[0].id }}"
+    default_pool: "{{ (__ibmcloud_lb_pools.results | json_query('[*].resource.pools') | flatten | selectattr('name', '==', 'lb-sap-ha-hana-pool-startsrv-https'))[0].id }}"
+    protocol: tcp
+    port: "{{ ('5' + sap_system_hana_db_instance_nr + '14') | int }}"
+  when: (groups['hana_secondary'] is defined and (groups['hana_secondary'] | length>0))
+  failed_when: not __ibmcloud_lb_frontend_listener_hana4.rc == 0 and not 'listener_duplicate_port' in __ibmcloud_lb_frontend_listener_hana4.stderr
+
+- name: Create IBM Cloud Load Balancer Front-end Listener for SAP AnyDB - IBM Db2 Communication Port
+  register: __ibmcloud_lb_frontend_listener_anydb1
+  ibm.cloudcollection.ibm_is_lb_listener:
+    lb: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', 'lb-sap-ha-anydb'))[0].id }}"
+    default_pool: "{{ (__ibmcloud_lb_pools.results | json_query('[*].resource.pools') | flatten | selectattr('name', '==', 'lb-sap-ha-anydb-pool-ibmdb2'))[0].id }}"
+    protocol: tcp
+    port: 5912
+  when: (groups['anydb_secondary'] is defined and (groups['anydb_secondary'] | length>0))
+  failed_when: not __ibmcloud_lb_frontend_listener_anydb1.rc == 0 and not 'listener_duplicate_port' in __ibmcloud_lb_frontend_listener_anydb1.stderr
+
+- name: Create IBM Cloud Load Balancer Front-end Listener for SAP NetWeaver ASCS - Dispatcher sapdp<ASCS_NN> process
+  register: __ibmcloud_lb_frontend_listener_ascs1
+  ibm.cloudcollection.ibm_is_lb_listener:
+    lb: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', 'lb-sap-ha-nwas-ascs'))[0].id }}"
+    default_pool: "{{ (__ibmcloud_lb_pools.results | json_query('[*].resource.pools') | flatten | selectattr('name', '==', 'lb-sap-ha-nwas-ascs-pool-dp'))[0].id }}"
+    protocol: tcp
+    port: "{{ ('32' + sap_system_nwas_abap_ascs_instance_nr) | int }}"
+  when: (groups['nwas_ers'] is defined and (groups['nwas_ers'] | length>0))
+  failed_when: not __ibmcloud_lb_frontend_listener_ascs1.rc == 0 and not 'listener_duplicate_port' in __ibmcloud_lb_frontend_listener_ascs1.stderr
+
+- name: Create IBM Cloud Load Balancer Front-end Listener for SAP NetWeaver ASCS - Message Server sapms<SAPSID> process
+  register: __ibmcloud_lb_frontend_listener_ascs2
+  ibm.cloudcollection.ibm_is_lb_listener:
+    lb: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', 'lb-sap-ha-nwas-ascs'))[0].id }}"
+    default_pool: "{{ (__ibmcloud_lb_pools.results | json_query('[*].resource.pools') | flatten | selectattr('name', '==', 'lb-sap-ha-nwas-ascs-pool-ms'))[0].id }}"
+    protocol: tcp
+    port: "{{ ('36' + sap_system_nwas_abap_ascs_instance_nr) | int }}"
+  when: (groups['nwas_ers'] is defined and (groups['nwas_ers'] | length>0))
+  failed_when: not __ibmcloud_lb_frontend_listener_ascs2.rc == 0 and not 'listener_duplicate_port' in __ibmcloud_lb_frontend_listener_ascs2.stderr
+
+- name: Create IBM Cloud Load Balancer Front-end Listener for SAP NetWeaver ASCS - Enqueue Server sapenq<SAPSID> process
+  register: __ibmcloud_lb_frontend_listener_ascs3
+  ibm.cloudcollection.ibm_is_lb_listener:
+    lb: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', 'lb-sap-ha-nwas-ascs'))[0].id }}"
+    default_pool: "{{ (__ibmcloud_lb_pools.results | json_query('[*].resource.pools') | flatten | selectattr('name', '==', 'lb-sap-ha-nwas-ascs-pool-enq'))[0].id }}"
+    protocol: tcp
+    port: "{{ ('39' + sap_system_nwas_abap_ascs_instance_nr) | int }}"
+  when: (groups['nwas_ers'] is defined and (groups['nwas_ers'] | length>0))
+  failed_when: not __ibmcloud_lb_frontend_listener_ascs3.rc == 0 and not 'listener_duplicate_port' in __ibmcloud_lb_frontend_listener_ascs3.stderr
+
+- name: Create IBM Cloud Load Balancer Front-end Listener for SAP NetWeaver ASCS - SAP Start Service (SAPControl SOAP) HTTP sapctrl<ASCS_NN> process
+  register: __ibmcloud_lb_frontend_listener_ascs4
+  ibm.cloudcollection.ibm_is_lb_listener:
+    lb: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', 'lb-sap-ha-nwas-ascs'))[0].id }}"
+    default_pool: "{{ (__ibmcloud_lb_pools.results | json_query('[*].resource.pools') | flatten | selectattr('name', '==', 'lb-sap-ha-nwas-ascs-pool-sapctrl'))[0].id }}"
+    protocol: tcp
+    port: "{{ ('5' + sap_system_nwas_abap_ascs_instance_nr + '13') | int }}"
+  when: (groups['nwas_ers'] is defined and (groups['nwas_ers'] | length>0))
+  failed_when: not __ibmcloud_lb_frontend_listener_ascs4.rc == 0 and not 'listener_duplicate_port' in __ibmcloud_lb_frontend_listener_ascs4.stderr
+
+- name: Create IBM Cloud Load Balancer Front-end Listener for SAP NetWeaver ASCS - SAP Start Service (SAPControl SOAP) HTTPS (Secure) sapctrls<ASCS_NN>
+  register: __ibmcloud_lb_frontend_listener_ascs5
+  ibm.cloudcollection.ibm_is_lb_listener:
+    lb: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', 'lb-sap-ha-nwas-ascs'))[0].id }}"
+    default_pool: "{{ (__ibmcloud_lb_pools.results | json_query('[*].resource.pools') | flatten | selectattr('name', '==', 'lb-sap-ha-nwas-ascs-pool-sapctrls'))[0].id }}"
+    protocol: tcp
+    port: "{{ ('5' + sap_system_nwas_abap_ascs_instance_nr + '14') | int }}"
+  when: (groups['nwas_ers'] is defined and (groups['nwas_ers'] | length>0))
+  failed_when: not __ibmcloud_lb_frontend_listener_ascs5.rc == 0 and not 'listener_duplicate_port' in __ibmcloud_lb_frontend_listener_ascs5.stderr
+
+# - name: Create IBM Cloud Load Balancer Front-end Listener for SAP NetWeaver ERS - Dispatcher sapdp<ERS_NN> process
+#   register: __ibmcloud_lb_frontend_listener_ers1
+#  ibm.cloudcollection.ibm_is_lb_listener:
+#    lb: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', 'lb-sap-ha-nwas-ers'))[0].id }}"
+#    default_pool: "{{ (__ibmcloud_lb_pools.results | json_query('[*].resource.pools') | flatten | selectattr('name', '==', 'lb-sap-ha-nwas-ers-pool-dp'))[0].id }}"
+#    protocol: tcp
+#    port: "{{ ('32' + sap_system_nwas_abap_ers_instance_nr) | int }}"
+#   when: (groups['nwas_ers'] is defined and (groups['nwas_ers'] | length>0))
+#   failed_when: not __ibmcloud_lb_frontend_listener_ers1.rc == 0 and not 'listener_duplicate_port' in __ibmcloud_lb_frontend_listener_ers1.stderr
+
+# - name: Create IBM Cloud Load Balancer Front-end Listener for SAP NetWeaver ERS - Message Server sapms<SAPSID> process
+#   register: __ibmcloud_lb_frontend_listener_ers2
+#  ibm.cloudcollection.ibm_is_lb_listener:
+#    lb: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', 'lb-sap-ha-nwas-ers'))[0].id }}"
+#    default_pool: "{{ (__ibmcloud_lb_pools.results | json_query('[*].resource.pools') | flatten | selectattr('name', '==', 'lb-sap-ha-nwas-ers-pool-ms'))[0].id }}"
+#    protocol: tcp
+#    port: "{{ ('36' + sap_system_nwas_abap_ers_instance_nr) | int }}"
+#   when: (groups['nwas_ers'] is defined and (groups['nwas_ers'] | length>0))
+#   failed_when: not __ibmcloud_lb_frontend_listener_ers2.rc == 0 and not 'listener_duplicate_port' in __ibmcloud_lb_frontend_listener_ers2.stderr
+
+- name: Create IBM Cloud Load Balancer Front-end Listener for SAP NetWeaver ERS - Enqueue Replication Server sapenqr<SAPSID> process
+  register: __ibmcloud_lb_frontend_listener_ers3
+  ibm.cloudcollection.ibm_is_lb_listener:
+    lb: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', 'lb-sap-ha-nwas-ers'))[0].id }}"
+    default_pool: "{{ (__ibmcloud_lb_pools.results | json_query('[*].resource.pools') | flatten | selectattr('name', '==', 'lb-sap-ha-nwas-ers-pool-enqr'))[0].id }}"
+    protocol: tcp
+    port: "{{ ('39' + sap_system_nwas_abap_ers_instance_nr) | int }}"
+  when: (groups['nwas_ers'] is defined and (groups['nwas_ers'] | length>0))
+  failed_when: not __ibmcloud_lb_frontend_listener_ers3.rc == 0 and not 'listener_duplicate_port' in __ibmcloud_lb_frontend_listener_ers3.stderr
+
+- name: Create IBM Cloud Load Balancer Front-end Listener for SAP NetWeaver ERS - SAP Start Service (SAPControl SOAP) HTTP sapctrl<ERS_NN> process
+  register: __ibmcloud_lb_frontend_listener_ers4
+  ibm.cloudcollection.ibm_is_lb_listener:
+    lb: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', 'lb-sap-ha-nwas-ers'))[0].id }}"
+    default_pool: "{{ (__ibmcloud_lb_pools.results | json_query('[*].resource.pools') | flatten | selectattr('name', '==', 'lb-sap-ha-nwas-ers-pool-sapctrl'))[0].id }}"
+    protocol: tcp
+    port: "{{ ('5' + sap_system_nwas_abap_ers_instance_nr + '13') | int }}"
+  when: (groups['nwas_ers'] is defined and (groups['nwas_ers'] | length>0))
+  failed_when: not __ibmcloud_lb_frontend_listener_ers4.rc == 0 and not 'listener_duplicate_port' in __ibmcloud_lb_frontend_listener_ers4.stderr
+
+- name: Create IBM Cloud Load Balancer Front-end Listener for SAP NetWeaver ERS - SAP Start Service (SAPControl SOAP) HTTPS (Secure) sapctrls<ERS_NN>
+  register: __ibmcloud_lb_frontend_listener_ers5
+  ibm.cloudcollection.ibm_is_lb_listener:
+    lb: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', 'lb-sap-ha-nwas-ers'))[0].id }}"
+    default_pool: "{{ (__ibmcloud_lb_pools.results | json_query('[*].resource.pools') | flatten | selectattr('name', '==', 'lb-sap-ha-nwas-ers-pool-sapctrls'))[0].id }}"
+    protocol: tcp
+    port: "{{ ('5' + sap_system_nwas_abap_ers_instance_nr + '14') | int }}"
+  when: (groups['nwas_ers'] is defined and (groups['nwas_ers'] | length>0))
+  failed_when: not __ibmcloud_lb_frontend_listener_ers5.rc == 0 and not 'listener_duplicate_port' in __ibmcloud_lb_frontend_listener_ers5.stderr
+
+
+# Set DNS A Record for Virtual IP (use the first of the IBM Cloud Load Balancer instance assigned Private IPs in the VPC Subnet Range)
+
+- name: IBM Cloud Private DNS Record for SAP HANA HA Virtual Hostname
+  register: register_ibmcloud_pdns_record_ha_hana
+  ibm.cloudcollection.ibm_dns_resource_record:
+    instance_id: "{{ register_ibmcloud_pdns_service_instance.resource.guid }}"
+    zone_id: "{{ (register_ibmcloud_pdns.resource.dns_zones | selectattr('name', '==', sap_vm_provision_dns_root_domain) | first).zone_id }}"
+    name: "{{ sap_swpm_db_host }}.{{ hostvars[host_node].sap_vm_provision_dns_root_domain }}" # Host FQDN
+    rdata: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', 'lb-sap-ha-hana'))[0].private_ips[0].address }}" # IP Address
+    type: A
+    ttl: 7200
+  failed_when: not register_ibmcloud_pdns_record.rc == 0 and not 'The record already exists' in register_ibmcloud_pdns_record.stderr
+  loop: "{{ (groups['hana_primary'] | default([])) }}"
+  loop_control:
+    loop_var: host_node
+  when:
+    - groups["hana_secondary"] is defined and (groups["hana_secondary"]|length>0)
+
+- name: IBM Cloud Private DNS Record for SAP AnyDB HA Virtual Hostname
+  register: register_ibmcloud_pdns_record_ha_anydb
+  ibm.cloudcollection.ibm_dns_resource_record:
+    instance_id: "{{ register_ibmcloud_pdns_service_instance.resource.guid }}"
+    zone_id: "{{ (register_ibmcloud_pdns.resource.dns_zones | selectattr('name', '==', sap_vm_provision_dns_root_domain) | first).zone_id }}"
+    name: "{{ sap_swpm_db_host }}.{{ hostvars[host_node].sap_vm_provision_dns_root_domain }}" # Host FQDN
+    rdata: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', 'lb-sap-ha-anydb'))[0].private_ips[0].address }}" # IP Address
+    type: A
+    ttl: 7200
+  failed_when: not register_ibmcloud_pdns_record.rc == 0 and not 'The record already exists' in register_ibmcloud_pdns_record.stderr
+  loop: "{{ (groups['anydb_primary'] | default([])) }}"
+  loop_control:
+    loop_var: host_node
+  when:
+    - groups["anydb_secondary"] is defined and (groups["anydb_secondary"]|length>0)
+
+- name: IBM Cloud Private DNS Record for SAP NetWeaver ASCS HA Virtual Hostname
+  register: register_ibmcloud_pdns_record_ha_nwas_ascs
+  ibm.cloudcollection.ibm_dns_resource_record:
+    instance_id: "{{ register_ibmcloud_pdns_service_instance.resource.guid }}"
+    zone_id: "{{ (register_ibmcloud_pdns.resource.dns_zones | selectattr('name', '==', sap_vm_provision_dns_root_domain) | first).zone_id }}"
+    name: "{{ sap_swpm_ascs_instance_hostname }}.{{ hostvars[host_node].sap_vm_provision_dns_root_domain }}" # Host FQDN
+    rdata: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', 'lb-sap-ha-nwas-ascs'))[0].private_ips[0].address }}" # IP Address
+    type: A
+    ttl: 7200
+  failed_when: not register_ibmcloud_pdns_record.rc == 0 and not 'The record already exists' in register_ibmcloud_pdns_record.stderr
+  loop: "{{ (groups['nwas_ascs'] | default([])) }}"
+  loop_control:
+    loop_var: host_node
+  when:
+    - groups["nwas_ers"] is defined and (groups["nwas_ers"]|length>0)
+
+- name: IBM Cloud Private DNS Record for SAP NetWeaver ERS HA Virtual Hostname
+  register: register_ibmcloud_pdns_record_ha_nwas_ers
+  ibm.cloudcollection.ibm_dns_resource_record:
+    instance_id: "{{ register_ibmcloud_pdns_service_instance.resource.guid }}"
+    zone_id: "{{ (register_ibmcloud_pdns.resource.dns_zones | selectattr('name', '==', sap_vm_provision_dns_root_domain) | first).zone_id }}"
+    name: "{{ sap_swpm_ers_instance_hostname }}.{{ hostvars[host_node].sap_vm_provision_dns_root_domain }}" # Host FQDN
+    rdata: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', 'lb-sap-ha-nwas-ers'))[0].private_ips[0].address }}" # IP Address
+    type: A
+    ttl: 7200
+  failed_when: not register_ibmcloud_pdns_record.rc == 0 and not 'The record already exists' in register_ibmcloud_pdns_record.stderr
+  loop: "{{ (groups['nwas_ers'] | default([])) }}"
+  loop_control:
+    loop_var: host_node
+  when:
+    - groups["nwas_ers"] is defined and (groups["nwas_ers"]|length>0)
+
+
+- name: Set facts for all hosts - use facts from IBM Cloud Load Balancer - SAP HANA
+  ansible.builtin.set_fact:
+    sap_ha_pacemaker_cluster_vip_hana_primary_ip_address: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', 'lb-sap-ha-hana'))[0].private_ips[0].address }}"
+  when:
+    - sap_ha_pacemaker_cluster_ibmcloud_region is defined
+    - groups["hana_secondary"] is defined and (groups["hana_secondary"]|length>0)
+
+
+- name: Set facts for all hosts - use facts from IBM Cloud Load Balancer - SAP AnyDB
+  ansible.builtin.set_fact:
+    sap_vm_temp_vip_anydb_primary: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', 'lb-sap-ha-anydb'))[0].private_ips[0].address }}"
+  when:
+    - sap_ha_pacemaker_cluster_ibmcloud_region is defined
+    - groups["anydb_secondary"] is defined and (groups["anydb_secondary"]|length>0)
+
+
+- name: Set facts for all hosts - use facts from IBM Cloud Load Balancer - SAP NetWeaver
+  ansible.builtin.set_fact:
+    sap_ha_pacemaker_cluster_vip_nwas_abap_ascs_ip_address: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', 'lb-sap-ha-nwas-ascs'))[0].private_ips[0].address }}"
+    sap_ha_pacemaker_cluster_vip_nwas_abap_ers_ip_address: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', 'lb-sap-ha-nwas-ers'))[0].private_ips[0].address }}"
+  when:
+    - sap_ha_pacemaker_cluster_ibmcloud_region is defined
+    - groups["nwas_ers"] is defined and (groups["nwas_ers"]|length>0)

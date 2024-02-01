@@ -1,0 +1,252 @@
+---
+
+# Netcat (nmap-netcat), use nc --verbose --idle-timeout "2" $IP $PORT which will display in stdout...
+# 'Connected to' followed by 'Idle timeout expired' or 'Connection reset by peer', when the host is accessible/responsive and port is listening
+# 'Idle timeout expired' only, when the host is NOT accessible/responsive
+# 'Connection refused' only, when the host is accessible/responsive and port is NOT listening
+
+- name: Check interconnectivity between hosts - SAP HANA - Primary
+  ansible.builtin.wait_for:
+    host: "{{ sap_vm_verify_host_hana_primary }}"
+    port: "{{ item }}"
+    delay: 10
+    sleep: 10
+    timeout: 600
+  loop:
+    - 5{{ sap_vm_verify_instance_nr_db }}13
+    - 5{{ sap_vm_verify_instance_nr_db }}14
+    - 3{{ sap_vm_verify_instance_nr_db }}06
+    - 3{{ sap_vm_verify_instance_nr_db }}13
+    - 3{{ sap_vm_verify_instance_nr_db }}15
+    - 80{{ sap_vm_verify_instance_nr_db }}
+    - 43{{ sap_vm_verify_instance_nr_db }}
+
+- name: Check interconnectivity between hosts - SAP HANA - Secondary
+  ansible.builtin.wait_for:
+    host: "{{ sap_vm_verify_host_hana_secondary }}"
+    port: "{{ item }}"
+    delay: 10
+    sleep: 10
+    timeout: 600
+  loop:
+    - 5{{ sap_vm_verify_instance_nr_db }}13
+    - 5{{ sap_vm_verify_instance_nr_db }}14
+    - 3{{ sap_vm_verify_instance_nr_db }}06
+    - 3{{ sap_vm_verify_instance_nr_db }}13
+    - 3{{ sap_vm_verify_instance_nr_db }}15
+    - 80{{ sap_vm_verify_instance_nr_db }}
+    - 43{{ sap_vm_verify_instance_nr_db }}
+
+- name: Check interconnectivity between hosts - SAP HANA System Replication - Primary
+  ansible.builtin.wait_for:
+    host: "{{ sap_vm_verify_host_hana_primary }}"
+    port: "{{ item }}"
+    delay: 10
+    sleep: 10
+    timeout: 600
+  loop:
+    - 4{{ sap_vm_verify_instance_nr_db }}01
+    - 4{{ sap_vm_verify_instance_nr_db }}02
+    - 4{{ sap_vm_verify_instance_nr_db }}03
+    - 4{{ sap_vm_verify_instance_nr_db }}06
+    - 4{{ sap_vm_verify_instance_nr_db }}07
+    - 4{{ sap_vm_verify_instance_nr_db }}40 - 4{{ sap_vm_verify_instance_nr_db }}97
+    - 2224
+    - 3121
+    - 5104 - 5412
+
+- name: Check interconnectivity between hosts - SAP HANA System Replication - Secondary
+  ansible.builtin.wait_for:
+    host: "{{ sap_vm_verify_host_hana_secondary }}"
+    port: "{{ item }}"
+    delay: 10
+    sleep: 10
+    timeout: 600
+  loop:
+    - 4{{ sap_vm_verify_instance_nr_db }}01
+    - 4{{ sap_vm_verify_instance_nr_db }}02
+    - 4{{ sap_vm_verify_instance_nr_db }}03
+    - 4{{ sap_vm_verify_instance_nr_db }}06
+    - 4{{ sap_vm_verify_instance_nr_db }}07
+    - 4{{ sap_vm_verify_instance_nr_db }}40 - 4{{ sap_vm_verify_instance_nr_db }}97
+    - 2224
+    - 3121
+    - 5104 - 5412
+
+- name: Check interconnectivity between hosts - SAP NetWeaver ABAP ASCS
+  ansible.builtin.wait_for:
+    host: "{{ sap_vm_verify_host_nwas_ascs }}"
+    port: "{{ item }}"
+    delay: 10
+    sleep: 10
+    timeout: 600
+  loop:
+    - 32{{ sap_vm_verify_instance_nr_nwas_abap_ascs }}
+    - 36{{ sap_vm_verify_instance_nr_nwas_abap_ascs }}
+    - 39{{ sap_vm_verify_instance_nr_nwas_abap_ascs }}
+    - 5{{ sap_vm_verify_instance_nr_nwas_abap_ascs }}13
+    - 5{{ sap_vm_verify_instance_nr_nwas_abap_ascs }}14
+
+- name: Check interconnectivity between hosts - SAP NetWeaver ABAP ERS
+  ansible.builtin.wait_for:
+    host: "{{ sap_vm_verify_host_nwas_ers }}"
+    port: "{{ item }}"
+    delay: 10
+    sleep: 10
+    timeout: 600
+  loop:
+    - 32{{ sap_vm_verify_instance_nr_nwas_abap_ers }}
+    - 36{{ sap_vm_verify_instance_nr_nwas_abap_ers }}
+    - 39{{ sap_vm_verify_instance_nr_nwas_abap_ers }}
+    - 5{{ sap_vm_verify_instance_nr_nwas_abap_ers }}13
+    - 5{{ sap_vm_verify_instance_nr_nwas_abap_ers }}14
+
+- name: Check interconnectivity between hosts - SAP NetWeaver ABAP PAS
+  ansible.builtin.wait_for:
+    host: "{{ sap_vm_verify_host_nwas_pas }}"
+    port: "{{ item }}"
+    delay: 10
+    sleep: 10
+    timeout: 600
+  loop:
+    - 32{{ sap_vm_verify_instance_nr_nwas_abap_pas }}
+    - 33{{ sap_vm_verify_instance_nr_nwas_abap_pas }}
+    - 48{{ sap_vm_verify_instance_nr_nwas_abap_pas }}
+    - 5{{ sap_vm_verify_instance_nr_nwas_abap_pas }}13
+    - 5{{ sap_vm_verify_instance_nr_nwas_abap_pas }}14
+    - 80{{ sap_vm_verify_instance_nr_nwas_abap_pas }}
+    - 443{{ sap_vm_verify_instance_nr_nwas_abap_pas }}
+
+- name: Check interconnectivity between hosts - SAP NetWeaver ABAP AAS
+  ansible.builtin.wait_for:
+    host: "{{ sap_vm_verify_host_nwas_aas }}"
+    port: "{{ item }}"
+    delay: 10
+    sleep: 10
+    timeout: 600
+  loop:
+    - 32{{ sap_vm_verify_instance_nr_nwas_abap_aas }}
+    - 33{{ sap_vm_verify_instance_nr_nwas_abap_aas }}
+    - 48{{ sap_vm_verify_instance_nr_nwas_abap_aas }}
+    - 5{{ sap_vm_verify_instance_nr_nwas_abap_aas }}13
+    - 5{{ sap_vm_verify_instance_nr_nwas_abap_aas }}14
+    - 80{{ sap_vm_verify_instance_nr_nwas_abap_aas }}
+    - 443{{ sap_vm_verify_instance_nr_nwas_abap_aas }}
+
+- name: Check interconnectivity between hosts - SAP Host Agent
+  ansible.builtin.wait_for:
+    host: "{{ ALL_HOSTS_HERE }}"
+    port: "{{ item }}"
+    delay: 10
+    sleep: 10
+    timeout: 600
+  loop:
+    - 1128
+    - 1129
+
+
+- name: Check interconnectivity between hosts and Virtual IP {{ sap_vm_verify_vip_hana_primary }} for SAP HANA
+  ansible.builtin.wait_for:
+    host: "{{ sap_vm_verify_vip_hana_primary }}"
+    port: "{{ item }}"
+    delay: 10
+    sleep: 10
+    timeout: 600
+  loop:
+    - 5{{ sap_vm_verify_instance_nr_db }}13
+    - 5{{ sap_vm_verify_instance_nr_db }}14
+    - 3{{ sap_vm_verify_instance_nr_db }}06
+    - 3{{ sap_vm_verify_instance_nr_db }}13
+    - 3{{ sap_vm_verify_instance_nr_db }}15
+    - 80{{ sap_vm_verify_instance_nr_db }}
+    - 43{{ sap_vm_verify_instance_nr_db }}
+
+- name: Check interconnectivity between hosts and Virtual IP {{ sap_vm_verify_vip_hana_primary }} for SAP HANA System Replication
+  ansible.builtin.wait_for:
+    host: "{{ sap_vm_verify_vip_hana_primary }}"
+    port: "{{ item }}"
+    delay: 10
+    sleep: 10
+    timeout: 600
+  loop:
+    - 4{{ sap_vm_verify_instance_nr_db }}01
+    - 4{{ sap_vm_verify_instance_nr_db }}02
+    - 4{{ sap_vm_verify_instance_nr_db }}03
+    - 4{{ sap_vm_verify_instance_nr_db }}06
+    - 4{{ sap_vm_verify_instance_nr_db }}07
+    - 4{{ sap_vm_verify_instance_nr_db }}40 - 4{{ sap_vm_verify_instance_nr_db }}97
+    - 2224
+    - 3121
+    - 5104 - 5412
+
+
+- name: Check interconnectivity between hosts and Virtual IP {{ sap_vm_verify_vip_nwas_abap_ascs }} for SAP NetWeaver ABAP ASCS
+  ansible.builtin.wait_for:
+    host: "{{ sap_vm_verify_vip_nwas_abap_ascs }}"
+    port: "{{ item }}"
+    delay: 10
+    sleep: 10
+    timeout: 600
+  loop:
+    - 32{{ sap_vm_verify_instance_nr_nwas_abap_ascs }}
+    - 36{{ sap_vm_verify_instance_nr_nwas_abap_ascs }}
+    - 39{{ sap_vm_verify_instance_nr_nwas_abap_ascs }}
+    - 5{{ sap_vm_verify_instance_nr_nwas_abap_ascs }}13
+    - 5{{ sap_vm_verify_instance_nr_nwas_abap_ascs }}14
+
+- name: Check interconnectivity between hosts and Virtual IP {{ sap_vm_verify_vip_nwas_abap_ers }} for SAP NetWeaver ABAP ERS
+  ansible.builtin.wait_for:
+    host: "{{ sap_vm_verify_vip_nwas_abap_ers }}"
+    port: "{{ item }}"
+    delay: 10
+    sleep: 10
+    timeout: 600
+  loop:
+    - 32{{ sap_vm_verify_instance_nr_nwas_abap_ers }}
+    - 36{{ sap_vm_verify_instance_nr_nwas_abap_ers }}
+    - 39{{ sap_vm_verify_instance_nr_nwas_abap_ers }}
+    - 5{{ sap_vm_verify_instance_nr_nwas_abap_ers }}13
+    - 5{{ sap_vm_verify_instance_nr_nwas_abap_ers }}14
+
+# - name: Check interconnectivity between hosts and Virtual IP {{ sap_vm_verify_vip_nwas_abap_pas }} for SAP NetWeaver ABAP PAS
+#   ansible.builtin.wait_for:
+#     host: "{{ sap_vm_verify_vip_nwas_abap_pas }}"
+#     port: "{{ item }}"
+#     delay: 10
+#     sleep: 10
+#     timeout: 600
+#   loop:
+#     - 32{{ sap_vm_verify_instance_nr_nwas_abap_pas }}
+#     - 33{{ sap_vm_verify_instance_nr_nwas_abap_pas }}
+#     - 48{{ sap_vm_verify_instance_nr_nwas_abap_pas }}
+#     - 5{{ sap_vm_verify_instance_nr_nwas_abap_pas }}13
+#     - 5{{ sap_vm_verify_instance_nr_nwas_abap_pas }}14
+#     - 80{{ sap_vm_verify_instance_nr_nwas_abap_pas }}
+#     - 443{{ sap_vm_verify_instance_nr_nwas_abap_pas }}
+
+# - name: Check interconnectivity between hosts and Virtual IP {{ sap_vm_verify_vip_nwas_abap_aas }} for SAP NetWeaver ABAP AAS
+#   ansible.builtin.wait_for:
+#     host: "{{ sap_vm_verify_vip_nwas_abap_aas }}"
+#     port: "{{ item }}"
+#     delay: 10
+#     sleep: 10
+#     timeout: 600
+#   loop:
+#     - 32{{ sap_vm_verify_instance_nr_nwas_abap_aas }}
+#     - 33{{ sap_vm_verify_instance_nr_nwas_abap_aas }}
+#     - 48{{ sap_vm_verify_instance_nr_nwas_abap_aas }}
+#     - 5{{ sap_vm_verify_instance_nr_nwas_abap_aas }}13
+#     - 5{{ sap_vm_verify_instance_nr_nwas_abap_aas }}14
+#     - 80{{ sap_vm_verify_instance_nr_nwas_abap_aas }}
+#     - 443{{ sap_vm_verify_instance_nr_nwas_abap_aas }}
+
+- name: Check interconnectivity between hosts - SAP Host Agent
+  ansible.builtin.wait_for:
+    host: "{{ ALL_VIRTUAL_IPS_HERE }}"
+    port: "{{ item }}"
+    delay: 10
+    sleep: 10
+    timeout: 600
+  loop:
+    - 1128
+    - 1129

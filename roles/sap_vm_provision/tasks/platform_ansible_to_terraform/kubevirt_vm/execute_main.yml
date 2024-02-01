@@ -1,0 +1,5 @@
+---
+
+- name: Ansible to Terraform notification
+  ansible.builtin.debug:
+    msg: "Ansible to Terraform is not implemented for this Infrastructure Platform"

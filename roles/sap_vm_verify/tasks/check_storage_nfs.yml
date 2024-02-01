@@ -1,0 +1,24 @@
+---
+
+# HANA Scale-Out
+
+# NWAS
+
+
+#  - name: Check each host can access the NFS, via netcat
+#    ansible.builtin.shell: |
+#      sap_vm_verify_nfs_mount_point='{{ sap_vm_verify_nfs_mount_point }}'
+#      nc $sap_vm_verify_nfs_mount_point 2049
+#    loop: "{{ [ groups['hana_primary'] , groups['nwas_ascs'] , groups['nwas_pas'] , groups['nwas_aas'] ] | flatten }}"
+#    loop_control:
+#      loop_var: host_node
+#    register: shell_hostname
+
+#    - name: Check SAP Mount Directory (/sapmnt) is NFS on each SAP NetWeaver host
+# ansible_facts.ansible_mounts using {{ ansible_facts['nodename'] }}
+
+#    - name: Ensure SAP Common Transport Directory symlink (/usr/sap/trans > /sapmnt/trans) exists
+# assert.stat.islnk
+
+#    - name: Check SAP Common Transport Directory is NFS on each SAP NetWeaver host
+# ansible_facts.ansible_mounts using {{ ansible_facts['nodename'] }}

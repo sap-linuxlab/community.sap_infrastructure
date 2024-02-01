@@ -1,0 +1,297 @@
+---
+# The tasks in this file are executed in a loop over the defined hosts
+
+# When SAP HANA Scale-Out is used, if host name is not in original specifications then strip suffix node number from host name
+- name: Set fact when performing SAP HANA Scale-Out
+  ansible.builtin.set_fact:
+    scaleout_origin_host_spec: "{{ inventory_hostname | regex_replace('^(.+?)\\d*$', '\\1') }}"
+  when:
+    - sap_hana_scaleout_active_coordinator is defined
+    - not inventory_hostname in lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan].keys()
+
+- name: Check if VM exists
+  register: register_check_vm_exists
+  ovirt.ovirt.ovirt_vm_info:
+    auth: "{{ ovirt_session.ansible_facts.ovirt_auth }}"
+    pattern: name={{ inventory_hostname }} and cluster={{ sap_vm_provision_ovirt_hypervisor_cluster_name }}
+
+
+# For later check if the provided OS name is actually available
+- name: Check available OS names in OVirt
+  ovirt.ovirt.ovirt_vm_os_info:
+    auth: "{{ ovirt_session.ansible_facts.ovirt_auth }}"
+  register: register_ovirt_available_os
+
+
+# VM creation block:
+# This block is run when the VM does not exist yet.
+#
+- name: Block that provisions the VM
+  when:
+    - register_check_vm_exists.ovirt_vms is defined
+    - register_check_vm_exists.ovirt_vms | length == 0
+  block:
+
+    - name: For Kickstart, provision Virtual Disk boot volume
+      ovirt.ovirt.ovirt_disk:
+        auth: "{{ ovirt_session.ansible_facts.ovirt_auth }}"
+        name: "{{ inventory_hostname }}-vol_os"
+        size: "{{ sap_vm_provision_ovirt_vm_kickstart_definition.boot_disk.size }}"
+        format: "{{ sap_vm_provision_ovirt_vm_kickstart_definition.boot_disk.format }}"
+        storage_domain: "{{ sap_vm_provision_ovirt_hypervisor_cluster_storage_domain_name }}" # Hypervisor Cluster's attached storage domain
+        wait: true
+      when:
+        - sap_vm_provision_ovirt_vm_kickstart_definition is defined
+        - sap_vm_provision_ovirt_vm_kickstart_definition | length > 0
+        - sap_vm_provision_ovirt_vm_template_name is not defined or
+          sap_vm_provision_ovirt_vm_template_name | length == 0
+      register: register_provisioned_boot_disk
+      until: register_provisioned_boot_disk.disk.status == 'ok'
+      retries: 600
+
+    - name: Merge disk provisioning result with disk attachment definition
+      ansible.builtin.set_fact:
+        merge_provisioned_boot_disk_fact: "{{ register_provisioned_boot_disk.disk | ansible.builtin.combine(sap_vm_provision_ovirt_vm_kickstart_definition.boot_disk) }}"
+      when:
+        - sap_vm_provision_ovirt_vm_kickstart_definition is defined
+        - sap_vm_provision_ovirt_vm_kickstart_definition | length > 0
+        - register_provisioned_boot_disk is defined
+
+    - name: Convert disk provisioning result to disk attachment list
+      ansible.builtin.set_fact:
+        provisioned_boot_disk_fact: "{{ provisioned_boot_disk_fact | default([]) + [merge_provisioned_boot_disk_fact] }}"
+      when:
+        - sap_vm_provision_ovirt_vm_kickstart_definition is defined
+        - sap_vm_provision_ovirt_vm_kickstart_definition | length > 0
+        - register_provisioned_boot_disk is defined
+
+
+    - name: Provision OVirt Virtual Machine
+      register: register_provisioned_host_single
+      ovirt.ovirt.ovirt_vm:
+        auth: "{{ ovirt_session.ansible_facts.ovirt_auth }}"
+
+        ## Virtual Machine target Hypervisor definition
+        cluster: "{{ sap_vm_provision_ovirt_hypervisor_cluster_name }}" # Hypervisor Cluster
+        host: "{{ sap_vm_provision_ovirt_hypervisor_cluster_host_node_name | default('') }}" # Hypervisor Cluster Node
+        storage_domain: "{{ sap_vm_provision_ovirt_hypervisor_cluster_storage_domain_name }}" # Hypervisor Cluster's attached storage domain
+
+        ## Virtual Machine definition
+        state: running
+        wait: true # wait until VM is running before Ansible Module is marked as completed
+        timeout: 1200 # seconds, wait 20 minutes for VM to provision
+        name: "{{ inventory_hostname }}"
+        description: "{{ inventory_hostname }} created by Ansible Playbook for SAP"
+        comment: "{{ inventory_hostname }} created by Ansible Playbook for SAP"
+
+        ## Virtual Machine main resources definition
+        cpu_sockets: "{{ lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan][scaleout_origin_host_spec | default(inventory_hostname)].ovirt_vm_cpu_threads }}"
+        # Size suffix uses IEC 60027-2 standard (for example 1GiB, 1024MiB)
+        memory: "{{ lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan][scaleout_origin_host_spec | default(inventory_hostname)].ovirt_vm_memory_gib }}GiB"
+        # Make sure guaranteed memory is defined to avoid error when calculated larger than set in VM template.
+        memory_guaranteed: "{{ lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan][scaleout_origin_host_spec | default(inventory_hostname)].ovirt_vm_memory_gib }}GiB"
+
+        ## Virtual Machine settings configuration
+        # Do not use Memory (RAM) ballooning, avoid over-commit of Memory
+        ballooning_enabled: false
+        boot_devices:
+          - hd
+          - network
+        boot_menu: "{{ sap_vm_provision_ovirt_vm_boot_menu }}"
+        usb_support: false
+        soundcard_enabled: false
+        high_availability: false
+        operating_system: "{{ sap_vm_provision_ovirt_vm_operating_system }}"
+        placement_policy: "{{ lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan][scaleout_origin_host_spec | default(inventory_hostname)].ovirt_vm_placement_policy | default('pinned') }}"
+        stateless: false
+        timezone: "{{ sap_vm_provision_ovirt_vm_timezone }}"
+        # Virtual Machine Type: high_performance, server, desktop
+        type: "{{ lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan][scaleout_origin_host_spec | default(inventory_hostname)].ovirt_vm_type | default('high_performance') }}"
+
+        ## Virtual Machine Storage configuration
+        disk_format: "{{ sap_vm_provision_ovirt_vm_disk_type }}" # RHV default is 'cow' = thin provisioning
+        disks: "{{ provisioned_boot_disk_fact | default([]) }}" # If using VM Template, leave blank (list)
+
+        ## Virtual Machine Network configuration - virtio vNICs
+        nics: "{{ sap_vm_provision_ovirt_vm_nics | default([]) }}" # Optional definition of NIC devices list
+
+        ## Option 1: Virtual Machine clone from VM Template
+        template: "{{ sap_vm_provision_ovirt_vm_template_name }}" # VM Template name stored on Hypervisor Cluster
+        #template_version: "" # default is the latest available version of the template
+        #use_latest_template_version: true # if true, forces a stateless VM, keep as reminder
+        #allow_partial_import: false
+        clone: "{{ sap_vm_provision_ovirt_vm_clone_independent }}" # VM will be cloned as (in)dependent from template
+        clone_permissions: true # VM Template permissions are cloned
+
+        ## Option 2: Virtual Machine deployment through PXE and Kickstart
+        # Requires definition: sap_vm_provision_ovirt_vm_kickstart_definition
+        cd_iso: "{{ sap_vm_provision_ovirt_vm_kickstart_definition.os_image_iso | default('') }}"
+        initrd_path: "{{ sap_vm_provision_ovirt_vm_kickstart_definition.initrd_path | default('') }}"
+        kernel_path: "{{ sap_vm_provision_ovirt_vm_kickstart_definition.kernel_path | default('') }}"
+        kernel_params: "{{ sap_vm_provision_ovirt_vm_kickstart_definition.kernel_params | default('') }}"
+        kernel_params_persist: false # do not save beyond one run to avoid an installation loop
+
+        ## Post-provisioning: Virtual Machine post configuration using cloud-init.
+        # Requires provisioning from a template, which was cloud-enabled.
+        # Cloud-init is run once (persist = false) or at each boot (persist = true).
+        cloud_init_persist: "{{ sap_vm_provision_ovirt_vm_cloud_init_persist | default('false') }}"
+        cloud_init: "{{ sap_vm_provision_ovirt_vm_cloud_init | default({}) }}"
+
+        # Make sure the kernel and cloud-init options are executed once,
+        # but are not repeated after a reboot (volatile = true).
+        # Default is 'false'.
+        # UI option: "Rollback this configuration during reboots"
+        volatile: true
+
+      # Report VM back only after it is done creating the clone image.
+      until: register_provisioned_host_single.vm.status != "image_locked"
+      retries: 120
+      delay: 5
+
+### End of boot disk and VM creation block
+
+
+- name: Start the VM, if not running
+  ovirt.ovirt.ovirt_vm:
+    auth: "{{ ovirt_session.ansible_facts.ovirt_auth }}"
+    name: "{{ inventory_hostname }}"
+    state: running
+
+- name: Remove installation ISO from the config
+  ovirt.ovirt.ovirt_vm:
+    auth: "{{ ovirt_session.ansible_facts.ovirt_auth }}"
+    name: "{{ inventory_hostname }}"
+    cd_iso: ""
+  when: sap_vm_provision_ovirt_vm_kickstart_definition is defined
+
+- name: Check VM status
+  register: register_provisioned_host_single_info
+  ovirt.ovirt.ovirt_vm_info:
+    auth: "{{ ovirt_session.ansible_facts.ovirt_auth }}"
+    pattern: name={{ inventory_hostname }} and cluster={{ sap_vm_provision_ovirt_hypervisor_cluster_name }}
+    all_content: true
+    fetch_nested: true
+    nested_attributes:
+      - ips
+      - name
+      - applications
+  # Allow for 15 minutes until the VM reports devices, which include the IP and
+  # are required in following tasks.
+  until: register_provisioned_host_single_info.ovirt_vms[0].reported_devices | length > 0
+  retries: 180
+  delay: 5
+
+
+- name: Create fact for delegate host IP
+  ansible.builtin.set_fact:
+    provisioned_private_ip: "{{ register_provisioned_host_single_info.ovirt_vms[0].reported_devices[0].ips[0].address }}"
+
+
+- name: Collect only facts about hardware
+  register: host_disks_info
+  ansible.builtin.setup:
+    gather_subset:
+      - hardware
+  remote_user: root
+  become: true
+  become_user: root
+  delegate_to: "{{ provisioned_private_ip }}"
+  delegate_facts: false
+  vars:
+    ansible_ssh_private_key_file: "{{ sap_vm_provision_ssh_host_private_key_file_path }}"
+
+#- name: Output disks
+#  ansible.builtin.debug:
+#    var: hostvars[inventory_hostname].ansible_devices.keys() | list
+
+#- name: Debug Ansible Facts devices used list
+#  ansible.builtin.debug:
+#    msg: "{{ host_disks_info.ansible_facts.ansible_device_links.ids.keys() | list }}"
+
+
+- name: Set fact for available storage volume device names
+  ansible.builtin.set_fact:
+    available_volumes: |-
+      {% set letters = 'bcdefghijklmnopqrstuvwxyz' %}
+      {% set ansible_facts_devices_used_list = host_disks_info.ansible_facts.ansible_device_links.ids.keys() | list %}
+      {% set volumes = [] %}
+      {%- for letter in letters -%}
+        {% for device in ansible_facts_devices_used_list -%}
+          {% if '/dev/sd' + letter not in device -%}
+            {% set dev = volumes.append('/dev/sd' + letter) %}
+          {%- endif %}
+        {%- endfor %}
+      {% endfor %}
+      {{ volumes | list | unique }}
+
+# - name: Debug available_volumes
+#   ansible.builtin.debug:
+#     msg: "{{ available_volumes }}"
+
+
+# Combination of only the filesystem volume information from the lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')
+# for volume device assignment.
+# This task assigns device names for each volume to be created.
+- name: Set fact for target device map
+  ansible.builtin.set_fact:
+    filesystem_volume_map: |
+      {% set volume_map = [] -%}
+      {% set av_vol = available_volumes -%}
+      {% for storage_item in lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan][scaleout_origin_host_spec | default(inventory_hostname)].storage_definition -%}
+        {% for idx in range(0, storage_item.disk_count | default(1)) -%}
+          {% if (storage_item.filesystem_type is defined) -%}
+            {% if ('swap' in storage_item.filesystem_type and storage_item.swap_path is not defined)
+            or ('swap' not in storage_item.filesystem_type and storage_item.nfs_path is not defined) -%}
+              {% set vol = volume_map.extend([
+              {
+                'definition_key': storage_item.name,
+                'device': av_vol[0],
+                'fstype': storage_item.filesystem_type | default('xfs'),
+                'name': storage_item.name + idx|string,
+                'size': storage_item.disk_size | default(0),
+                'type': storage_item.disk_type | default('')
+              }
+              ]) %}
+            {%- set _ = av_vol.pop(0) -%}
+            {%- endif %}
+          {%- endif %}
+        {%- endfor %}
+      {%- endfor %}
+      {{ volume_map }}
+
+#- name: Debug filesystem_volume_map
+#  ansible.builtin.debug:
+#    msg: "{{ filesystem_volume_map }}"
+
+
+# The volume creation task requires the above task to define the parameter
+# which contains the calculated unique device names.
+- name: Provision Virtual Disk volumes for OVirt VM filesystems
+  ovirt.ovirt.ovirt_disk:
+    auth: "{{ ovirt_session.ansible_facts.ovirt_auth }}"
+    name: "{{ inventory_hostname }}-vol_{{ vol_item.name }}"
+    vm_name: "{{ inventory_hostname }}"
+    size: "{{ vol_item.size }}GiB"
+    format: cow
+    interface: virtio_scsi
+    storage_domain: "{{ sap_vm_provision_ovirt_hypervisor_cluster_storage_domain_name }}" # Hypervisor Cluster's attached storage domain
+    wait: true
+    bootable: false
+  loop: "{{ filesystem_volume_map }}"
+  loop_control:
+    loop_var: vol_item
+    index_var: vol_item_index
+    label: "{{ vol_item.definition_key }}: {{ vol_item.name }} (size: {{ vol_item.size }})"
+  when:
+    - vol_item.fstype is defined
+    - vol_item.size > 0
+  register: volume_provisioning
+
+
+- name: Append loop value to register
+  ansible.builtin.set_fact:
+    register_provisioned_host_single: "{{ register_provisioned_host_single_info.ovirt_vms[0] | combine( { 'host_node' : inventory_hostname } , { 'sap_host_type' : lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan][scaleout_origin_host_spec | default(inventory_hostname)].sap_host_type } , { 'sap_system_type' : (lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan][scaleout_origin_host_spec | default(inventory_hostname)].sap_system_type | default('')) } ) }}"
+
+- name: Append output to merged register
+  ansible.builtin.set_fact:
+    register_provisioned_host_all: "{{ register_provisioned_host_all + [register_provisioned_host_single] }}"

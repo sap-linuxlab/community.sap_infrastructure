@@ -1,0 +1,13 @@
+---
+galaxy_info:
+  namespace: community
+  author: Sean Freeman
+  description: SAP VM Provision
+  company: IBM
+  license: Apache-2.0
+  min_ansible_version: 2.12
+  platforms:
+    - name: EL
+      versions: [8, 9]
+  galaxy_tags: ['sap', 'aws', 'gcp', 'msazure', 'ibmcloud', 'ibmpower', 'ovirt', 'kubevirt', 'vmware', 'rhel', 'redhat', 'sles', 'suse']
+dependencies: []

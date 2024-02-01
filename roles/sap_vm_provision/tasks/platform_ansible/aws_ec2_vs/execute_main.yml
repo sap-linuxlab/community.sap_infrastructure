@@ -1,0 +1,138 @@
+---
+
+- name: Ansible Task block for looped provisioning of AWS EC2 instances
+  environment:
+    AWS_ACCESS_KEY_ID: "{{ sap_vm_provision_aws_access_key }}"
+    AWS_SECRET_ACCESS_KEY: "{{ sap_vm_provision_aws_secret_access_key }}"
+    AWS_REGION: "{{ sap_vm_provision_aws_region }}"
+  block:
+
+    - name: Identify OS Image (AWS AMI)
+      register: register_aws_ami
+      amazon.aws.ec2_ami_info:
+        owners: ["aws-marketplace"]
+        filters:
+          name: "{{ lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_os_image_dictionary')[sap_vm_provision_aws_ec2_vs_host_os_image] }}"
+
+    - name: Set fact to hold loop variables from include_tasks
+      ansible.builtin.set_fact:
+        register_provisioned_host_all: []
+
+    - name: Provision hosts to AWS
+      register: register_provisioned_hosts
+      ansible.builtin.include_tasks:
+        file: "{{ 'platform_' + sap_vm_provision_iac_type }}/{{ sap_vm_provision_iac_platform }}/execute_provision.yml"
+        apply:
+          environment:
+            AWS_ACCESS_KEY_ID: "{{ sap_vm_provision_aws_access_key }}"
+            AWS_SECRET_ACCESS_KEY: "{{ sap_vm_provision_aws_secret_access_key }}"
+            AWS_REGION: "{{ sap_vm_provision_aws_region }}"
+
+    - name: Add hosts provisioned to the Ansible Inventory
+      register: register_add_hosts
+      ansible.builtin.add_host:
+        name: "{{ add_item[0].host_node }}"
+        groups: "{{ add_item[0].sap_system_type + '_' if (add_item[0].sap_system_type != '') }}{{ add_item[0].sap_host_type }}"
+        ansible_host: "{{ add_item[0].instances[0].private_ip_address }}"
+        ansible_user: "root"
+        ansible_ssh_private_key_file: "{{ sap_vm_provision_ssh_host_private_key_file_path }}"
+        ansible_ssh_common_args: -o ConnectTimeout=180 -o ControlMaster=auto -o ControlPersist=3600s -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ForwardX11=no -o ProxyCommand='ssh -W %h:%p {{ sap_vm_provision_bastion_user }}@{{ sap_vm_provision_bastion_public_ip }} -p {{ sap_vm_provision_bastion_ssh_port }} -i {{ sap_vm_provision_ssh_bastion_private_key_file_path }} -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null'
+      loop: "{{ ansible_play_hosts | map('extract', hostvars, 'register_provisioned_host_all')  }}"
+      loop_control:
+        label: "{{ add_item[0].host_node }}"
+        loop_var: add_item
+
+
+# Cannot override any variables from extravars input, see https://docs.ansible.com/ansible/latest/playbook_guide/playbooks_variables.html#understanding-variable-precedence
+# Ensure no default value exists for any prompted variable before execution of Ansible Playbook
+
+    - name: Gather information about AWS VPC Route Table for the VPC Subnet
+      amazon.aws.ec2_vpc_route_table_info:
+        filters:
+          association.subnet-id: "{{ sap_vm_provision_aws_vpc_subnet_id }}"
+      register: aws_vpc_subnet_rt_info
+
+    - name: Set fact to hold all inventory hosts in all groups
+      ansible.builtin.set_fact:
+        groups_merged_list: "{{ [ [ groups['hana_primary'] | default([]) ] , [ groups['hana_secondary'] | default([]) ] , [ groups['nwas_ascs'] | default([]) ] , [ groups['nwas_ers'] | default([]) ] , [ groups['nwas_pas'] | default([]) ] , [ groups['nwas_aas'] | default([]) ] ] | flatten | select() }}"
+
+    - name: Set Ansible Vars
+      register: register_set_ansible_vars
+      ansible.builtin.include_tasks:
+        file: common/set_ansible_vars.yml
+
+    - name: Ansible AWS Route53 DNS Records for hosts
+      amazon.aws.route53:
+        state: present
+        private_zone: true
+        zone: "{{ hostvars[inventory_hostname].sap_vm_provision_dns_root_domain }}"
+        record: "{{ inventory_hostname }}.{{ hostvars[inventory_hostname].sap_vm_provision_dns_root_domain }}"
+        type: A
+        ttl: 7200
+        value: "{{ hostvars[inventory_hostname].ansible_host }}"
+        wait: true
+
+  #  - ansible.builtin.debug:
+  #      var: register_add_hosts.results
+
+- name: Ansible Task block to execute on target inventory hosts
+  delegate_to: "{{ inventory_hostname }}"
+  block:
+
+    # Required to collect the remote host's facts for further processing
+    # in the following steps
+    - name: Gather host facts
+      ansible.builtin.setup:
+
+    # Must be set to short hostname,
+    # so that command 'hostname' and 'hostname -s' return the short hostname only;
+    # otherwise may cause error with SAP SWPM using name.domain.com.domain.com
+    - name: Change system hostname (must be set to short name and not FQDN, as required by SAP)
+      ansible.builtin.hostname:
+        name: "{{ inventory_hostname_short }}"
+
+    - name: Set /etc/hosts
+      register: register_etc_hosts_file
+      ansible.builtin.include_tasks:
+        file: common/set_etc_hosts.yml
+
+    - name: Set /etc/hosts for HA
+      register: register_etc_hosts_file_ha
+      ansible.builtin.include_tasks:
+        file: common/set_etc_hosts_ha.yml
+      when:
+        - (groups["hana_secondary"] is defined and (groups["hana_secondary"] | length>0)) or (groups["nwas_ers"] is defined and (groups["nwas_ers"] | length>0)) or (groups["anydb_secondary"] is defined and (groups["anydb_secondary"] | length>0))
+
+    - name: Set /etc/hosts for Scale-Out
+      register: register_etc_hosts_file_scaleout
+      ansible.builtin.include_tasks:
+        file: common/set_etc_hosts_scaleout.yml
+      when:
+        - (groups["hana_primary"] is defined and (groups["hana_primary"] | length>0)) and (sap_hana_scaleout_active_coordinator is defined or sap_hana_scaleout_active_worker is defined or sap_hana_scaleout_standby is defined)
+
+    - name: Set vars for sap_storage_setup Ansible Role
+      register: register_ansible_vars_storage
+      ansible.builtin.include_tasks:
+        file: common/set_ansible_vars_storage.yml
+
+
+- name: Ansible Task block for provisioning of High Availability resources for AWS EC2 instances
+  delegate_to: localhost
+  run_once: true
+  environment:
+    AWS_ACCESS_KEY_ID: "{{ sap_vm_provision_aws_access_key }}"
+    AWS_SECRET_ACCESS_KEY: "{{ sap_vm_provision_aws_secret_access_key }}"
+    AWS_REGION: "{{ sap_vm_provision_aws_region }}"
+  when:
+    - sap_ha_pacemaker_cluster_aws_region is defined
+    - (groups["hana_secondary"] is defined and (groups["hana_secondary"] | length>0)) or (groups["nwas_ers"] is defined and (groups["nwas_ers"] | length>0)) or (groups["anydb_secondary"] is defined and (groups["anydb_secondary"] | length>0))
+  block:
+
+    - name: Provision High Availability resources for AWS EC2 hosts
+      ansible.builtin.include_tasks:
+        file: "{{ 'platform_' + sap_vm_provision_iac_type }}/{{ sap_vm_provision_iac_platform }}/execute_setup_ha.yml"
+        apply:
+          environment:
+            AWS_ACCESS_KEY_ID: "{{ sap_vm_provision_aws_access_key }}"
+            AWS_SECRET_ACCESS_KEY: "{{ sap_vm_provision_aws_secret_access_key }}"
+            AWS_REGION: "{{ sap_vm_provision_aws_region }}"

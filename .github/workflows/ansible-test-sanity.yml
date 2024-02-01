@@ -1,0 +1,53 @@
+---
+
+# Worflow for ansible-test sanity tests
+
+name: ansible-test sanity of the collection
+
+on:
+  schedule:
+    - cron: '31 12 * * 1'
+
+  workflow_dispatch:
+
+jobs:
+  sanity:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out the code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install test dependencies
+        run: |
+          pip3 install ansible-lint==6.22.1
+          pip3 install ansible-compat==4.1.10
+
+#      - name: Install collection dependencies
+#        run: ansible-galaxy collection install community.general
+
+      - name: Move the collection to the correct location - Create new directory
+        run: mkdir -p /home/runner/.ansible/collections/ansible_collections/community
+
+      - name: Move the collection to the correct location - Move the collection
+        working-directory: /home/runner/
+        run: mv /home/runner/work/community.sap_infrastructure/community.sap_infrastructure /home/runner/.ansible/collections/ansible_collections/community
+
+      - name: Move the collection to the correct location - Rename the directory
+        working-directory: /home/runner/
+        run: mv /home/runner/.ansible/collections/ansible_collections/community/community.sap_infrastructure /home/runner/.ansible/collections/ansible_collections/community/sap_infrastructure
+
+
+      - name: Run sanity tests
+        working-directory: /home/runner/.ansible/collections/ansible_collections/community/sap_infrastructure
+        run: ansible-test sanity
+
+
+      - name: Move the collection to its previous location
+        working-directory: /home/runner/
+        run: mv /home/runner/.ansible/collections/ansible_collections/community/sap_infrastructure /home/runner/work/community.sap_infrastructure/community.sap_infrastructure

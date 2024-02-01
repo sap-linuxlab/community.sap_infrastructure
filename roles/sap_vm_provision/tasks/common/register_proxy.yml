@@ -1,0 +1,64 @@
+---
+
+#### For On-Premise hosts which use Web Forward Proxy instead of SNAT ####
+
+- name: Ansible Task block for Web Forward Proxy setup
+  when:
+    - sap_vm_provision_proxy_web_forward_proxy_ip is defined
+  block:
+
+    - name: Set var for non-interactive login shell on RHEL
+      ansible.builtin.set_fact:
+        non_interactive_login_shell_config_file: /root/.bashrc
+      when: ansible_os_family == "RedHat"
+
+    - name: Set var for non-interactive login shell on SLES
+      ansible.builtin.set_fact:
+        non_interactive_login_shell_config_file: /root/bash.bashrc
+      when: ansible_os_family == "Suse"
+
+    # Linux Pacemaker uses 'https_proxy' or 'HTTPS_PROXY' for proxy, and 'no_proxy' or 'NO_PROXY' for comma-separated exclusions list.
+    # The insecure HTTP env var 'http_proxy' and 'HTTP_PROXY' are not used.
+    # The exclusions list does not allow wildcard.
+    # Example of no_proxy:
+    ## localhost,127.0.0.1,hana-p,hana-s
+    # Examples of failure no_proxy:
+    ## localhost,127.0.0.1,*.domain.com
+    ## localhost,127.0.0.1,.domain.com
+    ## localhost,127.0.0.1,domain.com
+    ## localhost,127.0.0.1,hana-p.domain.com,hana-s.domain.com
+    ## localhost,127.0.0.1,SUBNET_RANGE_BLOCK
+    ## localhost,127.0.0.1,IP_ADDRESS_HANA_PRIMARY,IP_ADDRESS_HANA_SECONDARY
+
+    - name: Web Forward Proxy - Append all short hostnames to string for no_proxy exclusions list
+      ansible.builtin.set_fact:
+        sap_vm_provision_proxy_web_forward_exclusions_dynamic: "{{ groups_merged_list | join(',') }},{{ groups_merged_list | map('extract', hostvars, ['ansible_default_ipv4', 'address']) | join(',') }}"
+
+    - name: Web Forward Proxy - Ensure non-interactive login shell config file exists
+      ansible.builtin.copy:
+        content: ""
+        dest: "{{ non_interactive_login_shell_config_file }}"
+        mode: '0644'
+        force: false
+
+    # For non-interactive login shell, append proxy env var to /root/.bashrc (proxy will not work if using /etc/bashrc or script stored in /etc/profile.d/)
+    - name: Web Forward Proxy - Append Proxy env var to non-interactive login shell config file
+      ansible.builtin.blockinfile:
+        path: "{{ non_interactive_login_shell_config_file }}"
+        marker: "#-- {mark} ANSIBLE MANAGED BLOCK --#" # must have {mark} otherwise block will repeat append on re-run
+        block: |
+          export http_proxy="{{ sap_vm_provision_proxy_web_forward_proxy_ip }}"
+          export https_proxy="{{ sap_vm_provision_proxy_web_forward_proxy_ip }}"
+          export HTTP_PROXY="{{ sap_vm_provision_proxy_web_forward_proxy_ip }}"
+          export HTTPS_PROXY="{{ sap_vm_provision_proxy_web_forward_proxy_ip }}"
+          #export ftp_proxy
+          #export FTP_PROXY
+          export no_proxy="{{ sap_vm_provision_proxy_web_forward_exclusions }},{{ sap_vm_provision_proxy_web_forward_exclusions_dynamic }}"
+          export NO_PROXY="{{ sap_vm_provision_proxy_web_forward_exclusions }},{{ sap_vm_provision_proxy_web_forward_exclusions_dynamic }}"
+
+    - name: Edit /etc/dnf/dnf.conf to add proxy
+      ansible.builtin.blockinfile:
+        path: /etc/dnf/dnf.conf
+        block: |
+          proxy=http://{{ sap_vm_provision_proxy_web_forward_proxy_ip }}
+      when: ansible_os_family == "RedHat"
