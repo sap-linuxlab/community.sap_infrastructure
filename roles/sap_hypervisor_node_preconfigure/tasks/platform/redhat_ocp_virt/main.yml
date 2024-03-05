@@ -81,8 +81,6 @@
 - name: Include install virtctl
   ansible.builtin.include_tasks: "platform/{{ sap_hypervisor_node_platform }}/install-virtctl.yml"
 
-- debug: var=sap_hypervisor_node_preconfigure_setup_worker_nodes
-
 - name: Include setup worker nodes
   ansible.builtin.include_tasks: "platform/{{ sap_hypervisor_node_platform }}/setup-worker-nodes.yml"
   when: sap_hypervisor_node_preconfigure_setup_worker_nodes
