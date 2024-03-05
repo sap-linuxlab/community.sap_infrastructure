@@ -83,7 +83,7 @@
 
 - name: Include setup worker nodes
   ansible.builtin.include_tasks: "platform/{{ sap_hypervisor_node_platform }}/setup-worker-nodes.yml"
-  when: sap_hypervisor_node_preconfigure_setup_workers
+  when: sap_hypervisor_node_preconfigure_setup_worker_nodes
 
 # How to wait for node to be scheduleable? (NodeSchedulable)
 - name: Wait for all k8s nodes to be ready
