@@ -28,6 +28,9 @@
     network:
       assign_public_ip: false
       source_dest_check: "{{ not lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan][scaleout_origin_host_spec | default(inventory_hostname)].disable_ip_anti_spoofing }}" # Disable the Anti IP Spoofing by setting Source/Destination Check to false
+    access_key: "{{ sap_vm_provision_aws_access_key }}"
+    secret_key: "{{ sap_vm_provision_aws_secret_access_key }}"
+  no_log: true
 
 - name: Set fact for storage volume letters calculations (max 25 volumes)
   ansible.builtin.set_fact:
@@ -38,7 +41,10 @@
     filters:
       "tag:Name": "{{ inventory_hostname }}"
       "instance-state-name": ["running"]
+    access_key: "{{ sap_vm_provision_aws_access_key }}"
+    secret_key: "{{ sap_vm_provision_aws_secret_access_key }}"
   register: instance_info
+  no_log: true
 
 - name: Set fact for available storage volume device names
   ansible.builtin.set_fact:
@@ -95,6 +101,8 @@
     volume_size: "{{ vol_item.size }}"
     device_name: "{{ vol_item.device }}"
     delete_on_termination: true
+    access_key: "{{ sap_vm_provision_aws_access_key }}"
+    secret_key: "{{ sap_vm_provision_aws_secret_access_key }}"
   loop: "{{ filesystem_volume_map }}"
   loop_control:
     loop_var: vol_item
@@ -104,12 +112,16 @@
     - vol_item.fstype is defined
     - vol_item.size > 0
   register: volume_provisioning
+  no_log: true
 
 - name: Read AWS EC2 instance information
   amazon.aws.ec2_instance_info:
     filters:
       "tag:Name": "{{ inventory_hostname }}"
+    access_key: "{{ sap_vm_provision_aws_access_key }}"
+    secret_key: "{{ sap_vm_provision_aws_secret_access_key }}"
   register: instance_info
+  no_log: true
 
 - name: Add host facts
   ansible.builtin.set_fact:
@@ -118,7 +130,7 @@
     instance_info: "{{ instance_info }}"
   delegate_to: "{{ inventory_hostname }}"
   delegate_facts: true
-
+  no_log: true
 
 - name: Create fact for delegate host IP
   ansible.builtin.set_fact:

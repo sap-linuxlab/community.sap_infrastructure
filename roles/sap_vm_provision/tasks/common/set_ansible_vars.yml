@@ -10,6 +10,7 @@
     sap_id_user_password: "{{ sap_id_user_password }}"
     sap_software_download_directory: "{{ sap_software_download_directory }}"
     sap_install_media_detect_source_directory: "{{ sap_software_download_directory }}"
+  no_log: true  # Hide SAP S-User password
 
 - name: Set facts for all hosts - use facts from localhost - Ansible only
   ansible.builtin.set_fact:
@@ -52,6 +53,7 @@
   when:
     - sap_ha_pacemaker_cluster_aws_region is defined
     - sap_vm_provision_iac_platform == "aws_ec2_vs"
+  no_log: true  # Hide AWS Credentials
 
 # - name: Set facts for all hosts - use facts from localhost - HA/DR - GCP
 #   ansible.builtin.set_fact:
