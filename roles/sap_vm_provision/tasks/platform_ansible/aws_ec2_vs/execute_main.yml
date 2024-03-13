@@ -2,8 +2,8 @@
 
 - name: Ansible Task block for looped provisioning of AWS EC2 instances
   environment:
-    AWS_ACCESS_KEY_ID: "{{ sap_vm_provision_aws_access_key }}"
-    AWS_SECRET_ACCESS_KEY: "{{ sap_vm_provision_aws_secret_access_key }}"
+    # AWS_ACCESS_KEY_ID: "{{ sap_vm_provision_aws_access_key }}"
+    # AWS_SECRET_ACCESS_KEY: "{{ sap_vm_provision_aws_secret_access_key }}"
     AWS_REGION: "{{ sap_vm_provision_aws_region }}"
   block:
 
@@ -13,6 +13,9 @@
         owners: ["aws-marketplace"]
         filters:
           name: "{{ lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_os_image_dictionary')[sap_vm_provision_aws_ec2_vs_host_os_image] }}"
+        access_key: "{{ sap_vm_provision_aws_access_key }}"
+        secret_key: "{{ sap_vm_provision_aws_secret_access_key }}"
+      no_log: true
 
     - name: Set fact to hold loop variables from include_tasks
       ansible.builtin.set_fact:
@@ -24,8 +27,8 @@
         file: "{{ 'platform_' + sap_vm_provision_iac_type }}/{{ sap_vm_provision_iac_platform }}/execute_provision.yml"
         apply:
           environment:
-            AWS_ACCESS_KEY_ID: "{{ sap_vm_provision_aws_access_key }}"
-            AWS_SECRET_ACCESS_KEY: "{{ sap_vm_provision_aws_secret_access_key }}"
+            # AWS_ACCESS_KEY_ID: "{{ sap_vm_provision_aws_access_key }}"
+            # AWS_SECRET_ACCESS_KEY: "{{ sap_vm_provision_aws_secret_access_key }}"
             AWS_REGION: "{{ sap_vm_provision_aws_region }}"
 
     - name: Add hosts provisioned to the Ansible Inventory
@@ -41,7 +44,7 @@
       loop_control:
         label: "{{ add_item[0].host_node }}"
         loop_var: add_item
-
+      no_log: true
 
 # Cannot override any variables from extravars input, see https://docs.ansible.com/ansible/latest/playbook_guide/playbooks_variables.html#understanding-variable-precedence
 # Ensure no default value exists for any prompted variable before execution of Ansible Playbook
@@ -50,7 +53,10 @@
       amazon.aws.ec2_vpc_route_table_info:
         filters:
           association.subnet-id: "{{ sap_vm_provision_aws_vpc_subnet_id }}"
+        access_key: "{{ sap_vm_provision_aws_access_key }}"
+        secret_key: "{{ sap_vm_provision_aws_secret_access_key }}"
       register: aws_vpc_subnet_rt_info
+      no_log: true
 
     - name: Set fact to hold all inventory hosts in all groups
       ansible.builtin.set_fact:
@@ -71,6 +77,10 @@
         ttl: 7200
         value: "{{ hostvars[inventory_hostname].ansible_host }}"
         wait: true
+        overwrite: true  # Provides idempotency
+        access_key: "{{ sap_vm_provision_aws_access_key }}"
+        secret_key: "{{ sap_vm_provision_aws_secret_access_key }}"
+      no_log: true
 
   #  - ansible.builtin.debug:
   #      var: register_add_hosts.results
@@ -120,8 +130,8 @@
   delegate_to: localhost
   run_once: true
   environment:
-    AWS_ACCESS_KEY_ID: "{{ sap_vm_provision_aws_access_key }}"
-    AWS_SECRET_ACCESS_KEY: "{{ sap_vm_provision_aws_secret_access_key }}"
+    # AWS_ACCESS_KEY_ID: "{{ sap_vm_provision_aws_access_key }}"
+    # AWS_SECRET_ACCESS_KEY: "{{ sap_vm_provision_aws_secret_access_key }}"
     AWS_REGION: "{{ sap_vm_provision_aws_region }}"
   when:
     - sap_ha_pacemaker_cluster_aws_region is defined
@@ -133,6 +143,6 @@
         file: "{{ 'platform_' + sap_vm_provision_iac_type }}/{{ sap_vm_provision_iac_platform }}/execute_setup_ha.yml"
         apply:
           environment:
-            AWS_ACCESS_KEY_ID: "{{ sap_vm_provision_aws_access_key }}"
-            AWS_SECRET_ACCESS_KEY: "{{ sap_vm_provision_aws_secret_access_key }}"
+            # AWS_ACCESS_KEY_ID: "{{ sap_vm_provision_aws_access_key }}"
+            # AWS_SECRET_ACCESS_KEY: "{{ sap_vm_provision_aws_secret_access_key }}"
             AWS_REGION: "{{ sap_vm_provision_aws_region }}"

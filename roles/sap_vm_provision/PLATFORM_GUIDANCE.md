@@ -148,6 +148,56 @@ aws iam attach-group-policy --group-name 'ag-sap-automation' --policy-arn arn:aw
 aws iam attach-group-policy --group-name 'ag-sap-automation' --policy-arn arn:aws:iam::aws:policy/AmazonRoute53FullAccess
 ```
 
+It is recommended to create new AWS IAM Policy with detailed actions to improve security.
+```json
+{
+	"Version": "2012-10-17",
+	"Statement": [
+		{
+			"Sid": "VisualEditor0",
+			"Effect": "Allow",
+			"Action": [
+				"ec2:DescribeImages",
+				"ec2:DescribeInstances",
+				"ec2:DescribeTags",
+				"ec2:DescribeInstanceAttribute",
+				"ec2:DescribeSubnets",
+				"ec2:DescribeSecurityGroups",
+				"ec2:RunInstances",
+				"ec2:CreateTags",
+				"ec2:DescribeInstanceStatus",
+				"ec2:ModifyInstanceAttribute",
+				"ec2:DescribeRouteTables",
+				"route53:ListHostedZones",
+				"route53:ListResourceRecordSets",
+				"route53:ChangeResourceRecordSets",
+				"route53:GetChange",
+				"ec2:DescribeVolumes",
+				"ec2:CreateVolume",
+				"ec2:DeleteVolume",
+				"ec2:AttachVolume",
+				"ec2:DetachVolume",
+				"ec2:TerminateInstances",
+				"ec2:CreateRoute",
+				"iam:GetRole",
+				"iam:CreateRole",
+				"iam:ListInstanceProfilesForRole",
+				"iam:CreateInstanceProfile",
+				"iam:AddRoleToInstanceProfile",
+				"iam:ListAttachedRolePolicies",
+				"iam:ListRoleTags",
+				"iam:PutRolePolicy",
+				"iam:GetInstanceProfile",
+				"iam:PassRole",
+				"ec2:AssociateIamInstanceProfile",
+				"ec2:ReplaceRoute"
+			],
+			"Resource": "*"
+		}
+	]
+}
+```
+
 </details>
 
 <details>
