@@ -37,6 +37,7 @@ jobs:
           pip3 install ansible-compat==3.0.2
           pip3 install ansible-core==2.14.5
           pip3 install ansible-lint==6.8.6
+          pip3 install jmespath==1.0.1
 
       - name: Run ansible-lint
         working-directory: /home/runner/work/community.sap_infrastructure/community.sap_infrastructure/roles/sap_hypervisor_node_preconfigure
