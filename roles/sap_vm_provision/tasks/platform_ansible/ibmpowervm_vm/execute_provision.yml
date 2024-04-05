@@ -1,6 +1,11 @@
 ---
 # The tasks in this file are executed in a loop over the defined hosts
 
+- name: Ensure short hostname is not longer than 13 characters (see SAP Note 611361)
+  ansible.builtin.assert:
+    that: (inventory_hostname | length | int) <= (13 | int)
+    fail_msg: "FAIL: The length of the hostname is {{ inventory_hostname | length | int }} but must be less or equal to 13 characters!"
+
 # NOTE: Pre-requisite to create IBM PowerVC Storage Templates (OpenStack Cinder Volume Type), which is not possible from Ansible Collection for Openstack
 # https://www.ibm.com/docs/en/powervc/1.4.3?topic=apis-supported-volume-type-extra-specs
 ### Show IBM PowerVC Storage list
