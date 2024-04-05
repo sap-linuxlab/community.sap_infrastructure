@@ -1,6 +1,12 @@
 ---
 # The tasks in this file are executed in a loop over the defined hosts
 
+- name: Ensure short hostname is not longer than 13 characters (see SAP Note 611361)
+  ansible.builtin.assert:
+    that: (inventory_hostname | length | int) <= (13 | int)
+    fail_msg: "FAIL: The length of the hostname is {{ inventory_hostname | length | int }} but must be less or equal to 13 characters!"
+
+
 # Use vmware.vmware_rest Ansible Collection for VMware vCenter REST API, for VMware vSphere 7.0.2+
 # Does not use community.vmware Ansible Collection for legacy pyvmomi Python Package for VMware vCenter SOAP API
 
