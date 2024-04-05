@@ -1,0 +1,70 @@
+---
+
+# This sample Ansible Playbook is not a full example,
+# which would pass additional variables onto other
+# Ansible Roles such as sap_storage_setup.
+# It is only to test the provisioning process
+# of a small Virtual Machine.
+
+####
+# Infrastructure Provisioning selection
+####
+
+sap_vm_provision_iac_type: "ansible"  # ansible , ansible_to_terraform , existing_hosts
+sap_vm_provision_iac_platform: "aws_ec2_vs"  # aws_ec2_vs , gcp_ce_vm , ibmcloud_vs , ibmcloud_powervs , msazure_vm , ibmpowervm_vm , kubevirt_vm , ovirt_vm , vmware_vm
+
+sap_vm_provision_host_specification_plan: "test_plan_16gb"
+sap_vm_provision_dns_root_domain: "poc.cloud"
+
+
+####
+# Infrastructure Provisioning selection
+# AWS
+#
+# Only for use when 'aws_ec2_vs' is value provided for variable sap_vm_provision_iac_platform
+####
+
+sap_vm_provision_aws_access_key: "ENTER_STRING_VALUE_HERE"
+sap_vm_provision_aws_secret_access_key: "ENTER_STRING_VALUE_HERE"
+sap_vm_provision_aws_region: "{{ sap_vm_provision_aws_vpc_availability_zone[:-1] }}"
+sap_vm_provision_aws_vpc_availability_zone: "eu-west-2c"
+sap_vm_provision_aws_vpc_subnet_create_boolean: "{{ true | default(false) if aws_vpc_subnet_id == 'new' else false }}"
+sap_vm_provision_aws_vpc_subnet_id: "ENTER_STRING_VALUE_HERE" # if ansible_to_terraform, use "new"
+sap_vm_provision_aws_ec2_vs_host_os_image: "ENTER_STRING_VALUE_HERE"
+sap_vm_provision_bastion_user: "ENTER_STRING_VALUE_HERE"
+sap_vm_provision_bastion_ssh_port: "ENTER_STRING_VALUE_HERE"
+
+# Only for use when 'ansible' is value provided for variable sap_vm_provision_iac_type
+####
+sap_vm_provision_bastion_public_ip: "ENTER_STRING_VALUE_HERE"
+sap_vm_provision_ssh_bastion_private_key_file_path: "./bastion_rsa"
+sap_vm_provision_ssh_host_private_key_file_path: "./hosts_rsa"
+sap_vm_provision_aws_key_pair_name_ssh_host_public_key: "ENTER_STRING_VALUE_HERE"
+sap_vm_provision_aws_vpc_sg_names: "ENTER_STRING_VALUE_HERE"
+
+
+####
+# Infrastructure Definitions
+# AWS
+####
+
+sap_vm_provision_aws_ec2_vs_host_os_image_dictionary:
+  rhel-8-6: "*RHEL-8.6*_HVM*x86_64*"
+  rhel-8-6-sap-ha: "*RHEL-SAP-8.6.0*"
+  sles-15-4: "*suse-sles-15-sp4-v202*-hvm-ssd-x86_64*"
+  sles-15-4-sap-ha: "*suse-sles-sap-15-sp4-v202*-hvm-ssd-x86_64*"
+
+sap_vm_provision_aws_ec2_vs_host_specifications_dictionary:
+  test_plan_16gb:
+    test-ec2-vs: # Hostname, must be 13 characters or less
+      sap_host_type: hana_primary # hana_primary, hana_secondary, nwas_ascs, nwas_ers, nwas_pas, nwas_aas
+      virtual_machine_profile: r7i.large
+      disable_ip_anti_spoofing: true
+      storage_definition:
+        - name: hana_data
+          mountpoint: /hana/data
+          #disk_count: 1                 # default: 1, if more then then LVM logical volume will be striped across the defined disks
+          disk_size: 384                 # size in GB, integer
+          #disk_type: gp3                # default: gp3, for AWS EBS disk type
+          #disk_iops:                    # default: null, for AWS EBS with custom IOPS
+          filesystem_type: xfs           # default: xfs

@@ -1,0 +1,39 @@
+---
+
+# This sample Ansible Playbook is not a full example,
+# which would pass additional variables onto other
+# Ansible Roles such as sap_storage_setup.
+# It is only to test the provisioning process
+# of a small Virtual Machine.
+
+- name: Ansible Play to include_vars
+  hosts: all
+  become: true
+  pre_tasks:
+
+    # Alternative to executing ansible-playbook with -e for Ansible Extravars file
+    - name: Include sample variables for AWS EC2
+      ansible.builtin.include_vars: ./vars/sample-variables-sap-vm-provision-aws-ec2-vs.yml
+
+
+- name: Ansible Play to create dynamic inventory group for provisioning
+  hosts: localhost
+  gather_facts: false
+  tasks:
+
+    - name: Create dynamic inventory group for Ansible Role sap_vm_provision
+      ansible.builtin.add_host:
+        name: "{{ item }}"
+        group: sap_vm_provision_target_inventory_group
+      loop: "{{ sap_vm_provision_ibmcloud_vs_host_specifications_dictionary[sap_vm_provision_host_specification_plan].keys() }}"
+
+
+- name: Ansible Play to provision hosts for SAP
+  hosts: sap_vm_provision_target_inventory_group # Ansible Play target hosts pattern, use Inventory Group created by previous Ansible Task (add_host)
+  gather_facts: false
+  tasks:
+
+    - name: Execute Ansible Role sap_vm_provision
+      ansible.builtin.include_role:
+        name: community.sap_infrastructure.sap_vm_provision
+      when: sap_vm_provision_iac_type == "ansible" or sap_vm_provision_iac_type == "ansible_to_terraform"
