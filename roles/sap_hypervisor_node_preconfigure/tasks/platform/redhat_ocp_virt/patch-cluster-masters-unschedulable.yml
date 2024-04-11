@@ -4,7 +4,7 @@
     definition:
       apiVersion: config.openshift.io/v1
       kind: Scheduler
-#      metadata:
-#        name: cluster
+      metadata:
+        name: cluster
       spec:
         mastersSchedulable: false
