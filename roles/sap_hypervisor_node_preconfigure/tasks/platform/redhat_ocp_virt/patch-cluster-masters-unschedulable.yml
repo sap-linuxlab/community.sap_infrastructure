@@ -1,3 +1,4 @@
+---
 - name: Set cluster master nodes unscheduable
   kubernetes.core.k8s:
     state: patched
