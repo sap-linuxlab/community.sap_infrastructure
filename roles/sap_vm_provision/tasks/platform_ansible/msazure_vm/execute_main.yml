@@ -24,6 +24,16 @@
       ansible.builtin.set_fact:
         __sap_vm_provision_msazure_key_pair_name_ssh_host_public_key_value: "{{ (__sap_vm_provision_msazure_key_pair_name_ssh_host_public_keys.ssh_keys | selectattr('name', '==', sap_vm_provision_msazure_key_pair_name_ssh_host_public_key))[0].public_key }}"
 
+    - name: Get Private DNS Zone Virtual Network Links
+      azure.azcollection.azure_rm_privatednszonelink_info:
+        resource_group: "{{ sap_vm_provision_msazure_resource_group_name }}"
+        zone_name: "{{ sap_vm_provision_dns_root_domain }}"
+      register: __sap_vm_provision_msazure_private_dns_virtual_network_links
+
+    - name: Set boolean fact for Auto Registration of DNS Records from Private DNS Zone Virtual Network Link
+      ansible.builtin.set_fact:
+        __sap_vm_provision_msazure_private_dns_auto_register_records: "{{ (__sap_vm_provision_msazure_private_dns_virtual_network_links.virtualnetworklinks | selectattr('id', 'search', sap_vm_provision_dns_root_domain))[0].registration_enabled }}"
+
     - name: Provision hosts to MS Azure
       register: register_provisioned_hosts
       ansible.builtin.include_tasks:
@@ -72,6 +82,7 @@
         record_type: A
         records:
           - entry: "{{ hostvars[inventory_hostname].ansible_host }}"
+      when: not __sap_vm_provision_msazure_private_dns_auto_register_records
 
   #  - ansible.builtin.debug:
   #      var: register_add_hosts.results
