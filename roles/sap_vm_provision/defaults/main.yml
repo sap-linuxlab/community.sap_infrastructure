@@ -158,6 +158,7 @@ sap_vm_provision_msazure_location_region: ""
 sap_vm_provision_msazure_location_availability_zone_no: 1
 sap_vm_provision_msazure_vnet_name: ""
 sap_vm_provision_msazure_vnet_subnet_name: ""
+sap_vm_provision_msazure_key_pair_name_ssh_host_public_key: ""
 
 
 ####
