@@ -55,6 +55,14 @@
       ibm.cloudcollection.ibm_resource_group_info:
         name: "{{ sap_vm_provision_ibmcloud_resource_group_name }}"
 
+    # DNS may exist in separate Resource Group
+    # Use empty string var (or default false if undefined) to evaluate to false boolean
+    - name: Identify Resource Group info for Private DNS
+      register: register_ibmcloud_resource_group_dns
+      ibm.cloudcollection.ibm_resource_group_info:
+        name: "{{ sap_vm_provision_ibmcloud_private_dns_resource_group_name }}"
+      when: (sap_vm_provision_ibmcloud_private_dns_resource_group_name | default(false))
+
     - name: Identify IBM Power Infrastructure Workspace
       register: register_ibmcloud_power_iaas_workspace_service_instance
       ibm.cloudcollection.ibm_resource_instance_info:
@@ -86,10 +94,12 @@
       ibm.cloudcollection.ibm_pi_catalog_images_info:
         pi_cloud_instance_id: "{{ register_ibmcloud_power_iaas_workspace_service_instance.resource.guid }}" # must be GUID, not CRN
 
+    # DNS may exist in separate Resource Group
+    # If previous identification task is skipped, use resource group else use the resource group defined for the Private DNS
     - name: Identify Private DNS instance
       register: register_ibmcloud_pdns_service_instance
       ibm.cloudcollection.ibm_resource_instance_info:
-        resource_group_id: "{{ register_ibmcloud_resource_group.resource.id }}"
+        resource_group_id: "{{ register_ibmcloud_resource_group.resource.id if register_ibmcloud_resource_group_dns is skipped else register_ibmcloud_resource_group_dns.resource.id }}"
         location: global
         service: dns-svcs
         name: "{{ sap_vm_provision_ibmcloud_private_dns_instance_name }}"

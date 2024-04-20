@@ -26,7 +26,8 @@
 
     - name: Get Private DNS Zone Virtual Network Links
       azure.azcollection.azure_rm_privatednszonelink_info:
-        resource_group: "{{ sap_vm_provision_msazure_resource_group_name }}"
+        # DNS may exist in separate Resource Group. Use empty string var (or default false if undefined) to evaluate to false boolean, and use Python or logic operator
+        resource_group: "{{ (sap_vm_provision_msazure_private_dns_resource_group_name | default(false)) or sap_vm_provision_msazure_resource_group_name }}"
         zone_name: "{{ sap_vm_provision_dns_root_domain }}"
       register: __sap_vm_provision_msazure_private_dns_virtual_network_links
 
@@ -76,7 +77,8 @@
     # Create "A" (IPv4 Address) Resource Record to map IPv4 address as hostname / subdomain of the root domain name
     - name: Ansible MS Azure Private DNS Records for hosts
       azure.azcollection.azure_rm_privatednsrecordset:
-        resource_group: "{{ sap_vm_provision_msazure_resource_group_name }}"
+        # DNS may exist in separate Resource Group. Use empty string var (or default false if undefined) to evaluate to false boolean, and use Python or logic operator
+        resource_group: "{{ (sap_vm_provision_msazure_private_dns_resource_group_name | default(false)) or sap_vm_provision_msazure_resource_group_name }}"
         zone_name: "{{ hostvars[inventory_hostname].sap_vm_provision_dns_root_domain }}"
         relative_name: "{{ inventory_hostname }}"
         record_type: A
