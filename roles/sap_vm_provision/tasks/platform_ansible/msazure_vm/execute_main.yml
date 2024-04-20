@@ -13,6 +13,28 @@
       ansible.builtin.set_fact:
         register_provisioned_host_all: []
 
+    # Ansible Module name parameter, requires resource_group parameter
+    # We cannot assume Resource Group if the SSH Public Key is managed by Administrators
+    # Therefore use without any parameter to retrieve list of all SSH Public Keys and filter in Ansible
+    - name: Get all SSH Public Keys in MS Azure
+      azure.azcollection.azure_rm_sshpublickey_info:
+      register: __sap_vm_provision_msazure_key_pair_name_ssh_host_public_keys
+
+    - name: Set fact for selected SSH Public Key in MS Azure
+      ansible.builtin.set_fact:
+        __sap_vm_provision_msazure_key_pair_name_ssh_host_public_key_value: "{{ (__sap_vm_provision_msazure_key_pair_name_ssh_host_public_keys.ssh_keys | selectattr('name', '==', sap_vm_provision_msazure_key_pair_name_ssh_host_public_key))[0].public_key }}"
+
+    - name: Get Private DNS Zone Virtual Network Links
+      azure.azcollection.azure_rm_privatednszonelink_info:
+        # DNS may exist in separate Resource Group. Use empty string var (or default false if undefined) to evaluate to false boolean, and use Python or logic operator
+        resource_group: "{{ (sap_vm_provision_msazure_private_dns_resource_group_name | default(false)) or sap_vm_provision_msazure_resource_group_name }}"
+        zone_name: "{{ sap_vm_provision_dns_root_domain }}"
+      register: __sap_vm_provision_msazure_private_dns_virtual_network_links
+
+    - name: Set boolean fact for Auto Registration of DNS Records from Private DNS Zone Virtual Network Link
+      ansible.builtin.set_fact:
+        __sap_vm_provision_msazure_private_dns_auto_register_records: "{{ (__sap_vm_provision_msazure_private_dns_virtual_network_links.virtualnetworklinks | selectattr('virtual_network.id', 'search', sap_vm_provision_msazure_vnet_name))[0].registration_enabled }}"
+
     - name: Provision hosts to MS Azure
       register: register_provisioned_hosts
       ansible.builtin.include_tasks:
@@ -30,7 +52,7 @@
       ansible.builtin.add_host:
         name: "{{ add_item[0].host_node }}"
         groups: "{{ add_item[0].sap_system_type + '_' if (add_item[0].sap_system_type != '') }}{{ add_item[0].sap_host_type }}"
-        ansible_host: "{{ add_item[0].ansible_facts.azure_vm.properties.networkProfile.networkInterfaces[0].properties.ipConfigurations[0].properties.privateIPAddress }}"
+        ansible_host: "{{ add_item[0].ansible_facts.azure_vm.network_profile.network_interfaces[0].properties.ip_configurations[0].private_ip_address }}"
         ansible_user: "root"
         ansible_ssh_private_key_file: "{{ sap_vm_provision_ssh_host_private_key_file_path }}"
         ansible_ssh_common_args: -o ConnectTimeout=180 -o ControlMaster=auto -o ControlPersist=3600s -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ForwardX11=no -o ProxyCommand='ssh -W %h:%p {{ sap_vm_provision_bastion_user }}@{{ sap_vm_provision_bastion_public_ip }} -p {{ sap_vm_provision_bastion_ssh_port }} -i {{ sap_vm_provision_ssh_bastion_private_key_file_path }} -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null'
@@ -55,12 +77,14 @@
     # Create "A" (IPv4 Address) Resource Record to map IPv4 address as hostname / subdomain of the root domain name
     - name: Ansible MS Azure Private DNS Records for hosts
       azure.azcollection.azure_rm_privatednsrecordset:
-        resource_group: "{{ sap_vm_provision_msazure_resource_group_name }}"
+        # DNS may exist in separate Resource Group. Use empty string var (or default false if undefined) to evaluate to false boolean, and use Python or logic operator
+        resource_group: "{{ (sap_vm_provision_msazure_private_dns_resource_group_name | default(false)) or sap_vm_provision_msazure_resource_group_name }}"
         zone_name: "{{ hostvars[inventory_hostname].sap_vm_provision_dns_root_domain }}"
         relative_name: "{{ inventory_hostname }}"
         record_type: A
         records:
           - entry: "{{ hostvars[inventory_hostname].ansible_host }}"
+      when: not __sap_vm_provision_msazure_private_dns_auto_register_records
 
   #  - ansible.builtin.debug:
   #      var: register_add_hosts.results
