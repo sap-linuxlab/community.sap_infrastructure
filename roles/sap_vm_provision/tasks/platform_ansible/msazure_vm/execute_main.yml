@@ -32,7 +32,7 @@
 
     - name: Set boolean fact for Auto Registration of DNS Records from Private DNS Zone Virtual Network Link
       ansible.builtin.set_fact:
-        __sap_vm_provision_msazure_private_dns_auto_register_records: "{{ (__sap_vm_provision_msazure_private_dns_virtual_network_links.virtualnetworklinks | selectattr('id', 'search', sap_vm_provision_dns_root_domain))[0].registration_enabled }}"
+        __sap_vm_provision_msazure_private_dns_auto_register_records: "{{ (__sap_vm_provision_msazure_private_dns_virtual_network_links.virtualnetworklinks | selectattr('virtual_network.id', 'search', sap_vm_provision_msazure_vnet_name))[0].registration_enabled }}"
 
     - name: Provision hosts to MS Azure
       register: register_provisioned_hosts
