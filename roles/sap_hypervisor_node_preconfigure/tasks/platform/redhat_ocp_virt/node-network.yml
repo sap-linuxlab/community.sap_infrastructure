@@ -19,7 +19,7 @@
         desiredState:
           interfaces:
             - "{{ __sap_hypervisor_node_preconfigure_register_worker_network }}"
-  when: __sap_hypervisor_node_preconfigure_register_worker_network.type == 'linux-bridge'
+  when: __sap_hypervisor_node_preconfigure_register_worker_network.type == 'linux-bridge' or __sap_hypervisor_node_preconfigure_register_worker_network.type == 'ethernet'
 
 - name: "Create NetworkAttachmentDefinition {{ __sap_hypervisor_node_preconfigure_register_worker_network.name }}"
   kubernetes.core.k8s:
