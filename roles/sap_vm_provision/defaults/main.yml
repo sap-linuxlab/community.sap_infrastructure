@@ -478,7 +478,33 @@ sap_vm_provision_kubevirt_vm_host_specifications_dictionary:
           mountpoint: /data0
           disk_count: 1                  # default: 1
           disk_size: 512                 # size in GB, integer
-          disk_type: nas                 # KubeVirt Storage Clas
+          disk_type: nas                 # KubeVirt Storage Class
+
+# Red Hat OCPv
+sap_vm_provision_redhat_ocp_virt_host_specifications_dictionary:
+  example_host_specification_plan:
+    lu0567: # Hostname, must be 13 characters or less
+      # SMT-2 (i.e. 2 CPU Threads per CPU Core) is default for Intel CPU Hyper-Threading, optionally can be altered to SMT-1
+      kubevirt_vm_cpu_smt: 2
+      kubevirt_vm_cpu_cores: 1
+      kubevirt_vm_memory_gib: 24
+      #sap_system_type: project_dev # project_dev, project_tst, project_prd
+      sap_host_type: hana_primary # hana_primary, hana_secondary, anydb_primary, anydb_secondary, nwas_ascs, nwas_ers, nwas_pas, nwas_aas
+      storage_definition:
+        - name: hana
+          mountpoint: /hana
+          disk_count: 1                  # default: 1
+          disk_size: 512                 # size in GB, integer
+          disk_type: nas                 # KubeVirt Storage Class
+
+    lu0569: # Hostname, must be 13 characters or less
+      # SMT-2 (i.e. 2 CPU Threads per CPU Core) is default for Intel CPU Hyper-Threading, optionally can be altered to SMT-1
+      kubevirt_vm_cpu_smt: 2
+      kubevirt_vm_cpu_cores: 1
+      kubevirt_vm_memory_gib: 24
+      #sap_system_type: project_dev # project_dev, project_tst, project_prd
+      sap_host_type: hana_primary # hana_primary, hana_secondary, anydb_primary, anydb_secondary, nwas_ascs, nwas_ers, nwas_pas, nwas_aas
+      storage_definition: []
 
 
 # OVirt
