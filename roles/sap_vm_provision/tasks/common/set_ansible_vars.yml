@@ -6,10 +6,10 @@
     sap_vm_provision_host_specification_plan: "{{ sap_vm_provision_host_specification_plan }}"
     sap_vm_provision_nfs_mount_point: "{{ sap_vm_provision_nfs_mount_point | default('') }}"
     sap_vm_provision_nfs_mount_point_separate_sap_transport_dir: "{{ sap_vm_provision_nfs_mount_point_separate_sap_transport_dir | default('') }}"
-    sap_id_user: "{{ sap_id_user }}"
-    sap_id_user_password: "{{ sap_id_user_password }}"
-    sap_software_download_directory: "{{ sap_software_download_directory }}"
-    sap_install_media_detect_source_directory: "{{ sap_software_download_directory }}"
+    sap_id_user: "{{ sap_id_user | default('') }}"
+    sap_id_user_password: "{{ sap_id_user_password | default('') }}"
+    sap_software_download_directory: "{{ sap_software_download_directory | default('/software') }}"
+    sap_install_media_detect_source_directory: "{{ sap_software_download_directory | default('/software') }}"
   no_log: "{{ __sap_vm_provision_no_log }}"
 
 - name: Set facts for all hosts - use facts from localhost - Ansible only
