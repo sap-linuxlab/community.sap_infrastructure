@@ -480,31 +480,120 @@ sap_vm_provision_kubevirt_vm_host_specifications_dictionary:
           disk_size: 512                 # size in GB, integer
           disk_type: nas                 # KubeVirt Storage Class
 
+
+#          interfaces:
+#            - bridge: {}
+#              model: virtio
+#              name: bridgeif
+#
+#
+#      networks:
+#        - name: bridgeif
+#          multus:
+#            networkName: sapbridge-network-definition
+
+
 # Red Hat OCPv
 sap_vm_provision_redhat_ocp_virt_host_specifications_dictionary:
   example_host_specification_plan:
     lu0567: # Hostname, must be 13 characters or less
       # SMT-2 (i.e. 2 CPU Threads per CPU Core) is default for Intel CPU Hyper-Threading, optionally can be altered to SMT-1
       kubevirt_vm_cpu_smt: 2
-      kubevirt_vm_cpu_cores: 1
+      kubevirt_vm_cpu_cores: 5
       kubevirt_vm_memory_gib: 24
       #sap_system_type: project_dev # project_dev, project_tst, project_prd
       sap_host_type: hana_primary # hana_primary, hana_secondary, anydb_primary, anydb_secondary, nwas_ascs, nwas_ers, nwas_pas, nwas_aas
+#      os_image_pvc: rhel-9.2.0
+      os_image_pvc_namespace: openshift-virtualization-os-images
+      os_image_url: "docker://registry.redhat.io/rhel8/rhel-guest-image:8.9.0"
+      network_definition:
+        - name: sapbridge
+          type: bridge
+          networkName: sapbridge-network-definition
+          model: virtio
+#        - name: banana
+#          type: sriov
+#          model: virtio
+#          networkName: test
+
       storage_definition:
-        - name: hana
-          mountpoint: /hana
-          disk_count: 1                  # default: 1
-          disk_size: 512                 # size in GB, integer
-          disk_type: nas                 # KubeVirt Storage Class
+         - name: hana
+           mountpoint: /hana
+           disk_count: 1                  # default: 1
+           disk_size: 2048                 # size in GB, integer
+           disk_type: nas                 # KubeVirt Storage Class
+      cloudinit:
+          userData: |-
+            #cloud-config
+            timezone: Europe/Berlin
+            hostname: "{{ scaleout_origin_host_spec }}"
+            user: {{ sap_vm_provision_kubevirt_os_user if sap_vm_provision_kubevirt_os_user is defined }}
+            password: {{ sap_vm_provision_kubevirt_os_user_password if sap_vm_provision_kubevirt_os_user_password is defined }}
+            chpasswd:
+              expire: false
+            ssh_authorized_keys:
+              - "{{ lookup('ansible.builtin.file', sap_vm_provision_ssh_host_public_key_file_path ) }}"
+          networkData: |-
+            network:
+              version: 1
+              config:
+                - type: physical
+                  name: eth0
+                  subnets:
+                    - type: static
+                      address: 10.76.34.72/23
+                      gateway: 10.76.34.1
+                - type: nameserver
+                  address:
+                    - 10.17.122.10
+                    - 10.17.121.30
+                  search:
+                    - wdf.sap.corp
+
 
     lu0569: # Hostname, must be 13 characters or less
       # SMT-2 (i.e. 2 CPU Threads per CPU Core) is default for Intel CPU Hyper-Threading, optionally can be altered to SMT-1
       kubevirt_vm_cpu_smt: 2
-      kubevirt_vm_cpu_cores: 1
-      kubevirt_vm_memory_gib: 24
+      kubevirt_vm_cpu_cores: 12
+      kubevirt_vm_memory_gib: 1024
       #sap_system_type: project_dev # project_dev, project_tst, project_prd
       sap_host_type: hana_primary # hana_primary, hana_secondary, anydb_primary, anydb_secondary, nwas_ascs, nwas_ers, nwas_pas, nwas_aas
-      storage_definition: []
+      os_image: rhel-9.2.0
+      storage_definition:
+         - name: hana
+           mountpoint: /hana
+           disk_count: 1                  # default: 1
+           disk_size: 2048                 # size in GB, integer
+           disk_type: nas                 # KubeVirt Storage Class
+      cloudinit:
+          userData: |-
+            #cloud-config
+            timezone: Europe/Berlin
+            hostname: "{{ scaleout_origin_host_spec }}"
+            user: {{ sap_vm_provision_kubevirt_os_user if sap_vm_provision_kubevirt_os_user is defined }}
+            password: {{ sap_vm_provision_kubevirt_os_user_password if sap_vm_provision_kubevirt_os_user_password is defined }}
+            chpasswd:
+              expire: false
+            ssh_authorized_keys:
+              - "{{ lookup('ansible.builtin.file', sap_vm_provision_ssh_host_public_key_file_path ) }}"
+          networkData: |-
+            network:
+              version: 1
+              config:
+                - type: physical
+                  name: eth0
+                  subnets:
+                    - type: static
+                      address: 10.76.34.74/23
+                      gateway: 10.76.34.1
+                - type: nameserver
+                  address:
+                    - 10.17.122.10
+                    - 10.17.121.30
+                  search:
+                    - wdf.sap.corp
+
+
 
 
 # OVirt
