@@ -10,6 +10,7 @@
     sap_id_user_password: "{{ sap_id_user_password | default('') }}"
     sap_software_download_directory: "{{ sap_software_download_directory | default('/software') }}"
     sap_install_media_detect_source_directory: "{{ sap_software_download_directory | default('/software') }}"
+  no_log: "{{ __sap_vm_provision_no_log }}"
 
 # - name: Set facts for all hosts - use facts from localhost - Ansible only
 #   ansible.builtin.set_fact:
@@ -47,10 +48,11 @@
     sap_ha_pacemaker_cluster_aws_region: "{{ sap_ha_pacemaker_cluster_aws_region }}"
     sap_ha_pacemaker_cluster_aws_access_key_id: "{{ sap_ha_pacemaker_cluster_aws_access_key_id }}"
     sap_ha_pacemaker_cluster_aws_secret_access_key: "{{ sap_ha_pacemaker_cluster_aws_secret_access_key }}"
-    sap_ha_pacemaker_cluster_aws_vip_update_rt: "{{ aws_vpc_subnet_rt_info.route_tables[0].route_table_id }}"
+    sap_ha_pacemaker_cluster_aws_vip_update_rt: "{{ __sap_vm_provision_task_vpc_subnet_rt_info.route_tables[0].route_table_id }}"
   when:
     - sap_ha_pacemaker_cluster_aws_region is defined
     - sap_vm_provision_iac_platform == "aws_ec2_vs"
+  no_log: "{{ __sap_vm_provision_no_log }}"
 
 # - name: Set facts for all hosts - use facts from localhost - HA/DR - GCP
 #   ansible.builtin.set_fact:
