@@ -12,19 +12,18 @@
     sap_install_media_detect_source_directory: "{{ sap_software_download_directory | default('/software') }}"
   no_log: "{{ __sap_vm_provision_no_log }}"
 
-- name: Set facts for all hosts - use facts from localhost - Ansible only
-  ansible.builtin.set_fact:
-    sap_vm_provision_ssh_host_private_key_file_path: "{{ sap_vm_provision_ssh_host_private_key_file_path }}"
-  when:
-    - sap_vm_provision_iac_type == "ansible"
+# - name: Set facts for all hosts - use facts from localhost - Ansible only
+#   ansible.builtin.set_fact:
+#   when:
+#     - sap_vm_provision_iac_type == "ansible"
 
 - name: Set facts for all hosts - use facts from localhost - SAP HANA
   ansible.builtin.set_fact:
     sap_hana_sid: "{{ sap_hana_sid | default(sap_system_hana_db_sid) }}"
     sap_hana_install_instance_nr: "{{ sap_hana_install_instance_nr | default(sap_system_hana_db_instance_nr) }}"
-    sap_hana_install_use_master_password: "y"
-    sap_hana_install_master_password: "{{ sap_hana_install_master_password }}"
-    sap_hana_install_software_directory: "{{ sap_software_download_directory }}"
+    sap_hana_install_use_master_password: "{{ sap_hana_install_use_master_password | default('y') }}"
+    sap_hana_install_master_password: "{{ sap_hana_install_master_password | default('') }}"
+    sap_hana_install_software_directory: "{{ sap_software_download_directory | default('/software') }}"
   when:
     - (sap_hana_sid is defined or sap_system_hana_db_sid is defined) or (hostvars[inventory_hostname].vars['sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary'][sap_vm_provision_host_specification_plan][inventory_hostname].sap_system_hana_db_sid is defined)
 

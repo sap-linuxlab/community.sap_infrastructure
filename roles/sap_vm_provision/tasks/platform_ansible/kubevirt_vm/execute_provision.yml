@@ -1,6 +1,11 @@
 ---
 # The tasks in this file are executed in a loop over the defined hosts
 
+- name: Ensure short hostname is not longer than 13 characters (see SAP Note 611361)
+  ansible.builtin.assert:
+    that: (inventory_hostname | length | int) <= (13 | int)
+    fail_msg: "FAIL: The length of the hostname is {{ inventory_hostname | length | int }} but must be less or equal to 13 characters!"
+
 # When SAP HANA Scale-Out is used, if host name is not in original specifications then strip suffix node number from host name
 - name: Set fact when performing SAP HANA Scale-Out
   ansible.builtin.set_fact:
