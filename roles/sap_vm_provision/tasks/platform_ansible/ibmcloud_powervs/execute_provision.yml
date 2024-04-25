@@ -40,7 +40,7 @@
 # Use check to avoid idempotency issues with legacy ibm.cloudcollection Ansible Collection (until ibm.cloud Ansible Collection is out of beta)
 - name: Check IBM Power Virtual Server instance on IBM Cloud
   register: __sap_vm_provision_task_provision_host_single
-  ibm.cloudcollection.ibm_pi___sap_vm_provision_task_provision_host_single_info:
+  ibm.cloudcollection.ibm_pi_instance_info:
     pi_cloud_instance_id: "{{ register_ibmcloud_power_iaas_workspace_service_instance.resource.guid }}" # must be GUID, not CRN
     pi_instance_name: "{{ inventory_hostname }}"
 
@@ -128,7 +128,7 @@
 
 - name: Read IBM Power Virtual Server information
   register: __sap_vm_provision_task_provision_host_single_info
-  ibm.cloudcollection.ibm_pi___sap_vm_provision_task_provision_host_single_info:
+  ibm.cloudcollection.ibm_pi_instance_info:
     pi_cloud_instance_id: "{{ register_ibmcloud_power_iaas_workspace_service_instance.resource.guid }}" # must be GUID, not CRN
     pi_instance_name: "{{ __sap_vm_provision_task_provision_host_single.resource.pi_instance_name }}"
 

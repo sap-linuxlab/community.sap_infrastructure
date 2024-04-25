@@ -51,7 +51,7 @@
     - name: Identify Private DNS instance
       no_log: true
       register: __sap_vm_provision_task_ibmcloud_pdns_service_instance
-      ibm.cloudcollection.ibm_resource___sap_vm_provision_task_provision_host_single_info:
+      ibm.cloudcollection.ibm_resource_instance_info:
         resource_group_id: "{{ __sap_vm_provision_task_ibmcloud_resource_group.resource.id }}"
         location: global
         service: dns-svcs
@@ -148,7 +148,7 @@
         - __sap_vm_provision_task_provision_host_all_add
         - __sap_vm_provision_task_provision_host_single
         - __sap_vm_provision_task_provision_host_single_volumes
-        - __sap_vm_provision_task_provision_host_single___sap_vm_provision_task_provision_host_single_volume_attachments
+        - __sap_vm_provision_task_provision_host_single_volume_attachments
         - __sap_vm_provision_task_provision_host_single_info
         - __sap_vm_provision_task_ibmcloud_pdns_record
       loop_control:

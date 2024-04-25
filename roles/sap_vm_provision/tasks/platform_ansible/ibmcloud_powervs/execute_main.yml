@@ -65,7 +65,7 @@
 
     - name: Identify IBM Power Infrastructure Workspace
       register: register_ibmcloud_power_iaas_workspace_service_instance
-      ibm.cloudcollection.ibm_resource___sap_vm_provision_task_provision_host_single_info:
+      ibm.cloudcollection.ibm_resource_instance_info:
         resource_group_id: "{{ register_ibmcloud_resource_group.resource.id }}"
         location: "{{ sap_vm_provision_ibmcloud_powervs_location }}"
         service: power-iaas
@@ -98,7 +98,7 @@
     # If previous identification task is skipped, use resource group else use the resource group defined for the Private DNS
     - name: Identify Private DNS instance
       register: register_ibmcloud_pdns_service_instance
-      ibm.cloudcollection.ibm_resource___sap_vm_provision_task_provision_host_single_info:
+      ibm.cloudcollection.ibm_resource_instance_info:
         resource_group_id: "{{ register_ibmcloud_resource_group.resource.id if register_ibmcloud_resource_group_dns is skipped else register_ibmcloud_resource_group_dns.resource.id }}"
         location: global
         service: dns-svcs

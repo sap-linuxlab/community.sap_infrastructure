@@ -275,7 +275,7 @@
     - groups["hana_secondary"] is defined and (groups["hana_secondary"]|length>0)
 
 - name: Gather GCP VM information
-  google.cloud.gcp_compute___sap_vm_provision_task_provision_host_single_info:
+  google.cloud.gcp_compute_instance_info:
     project: "{{ sap_vm_provision_gcp_project }}"
     zone: "{{ sap_vm_provision_gcp_region_zone }}"
     filters:
@@ -426,7 +426,7 @@
     - groups["anydb_secondary"] is defined and (groups["anydb_secondary"]|length>0)
 
 - name: Gather GCP VM information
-  google.cloud.gcp_compute___sap_vm_provision_task_provision_host_single_info:
+  google.cloud.gcp_compute_instance_info:
     project: "{{ sap_vm_provision_gcp_project }}"
     zone: "{{ sap_vm_provision_gcp_region_zone }}"
     filters:
@@ -603,7 +603,7 @@
     - groups["nwas_ers"] is defined and (groups["nwas_ers"]|length>0)
 
 - name: Gather GCP VM information
-  google.cloud.gcp_compute___sap_vm_provision_task_provision_host_single_info:
+  google.cloud.gcp_compute_instance_info:
     project: "{{ sap_vm_provision_gcp_project }}"
     zone: "{{ sap_vm_provision_gcp_region_zone }}"
     filters:

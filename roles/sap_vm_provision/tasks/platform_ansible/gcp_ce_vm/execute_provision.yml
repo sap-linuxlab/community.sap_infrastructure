@@ -124,7 +124,7 @@
   when: __sap_vm_provision_task_provision_host_single.changed
 
 - name: Read Google Cloud VM information
-  google.cloud.gcp_compute___sap_vm_provision_task_provision_host_single_info:
+  google.cloud.gcp_compute_instance_info:
     project: "{{ sap_vm_provision_gcp_project }}"
     zone: "{{ sap_vm_provision_gcp_region_zone }}"
     filters:

@@ -94,7 +94,7 @@
 
 - name: Attach IBM Cloud Block Storage volumes as filesystem for IBM Cloud VS instance
   no_log: true
-  register: __sap_vm_provision_task_provision_host_single___sap_vm_provision_task_provision_host_single_volume_attachments
+  register: __sap_vm_provision_task_provision_host_single_volume_attachments
   ibm.cloudcollection.ibm_is_instance_volume_attachment:
     name: "{{ vol_item.resource.name }}-attach"
     volume: "{{ vol_item.resource.id }}"
