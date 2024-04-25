@@ -65,15 +65,15 @@
 
 
 - name: Read MS Azure VM information
-  register: api_host_info
+  register: __sap_vm_provision_task_provision_host_single_info
   azure.azcollection.azure_rm_virtualmachine_info:
     resource_group: "{{ sap_vm_provision_msazure_resource_group_name }}"
     name: "{{ inventory_hostname }}"
 
 - name: Read MS Azure VM attached disks information
-  register: api___sap_vm_provision_task_ansible_facts_host_disks_info
+  register: __sap_vm_provision_task_ansible_facts_host_disks_info
   azure.azcollection.azure_rm_manageddisk_info:
-    managed_by: "{{ api_host_info.vms[0].id }}"
+    managed_by: "{{ __sap_vm_provision_task_provision_host_single_info.vms[0].id }}"
 
 
 - name: Create fact for delegate host IP
