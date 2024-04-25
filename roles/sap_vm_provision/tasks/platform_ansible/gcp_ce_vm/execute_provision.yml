@@ -43,6 +43,7 @@
 # The volume creation task requires the above task to define the parameter
 # which contains the calculated unique device names.
 - name: Provision Google Cloud Persistent Disk volumes for Google Cloud VM filesystems
+  no_log: "{{ __sap_vm_provision_no_log }}"
   register: __sap_vm_provision_task_provision_host_single_volumes
   google.cloud.gcp_compute_disk:
     state: present
@@ -50,6 +51,8 @@
     zone: "{{ sap_vm_provision_gcp_region_zone }}"
     name: "{{ inventory_hostname + '-vol-' + vol_item.name | replace('_', '-')}}"
     size_gb: "{{ vol_item.size }}"
+    auth_kind: "serviceaccount"
+    service_account_contents: "{{ sap_vm_provision_gcp_credentials_json }}"
   loop: "{{ storage_disks_map }}"
   loop_control:
     loop_var: vol_item
@@ -91,6 +94,7 @@
 
 
 - name: Provision Google Cloud VM
+  no_log: "{{ __sap_vm_provision_no_log }}"
   register: __sap_vm_provision_task_provision_host_single
   google.cloud.gcp_compute_instance:
     state: present
@@ -115,6 +119,8 @@
         scopes:
           - "https://www.googleapis.com/auth/cloud-platform" # Allow full access to all Cloud APIs
           # ["compute-rw", "storage-rw", "logging-write", "monitoring-write", "service-control", "service-management"]
+    auth_kind: "serviceaccount"
+    service_account_contents: "{{ sap_vm_provision_gcp_credentials_json }}"
 
 # Required as state: present on Ansible Module gcp_compute_instance does not allow for waiting until VM has booted
 - name: Wait 90 seconds for Google Cloud VM to boot
@@ -124,13 +130,15 @@
   when: __sap_vm_provision_task_provision_host_single.changed
 
 - name: Read Google Cloud VM information
+  no_log: "{{ __sap_vm_provision_no_log }}"
   register: __sap_vm_provision_task_provision_host_single_info
   google.cloud.gcp_compute_instance_info:
     project: "{{ sap_vm_provision_gcp_project }}"
     zone: "{{ sap_vm_provision_gcp_region_zone }}"
     filters:
       - name = {{ inventory_hostname }}
-
+    auth_kind: "serviceaccount"
+    service_account_contents: "{{ sap_vm_provision_gcp_credentials_json }}"
 
 - name: Create fact for delegate host IP
   ansible.builtin.set_fact:

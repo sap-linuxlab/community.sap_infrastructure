@@ -3,9 +3,12 @@
 - name: Ansible Task block for amending Load Balancer ports for High Availability - after provisioning GCP CE VMs
   delegate_to: localhost
   run_once: true
-  environment:
-    GCP_AUTH_KIND: "serviceaccount"
-    GCP_SERVICE_ACCOUNT_FILE: "{{ sap_vm_provision_gcp_credentials_json }}"
+  any_errors_fatal: true
+  # Using environment, no_log is ineffective and log will show 'EXEC /bin/sh -c 'ENV_VAR=value python3 /AnsiballZ_ansible_module_name.py && sleep 0'
+  # Therefore do not use environment for secrets, use only for non-sensitive values as this will reduce Ansible Task parameters.
+  # environment:
+  #   GCP_AUTH_KIND: "serviceaccount"
+  #   GCP_SERVICE_ACCOUNT_FILE: "{{ sap_vm_provision_gcp_credentials_json }}"
   when:
     - sap_ha_pacemaker_cluster_msazure_resource_group is defined
     - (groups["hana_secondary"] is defined and (groups["hana_secondary"] | length>0)) or (groups["nwas_ers"] is defined and (groups["nwas_ers"] | length>0)) or (groups["anydb_secondary"] is defined and (groups["anydb_secondary"] | length>0))
@@ -42,6 +45,7 @@
       when: not sap_ha_pacemaker_cluster_healthcheck_nwas_abap_ers_port is defined
 
     - name: Create Google Cloud Compute Engine Health Check (Global) service instance for SAP HANA
+      no_log: "{{ __sap_vm_provision_no_log }}"
       register: gcp_lb_healthcheck_service
       google.cloud.gcp_compute_health_check:
         state: present
@@ -55,10 +59,13 @@
         timeout_sec: 10
         unhealthy_threshold: 2
         healthy_threshold: 2
+        auth_kind: "serviceaccount"
+        service_account_contents: "{{ sap_vm_provision_gcp_credentials_json }}"
       when:
         - groups["hana_secondary"] is defined and (groups["hana_secondary"]|length>0)
 
     - name: Create Google Cloud Compute Engine Health Check (Global) service instance for SAP AnyDB
+      no_log: "{{ __sap_vm_provision_no_log }}"
       register: gcp_lb_healthcheck_service
       google.cloud.gcp_compute_health_check:
         state: present
@@ -72,10 +79,13 @@
         timeout_sec: 10
         unhealthy_threshold: 2
         healthy_threshold: 2
+        auth_kind: "serviceaccount"
+        service_account_contents: "{{ sap_vm_provision_gcp_credentials_json }}"
       when:
         - groups["anydb_secondary"] is defined and (groups["anydb_secondary"]|length>0)
 
     - name: Create Google Cloud Compute Engine Health Check (Global) service instance for SAP NetWeaver ASCS
+      no_log: "{{ __sap_vm_provision_no_log }}"
       register: gcp_lb_healthcheck_service_ascs
       google.cloud.gcp_compute_health_check:
         state: present
@@ -89,10 +99,13 @@
         timeout_sec: 10
         unhealthy_threshold: 2
         healthy_threshold: 2
+        auth_kind: "serviceaccount"
+        service_account_contents: "{{ sap_vm_provision_gcp_credentials_json }}"
       when:
         - groups["nwas_ers"] is defined and (groups["nwas_ers"]|length>0)
 
     - name: Create Google Cloud Compute Engine Health Check (Global) service instance for SAP NetWeaver ERS
+      no_log: "{{ __sap_vm_provision_no_log }}"
       register: gcp_lb_healthcheck_service_ers
       google.cloud.gcp_compute_health_check:
         state: present
@@ -106,5 +119,7 @@
         timeout_sec: 10
         unhealthy_threshold: 2
         healthy_threshold: 2
+        auth_kind: "serviceaccount"
+        service_account_contents: "{{ sap_vm_provision_gcp_credentials_json }}"
       when:
         - groups["nwas_ers"] is defined and (groups["nwas_ers"]|length>0)
