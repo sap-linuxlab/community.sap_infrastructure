@@ -44,7 +44,6 @@
     #     context: "{{ default(lookup('env', 'K8S_AUTH_CONTEXT')) | default(omit) }}"
 
     - name: Provision hosts to KubeVirt
-      no_log: "{{ __sap_vm_provision_no_log }}"
       register: __sap_vm_provision_task_provision_host_all_run
       ansible.builtin.include_tasks:
         file: "{{ 'platform_' + sap_vm_provision_iac_type }}/{{ sap_vm_provision_iac_platform }}/execute_provision.yml"
