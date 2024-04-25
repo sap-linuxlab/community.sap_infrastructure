@@ -149,6 +149,8 @@
   no_log: "{{ __sap_vm_provision_no_log }}"
   register: __sap_vm_provision_task_provision_host_single
   kubevirt.core.kubevirt_vm:
+
+    ## Hypervisor Control Plane definition and credentials
     api_version: "{{ api_version | default(omit) }}"
     validate_certs: "{{ validate_certs | default(omit) }}"
     persist_config: "{{ persist_config | default(omit) }}"

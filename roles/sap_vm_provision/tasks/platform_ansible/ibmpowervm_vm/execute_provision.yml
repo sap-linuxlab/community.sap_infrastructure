@@ -24,23 +24,23 @@
 - name: Check if VM exists
   register: __sap_vm_provision_task_provision_host_single_check_exists
   openstack.cloud.server_info:
-    auth: "{{ __sap_vm_provision_task_ibmpowervm_openstack_auth_delegate }}"
-    validate_certs: false # Allow Self-Signed Certificate
     name: "{{ inventory_hostname }}"
+    validate_certs: false # Allow Self-Signed Certificate
+    auth: "{{ __sap_vm_provision_task_ibmpowervm_openstack_auth_delegate }}"
 
 - name: Check OS Image available in IBM PowerVM
   register: __sap_vm_provision_task_ibmpowervm_os_image_info
   openstack.cloud.image_info:
-    auth: "{{ __sap_vm_provision_task_ibmpowervm_openstack_auth_delegate }}"
-    validate_certs: false # Allow Self-Signed Certificate
     image: "{{ sap_vm_provision_ibmpowervm_vm_host_os_image }}"
+    validate_certs: false # Allow Self-Signed Certificate
+    auth: "{{ __sap_vm_provision_task_ibmpowervm_openstack_auth_delegate }}"
 
 - name: Check network available in IBM PowerVM
   register: __sap_vm_provision_task_ibmpowervm_network
   openstack.cloud.networks_info:
-    auth: "{{ __sap_vm_provision_task_ibmpowervm_openstack_auth }}"
-    validate_certs: false # Allow Self-Signed Certificate
     name: "{{ sap_vm_provision_ibmpowervm_network_name }}"
+    validate_certs: false # Allow Self-Signed Certificate
+    auth: "{{ __sap_vm_provision_task_ibmpowervm_openstack_auth }}"
 
 
 # VM creation block:
@@ -56,8 +56,6 @@
     - name: Create IBM PowerVM Compute Template
       register: __sap_vm_provision_task_ibmpowervm_compute_template
       openstack.cloud.compute_flavor:
-        auth: "{{ __sap_vm_provision_task_ibmpowervm_openstack_auth }}"
-        validate_certs: false # Allow Self-Signed Certificate
 
         state: present
         name: "{{ inventory_hostname }}-compute-template"
@@ -102,12 +100,13 @@
           "powervm:secure_boot": 0 # "Disabled"
           "powervm:srr_capability": "false" # Disable the Simplified Remote Restart
 
+        validate_certs: false # Allow Self-Signed Certificate
+        auth: "{{ __sap_vm_provision_task_ibmpowervm_openstack_auth }}"
+
 
     - name: Provision IBM PowerVM vNIC (Network Port)
       register: __sap_vm_provision_task_provision_host_single_vnic
       openstack.cloud.port:
-        auth: "{{ __sap_vm_provision_task_ibmpowervm_openstack_auth }}"
-        validate_certs: false # Allow Self-Signed Certificate
         state: present
         name: "{{ inventory_hostname }}-vnic0"
         network: "{{ sap_vm_provision_ibmpowervm_network_name }}"
@@ -130,12 +129,12 @@
               }]) -%}
           {%- endif -%}
           {{ vnic_config[0] }}
+        validate_certs: false # Allow Self-Signed Certificate
+        auth: "{{ __sap_vm_provision_task_ibmpowervm_openstack_auth }}"
 
     - name: Provision IBM PowerVM Virtual Machine (LPAR)
       register: __sap_vm_provision_task_provision_host_single
       openstack.cloud.server:
-        auth: "{{ __sap_vm_provision_task_ibmpowervm_openstack_auth }}"
-        validate_certs: false # Allow Self-Signed Certificate
 
         ## Virtual Machine target Hypervisor definition
         availability_zone: "{{ sap_vm_provision_ibmpowervm_host_group_name }}" # IBM PowerVM Hypervisor Cluster Host Group Name
@@ -165,6 +164,9 @@
           hostname: "{{ inventory_hostname }}"
         #userdata: | # cloud-init userdata
 
+        validate_certs: false # Allow Self-Signed Certificate
+        auth: "{{ __sap_vm_provision_task_ibmpowervm_openstack_auth }}"
+
       # Report VM provisioning complete, only after status is Active (not Building)
       # If provisioning error occurs (e.g. 'Could not find image XYZ with exclude (deprecated)') then
       # will show error as 'The conditional check __sap_vm_provision_task_provision_host_single.server.status == "ACTIVE" failed
@@ -179,10 +181,9 @@
 - name: Collect info on IBM PowerVM vNIC (Network Port)
   register: __sap_vm_provision_task_provision_host_single_vnic
   openstack.cloud.port_info:
-    auth: "{{ __sap_vm_provision_task_ibmpowervm_openstack_auth }}"
-    validate_certs: false # Allow Self-Signed Certificate
     name: "{{ inventory_hostname }}-vnic0"
-
+    validate_certs: false # Allow Self-Signed Certificate
+    auth: "{{ __sap_vm_provision_task_ibmpowervm_openstack_auth }}"
 
 - name: Create fact for delegate host IP
   ansible.builtin.set_fact:
@@ -285,8 +286,6 @@
   no_log: "{{ __sap_vm_provision_no_log }}"
   register: __sap_vm_provision_task_provision_host_single_volumes
   openstack.cloud.volume:
-    auth: "{{ __sap_vm_provision_task_ibmpowervm_openstack_auth_delegate }}"
-    validate_certs: false # Allow Self-Signed Certificate
     state: present
     name: "{{ inventory_hostname }}-vol_{{ vol_item.name }}"
     # availability_zone: ""
@@ -298,6 +297,8 @@
     volume_type: "{{ sap_vm_provision_ibmpowervm_storage_template_name }}"
     is_multiattach: false
     is_bootable: false
+    validate_certs: false # Allow Self-Signed Certificate
+    auth: "{{ __sap_vm_provision_task_ibmpowervm_openstack_auth }}"
   loop: "{{ filesystem_volume_map }}"
   loop_control:
     loop_var: vol_item
@@ -311,11 +312,11 @@
   no_log: "{{ __sap_vm_provision_no_log }}"
   register: __sap_vm_provision_task_provision_host_single_volume_attachments
   openstack.cloud.server_volume:
-    auth: "{{ __sap_vm_provision_task_ibmpowervm_openstack_auth_delegate }}"
-    validate_certs: false # Allow Self-Signed Certificate
     state: present
     server: "{{ inventory_hostname }}"
     volume: "{{ virtual_disk_item.volume.id }}"
+    validate_certs: false # Allow Self-Signed Certificate
+    auth: "{{ __sap_vm_provision_task_ibmpowervm_openstack_auth }}"
   loop: "{{ __sap_vm_provision_task_provision_host_single_volumes.results }}"
   loop_control:
     loop_var: virtual_disk_item
@@ -348,9 +349,9 @@
   no_log: "{{ __sap_vm_provision_no_log }}"
   register: __sap_vm_provision_task_provision_host_single_info
   openstack.cloud.server_info:
-    auth: "{{ __sap_vm_provision_task_ibmpowervm_openstack_auth_delegate }}"
-    validate_certs: false # Allow Self-Signed Certificate
     name: "{{ inventory_hostname }}"
+    validate_certs: false # Allow Self-Signed Certificate
+    auth: "{{ __sap_vm_provision_task_ibmpowervm_openstack_auth }}"
 
 # Note: openstack.cloud.server_info Ansible Module can provide:
 # servers[0].metadata.original_host / servers[0].compute_host / servers[0].hypervisor_hostname for IBM PowerVM HMC System 'Machine Type Machine Serial' (MTMS)

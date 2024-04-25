@@ -17,8 +17,8 @@
 - name: Check if VM exists
   register: __sap_vm_provision_task_provision_host_single_check_exists
   ovirt.ovirt.ovirt_vm_info:
-    auth: "{{ __sap_vm_provision_task_ovirt_session.ansible_facts.ovirt_auth }}"
     pattern: name={{ inventory_hostname }} and cluster={{ sap_vm_provision_ovirt_hypervisor_cluster_name }}
+    auth: "{{ __sap_vm_provision_task_ovirt_session.ansible_facts.ovirt_auth }}"
 
 
 # For later check if the provided OS name is actually available
@@ -40,12 +40,12 @@
     - name: For Kickstart, provision Virtual Disk boot volume
       register: __sap_vm_provision_task_provision_host_single_boot_disk
       ovirt.ovirt.ovirt_disk:
-        auth: "{{ __sap_vm_provision_task_ovirt_session.ansible_facts.ovirt_auth }}"
         name: "{{ inventory_hostname }}-vol_os"
         size: "{{ sap_vm_provision_ovirt_vm_kickstart_definition.boot_disk.size }}"
         format: "{{ sap_vm_provision_ovirt_vm_kickstart_definition.boot_disk.format }}"
         storage_domain: "{{ sap_vm_provision_ovirt_hypervisor_cluster_storage_domain_name }}" # Hypervisor Cluster's attached storage domain
         wait: true
+        auth: "{{ __sap_vm_provision_task_ovirt_session.ansible_facts.ovirt_auth }}"
       when:
         - sap_vm_provision_ovirt_vm_kickstart_definition is defined
         - sap_vm_provision_ovirt_vm_kickstart_definition | length > 0
@@ -74,7 +74,6 @@
     - name: Provision OVirt Virtual Machine
       register: __sap_vm_provision_task_provision_host_single
       ovirt.ovirt.ovirt_vm:
-        auth: "{{ __sap_vm_provision_task_ovirt_session.ansible_facts.ovirt_auth }}"
 
         ## Virtual Machine target Hypervisor definition
         cluster: "{{ sap_vm_provision_ovirt_hypervisor_cluster_name }}" # Hypervisor Cluster
@@ -148,6 +147,8 @@
         # UI option: "Rollback this configuration during reboots"
         volatile: true
 
+        auth: "{{ __sap_vm_provision_task_ovirt_session.ansible_facts.ovirt_auth }}"
+
       # Report VM back only after it is done creating the clone image.
       until: __sap_vm_provision_task_provision_host_single.vm.status != "image_locked"
       retries: 120
@@ -158,21 +159,20 @@
 
 - name: Start the VM, if not running
   ovirt.ovirt.ovirt_vm:
-    auth: "{{ __sap_vm_provision_task_ovirt_session.ansible_facts.ovirt_auth }}"
     name: "{{ inventory_hostname }}"
     state: running
+    auth: "{{ __sap_vm_provision_task_ovirt_session.ansible_facts.ovirt_auth }}"
 
 - name: Remove installation ISO from the config
   ovirt.ovirt.ovirt_vm:
-    auth: "{{ __sap_vm_provision_task_ovirt_session.ansible_facts.ovirt_auth }}"
     name: "{{ inventory_hostname }}"
     cd_iso: ""
+    auth: "{{ __sap_vm_provision_task_ovirt_session.ansible_facts.ovirt_auth }}"
   when: sap_vm_provision_ovirt_vm_kickstart_definition is defined
 
 - name: Check VM status
   register: __sap_vm_provision_task_provision_host_single_info
   ovirt.ovirt.ovirt_vm_info:
-    auth: "{{ __sap_vm_provision_task_ovirt_session.ansible_facts.ovirt_auth }}"
     pattern: name={{ inventory_hostname }} and cluster={{ sap_vm_provision_ovirt_hypervisor_cluster_name }}
     all_content: true
     fetch_nested: true
@@ -180,6 +180,7 @@
       - ips
       - name
       - applications
+    auth: "{{ __sap_vm_provision_task_ovirt_session.ansible_facts.ovirt_auth }}"
   # Allow for 15 minutes until the VM reports devices, which include the IP and
   # are required in following tasks.
   until: __sap_vm_provision_task_provision_host_single_info.ovirt_vms[0].reported_devices | length > 0
@@ -274,7 +275,6 @@
 - name: Provision Virtual Disk volumes for OVirt VM filesystems
   register: __sap_vm_provision_task_provision_host_single_volumes
   ovirt.ovirt.ovirt_disk:
-    auth: "{{ __sap_vm_provision_task_ovirt_session.ansible_facts.ovirt_auth }}"
     name: "{{ inventory_hostname }}-vol_{{ vol_item.name }}"
     vm_name: "{{ inventory_hostname }}"
     size: "{{ vol_item.size }}GiB"
@@ -283,6 +283,7 @@
     storage_domain: "{{ sap_vm_provision_ovirt_hypervisor_cluster_storage_domain_name }}" # Hypervisor Cluster's attached storage domain
     wait: true
     bootable: false
+    auth: "{{ __sap_vm_provision_task_ovirt_session.ansible_facts.ovirt_auth }}"
   loop: "{{ filesystem_volume_map }}"
   loop_control:
     loop_var: vol_item

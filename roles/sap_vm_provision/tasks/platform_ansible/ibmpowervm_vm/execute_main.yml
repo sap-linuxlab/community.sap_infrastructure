@@ -45,11 +45,11 @@
       no_log: "{{ __sap_vm_provision_no_log }}"
       register: __sap_vm_provision_task_ibmpowervm_ssh_public_key
       openstack.cloud.keypair:
-        auth: "{{ __sap_vm_provision_task_ibmpowervm_openstack_auth }}"
-        validate_certs: false # Allow Self-Signed Certificate
         state: present
         name: "{{ sap_vm_provision_ibmpowervm_key_pair_name_ssh_host_public_key }}"
         public_key: "{{ lookup('ansible.builtin.file', sap_vm_provision_ssh_host_public_key_file_path ) }}"
+        validate_certs: false # Allow Self-Signed Certificate
+        auth: "{{ __sap_vm_provision_task_ibmpowervm_openstack_auth }}"
       throttle: 1
 
     - name: Provision hosts to IBM PowerVM
