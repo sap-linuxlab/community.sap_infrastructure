@@ -132,7 +132,7 @@
           {{ vnic_config[0] }}
 
     - name: Provision IBM PowerVM Virtual Machine (LPAR)
-      register: register_provisioned_host_single
+      register: __sap_vm_provision_task_provision_host_single
       openstack.cloud.server:
         auth: "{{ openstack_auth }}"
         validate_certs: false # Allow Self-Signed Certificate
@@ -167,9 +167,9 @@
 
       # Report VM provisioning complete, only after status is Active (not Building)
       # If provisioning error occurs (e.g. 'Could not find image XYZ with exclude (deprecated)') then
-      # will show error as 'The conditional check register_provisioned_host_single.server.status == "ACTIVE" failed
+      # will show error as 'The conditional check __sap_vm_provision_task_provision_host_single.server.status == "ACTIVE" failed
       # and the actual error will be hidden unless the 'until' is commented-out
-      until: register_provisioned_host_single.server.status is defined and register_provisioned_host_single.server.status == "ACTIVE"
+      until: __sap_vm_provision_task_provision_host_single.server.status is defined and __sap_vm_provision_task_provision_host_single.server.status == "ACTIVE"
       retries: 120
       delay: 5
 
@@ -304,7 +304,7 @@
   when:
     - vol_item.fstype is defined
     - vol_item.size > 0
-  register: volume_provisioning
+  register: __sap_vm_provision_task_provision_host_single_volumes
 
 - name: Attach Virtual Disk volumes to the IBM PowerVM VM
   openstack.cloud.server_volume:
@@ -313,7 +313,7 @@
     state: present
     server: "{{ inventory_hostname }}"
     volume: "{{ virtual_disk_item.volume.id }}"
-  loop: "{{ volume_provisioning.results }}"
+  loop: "{{ __sap_vm_provision_task_provision_host_single_volumes.results }}"
   loop_control:
     loop_var: virtual_disk_item
     index_var: virtual_disk_item_index
@@ -341,7 +341,7 @@
 
 
 - name: Check VM status
-  register: register_provisioned_host_single_info
+  register: __sap_vm_provision_task_provision_host_single_info
   openstack.cloud.server_info:
     auth: "{{ openstack_auth_delegate }}"
     validate_certs: false # Allow Self-Signed Certificate
@@ -355,8 +355,8 @@
 
 - name: Append loop value to register
   ansible.builtin.set_fact:
-    register_provisioned_host_single: "{{ register_provisioned_host_single_info.servers[0] | combine( { 'host_node' : inventory_hostname } , { 'sap_host_type' : lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan][scaleout_origin_host_spec | default(inventory_hostname)].sap_host_type } , { 'sap_system_type' : (lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan][scaleout_origin_host_spec | default(inventory_hostname)].sap_system_type | default('')) } ) }}"
+    __sap_vm_provision_task_provision_host_single: "{{ __sap_vm_provision_task_provision_host_single_info.servers[0] | combine( { 'host_node' : inventory_hostname } , { 'sap_host_type' : lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan][scaleout_origin_host_spec | default(inventory_hostname)].sap_host_type } , { 'sap_system_type' : (lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan][scaleout_origin_host_spec | default(inventory_hostname)].sap_system_type | default('')) } ) }}"
 
 - name: Append output to merged register
   ansible.builtin.set_fact:
-    register_provisioned_host_all: "{{ register_provisioned_host_all + [register_provisioned_host_single] }}"
+    register_provisioned_host_all: "{{ register_provisioned_host_all + [__sap_vm_provision_task_provision_host_single] }}"

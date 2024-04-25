@@ -38,7 +38,7 @@
   when: not (register_provisioned_vnic_info.networkinterfaces | length) > 0
 
 - name: Provision MS Azure VM
-  register: register_provisioned_host_single
+  register: __sap_vm_provision_task_provision_host_single
   azure.azcollection.azure_rm_virtualmachine:
     resource_group: "{{ sap_vm_provision_msazure_resource_group_name }}"
     location: "{{ sap_vm_provision_msazure_location_region }}"
@@ -78,7 +78,7 @@
 
 - name: Create fact for delegate host IP
   ansible.builtin.set_fact:
-    provisioned_private_ip: "{{ register_provisioned_host_single.ansible_facts.azure_vm.network_profile.network_interfaces[0].properties.ip_configurations[0].private_ip_address }}"
+    provisioned_private_ip: "{{ __sap_vm_provision_task_provision_host_single.ansible_facts.azure_vm.network_profile.network_interfaces[0].properties.ip_configurations[0].private_ip_address }}"
 
 
 - name: Copy facts to delegate host
@@ -189,20 +189,20 @@
   when:
     - vol_item.fstype is defined
     - vol_item.size > 0
-  register: volume_provisioning
-  failed_when: "(volume_provisioning.msg is defined) and ('already exists' not in volume_provisioning.msg)"
+  register: __sap_vm_provision_task_provision_host_single_volumes
+  failed_when: "(__sap_vm_provision_task_provision_host_single_volumes.msg is defined) and ('already exists' not in __sap_vm_provision_task_provision_host_single_volumes.msg)"
 
 
 - name: Add host facts
   ansible.builtin.set_fact:
     filesystem_volume_map: "{{ filesystem_volume_map }}"
-    volume_provisioning: "{{ volume_provisioning }}"
+    __sap_vm_provision_task_provision_host_single_volumes: "{{ __sap_vm_provision_task_provision_host_single_volumes }}"
   delegate_to: "{{ inventory_hostname }}"
   delegate_facts: true
 
 - name: Create fact for delegate host IP
   ansible.builtin.set_fact:
-    provisioned_private_ip: "{{ register_provisioned_host_single.ansible_facts.azure_vm.network_profile.network_interfaces[0].properties.ip_configurations[0].private_ip_address }}"
+    provisioned_private_ip: "{{ __sap_vm_provision_task_provision_host_single.ansible_facts.azure_vm.network_profile.network_interfaces[0].properties.ip_configurations[0].private_ip_address }}"
 
 - name: Copy facts to delegate host
   delegate_to: "{{ provisioned_private_ip }}"
@@ -213,7 +213,7 @@
     delegate_sap_vm_provision_bastion_ssh_port: "{{ sap_vm_provision_bastion_ssh_port }}"
     delegate_sap_vm_provision_ssh_bastion_private_key_file_path: "{{ sap_vm_provision_ssh_bastion_private_key_file_path }}"
     delegate_sap_vm_provision_ssh_host_private_key_file_path: "{{ sap_vm_provision_ssh_host_private_key_file_path }}"
-    delegate_private_ip: "{{ register_provisioned_host_single.ansible_facts.azure_vm.network_profile.network_interfaces[0].properties.ip_configurations[0].private_ip_address }}"
+    delegate_private_ip: "{{ __sap_vm_provision_task_provision_host_single.ansible_facts.azure_vm.network_profile.network_interfaces[0].properties.ip_configurations[0].private_ip_address }}"
     delegate_hostname: "{{ inventory_hostname }}"
     delegate_sap_vm_provision_dns_root_domain_name: "{{ sap_vm_provision_dns_root_domain }}"
 
@@ -256,8 +256,8 @@
 
 - name: Append loop value to register
   ansible.builtin.set_fact:
-    register_provisioned_host_single: "{{ register_provisioned_host_single | combine( { 'host_node' : inventory_hostname } , { 'sap_host_type' : lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan][scaleout_origin_host_spec | default(inventory_hostname)].sap_host_type } , { 'sap_system_type' : (lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan][scaleout_origin_host_spec | default(inventory_hostname)].sap_system_type | default('')) } ) }}"
+    __sap_vm_provision_task_provision_host_single: "{{ __sap_vm_provision_task_provision_host_single | combine( { 'host_node' : inventory_hostname } , { 'sap_host_type' : lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan][scaleout_origin_host_spec | default(inventory_hostname)].sap_host_type } , { 'sap_system_type' : (lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan][scaleout_origin_host_spec | default(inventory_hostname)].sap_system_type | default('')) } ) }}"
 
 - name: Append output to merged register
   ansible.builtin.set_fact:
-    register_provisioned_host_all: "{{ register_provisioned_host_all + [register_provisioned_host_single] }}"
+    register_provisioned_host_all: "{{ register_provisioned_host_all + [__sap_vm_provision_task_provision_host_single] }}"

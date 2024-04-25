@@ -39,8 +39,8 @@
 
 # Use check to avoid idempotency issues with legacy ibm.cloudcollection Ansible Collection (until ibm.cloud Ansible Collection is out of beta)
 - name: Check IBM Power Virtual Server instance on IBM Cloud
-  register: register_provisioned_host_single
-  ibm.cloudcollection.ibm_pi_instance_info:
+  register: __sap_vm_provision_task_provision_host_single
+  ibm.cloudcollection.ibm_pi___sap_vm_provision_task_provision_host_single_info:
     pi_cloud_instance_id: "{{ register_ibmcloud_power_iaas_workspace_service_instance.resource.guid }}" # must be GUID, not CRN
     pi_instance_name: "{{ inventory_hostname }}"
 
@@ -113,7 +113,7 @@
   ibm.cloudcollection.ibm_pi_volume_attach:
     pi_cloud_instance_id: "{{ register_ibmcloud_power_iaas_workspace_service_instance.resource.guid }}" # must be GUID, not CRN
     pi_volume_id: "{{ vol_item.resource.id }}"
-    pi_instance_id: "{{ register_provisioned_host_single.resource.id }}"
+    pi_instance_id: "{{ __sap_vm_provision_task_provision_host_single.resource.id }}"
   loop: "{{ register_volumes.results }}"
   loop_control:
     loop_var: vol_item
@@ -127,22 +127,22 @@
   delay: 10
 
 - name: Read IBM Power Virtual Server information
-  register: instance_info
-  ibm.cloudcollection.ibm_pi_instance_info:
+  register: __sap_vm_provision_task_provision_host_single_info
+  ibm.cloudcollection.ibm_pi___sap_vm_provision_task_provision_host_single_info:
     pi_cloud_instance_id: "{{ register_ibmcloud_power_iaas_workspace_service_instance.resource.guid }}" # must be GUID, not CRN
-    pi_instance_name: "{{ register_provisioned_host_single.resource.pi_instance_name }}"
+    pi_instance_name: "{{ __sap_vm_provision_task_provision_host_single.resource.pi_instance_name }}"
 
 - name: Add host facts
   ansible.builtin.set_fact:
-    volume_provisioning: "{{ register_volumes }}"
-    instance_info: "{{ instance_info }}"
+    __sap_vm_provision_task_provision_host_single_volumes: "{{ register_volumes }}"
+    __sap_vm_provision_task_provision_host_single_info: "{{ __sap_vm_provision_task_provision_host_single_info }}"
   delegate_to: "{{ inventory_hostname }}"
   delegate_facts: true
 
 
 - name: Create fact for delegate host IP
   ansible.builtin.set_fact:
-    provisioned_private_ip: "{{ register_provisioned_host_single.resource.addresses[0].ip }}"
+    provisioned_private_ip: "{{ __sap_vm_provision_task_provision_host_single.resource.addresses[0].ip }}"
 
 
 - name: Copy facts to delegate host
@@ -154,7 +154,7 @@
     delegate_sap_vm_provision_bastion_ssh_port: "{{ sap_vm_provision_bastion_ssh_port }}"
     delegate_sap_vm_provision_ssh_bastion_private_key_file_path: "{{ sap_vm_provision_ssh_bastion_private_key_file_path }}"
     delegate_sap_vm_provision_ssh_host_private_key_file_path: "{{ sap_vm_provision_ssh_host_private_key_file_path }}"
-    delegate_private_ip: "{{ register_provisioned_host_single.resource.addresses[0].ip }}"
+    delegate_private_ip: "{{ __sap_vm_provision_task_provision_host_single.resource.addresses[0].ip }}"
     delegate_hostname: "{{ inventory_hostname }}"
     delegate_sap_vm_provision_dns_root_domain_name: "{{ sap_vm_provision_dns_root_domain }}"
 
@@ -203,8 +203,8 @@
 
 - name: Append loop value to register
   ansible.builtin.set_fact:
-    register_provisioned_host_single: "{{ register_provisioned_host_single | combine( { 'host_node' : inventory_hostname } , { 'sap_host_type' : lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan][scaleout_origin_host_spec | default(inventory_hostname)].sap_host_type } , { 'sap_system_type' : (lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan][scaleout_origin_host_spec | default(inventory_hostname)].sap_system_type | default('')) } ) }}"
+    __sap_vm_provision_task_provision_host_single: "{{ __sap_vm_provision_task_provision_host_single | combine( { 'host_node' : inventory_hostname } , { 'sap_host_type' : lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan][scaleout_origin_host_spec | default(inventory_hostname)].sap_host_type } , { 'sap_system_type' : (lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan][scaleout_origin_host_spec | default(inventory_hostname)].sap_system_type | default('')) } ) }}"
 
 - name: Append output to merged register
   ansible.builtin.set_fact:
-    register_provisioned_host_all: "{{ register_provisioned_host_all + [register_provisioned_host_single] }}"
+    register_provisioned_host_all: "{{ register_provisioned_host_all + [__sap_vm_provision_task_provision_host_single] }}"

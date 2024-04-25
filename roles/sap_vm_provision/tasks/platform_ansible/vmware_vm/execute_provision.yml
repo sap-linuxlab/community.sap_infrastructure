@@ -66,7 +66,7 @@
     register_vmware_vm_cluster_host_id: "{{ register_check_vm_exists.value[0].vm }}" # VM ID
 
 - name: Check VM status
-  register: register_provisioned_host_single_info
+  register: __sap_vm_provision_task_provision_host_single_info
   when: not register_check_vm_exists.value | length == 0
   vmware.vmware_rest.vcenter_vm:
     vm: "{{ register_vmware_vm_cluster_host_id }}" # VM ID
@@ -81,7 +81,7 @@
     # Deploy a Virtual Machine from a VM Template in a Content Library
     # Doc: https://docs.vmware.com/en/VMware-vSphere/7.0/com.vmware.vsphere.vm_admin.doc/GUID-6EA309BC-9113-449C-B668-ACBB363485C3.html
     - name: Provision VMware Virtual Machine based upon the VM Template
-      register: register_provisioned_host_single
+      register: __sap_vm_provision_task_provision_host_single
       vmware.vmware_rest.vcenter_vmtemplate_libraryitems:
 
         ## Virtual Machine target Hypervisor definition
@@ -118,7 +118,7 @@
           # storage_policy:
 
       # # Report VM back only after it is done creating the clone image.
-      # until: register_provisioned_host_single.vm.status != "image_locked"
+      # until: __sap_vm_provision_task_provision_host_single.vm.status != "image_locked"
       # retries: 120
       # delay: 5
 
@@ -128,11 +128,11 @@
 - name: Set VM ID
   when: register_check_vm_exists.value | length == 0
   ansible.builtin.set_fact:
-    register_vmware_vm_cluster_host_id: "{{ register_provisioned_host_single.value }}" # Returned from VM provision
+    register_vmware_vm_cluster_host_id: "{{ __sap_vm_provision_task_provision_host_single.value }}" # Returned from VM provision
 
 
 - name: Check VM status
-  register: register_provisioned_host_single_info
+  register: __sap_vm_provision_task_provision_host_single_info
   vmware.vmware_rest.vcenter_vm:
     vm: "{{ register_vmware_vm_cluster_host_id }}"
 
@@ -141,7 +141,7 @@
 # Docs https://developer.vmware.com/docs/18555/GUID-75E27FA9-2E40-4CBF-BF3D-22DCFC8F11F7.html
 # >> The instance-id key is required. All other keys are optional.
 - name: Set cloud-init variables for customization specification
-  when: register_provisioned_host_single_info.value.power_state is defined and register_provisioned_host_single_info.value.power_state != "POWERED_ON"
+  when: __sap_vm_provision_task_provision_host_single_info.value.power_state is defined and __sap_vm_provision_task_provision_host_single_info.value.power_state != "POWERED_ON"
   ansible.builtin.set_fact:
     metadata_yaml:
       instance-id: "{{ inventory_hostname }}"
@@ -210,7 +210,7 @@
 # >> metadata as JSON/YAML, userdata as no compression or base64 encoding
 # Error 400 com.vmware.vapi.std.errors.not_allowed_in_current_state : if the virtual machine vm is not in a powered off state.
 - name: Apply customization specification to the VM in Powered Off state
-  when: register_provisioned_host_single_info.value.power_state is defined and register_provisioned_host_single_info.value.power_state != "POWERED_ON"
+  when: __sap_vm_provision_task_provision_host_single_info.value.power_state is defined and __sap_vm_provision_task_provision_host_single_info.value.power_state != "POWERED_ON"
   vmware.vmware_rest.vcenter_vm_guest_customization:
     vm: '{{ register_vmware_vm_cluster_host_id }}'
     configuration_spec:
@@ -371,14 +371,14 @@
   when:
     - vol_item.fstype is defined
     - vol_item.size > 0
-  register: volume_provisioning
-  failed_when: not volume_provisioning.value is defined and not 'already exists' in volume_provisioning.msg
+  register: __sap_vm_provision_task_provision_host_single_volumes
+  failed_when: not __sap_vm_provision_task_provision_host_single_volumes.value is defined and not 'already exists' in __sap_vm_provision_task_provision_host_single_volumes.msg
 
 
 - name: Append loop value to register
   ansible.builtin.set_fact:
-    register_provisioned_host_single: "{{ register_provisioned_host_single_info | combine( { 'host_node' : inventory_hostname } , { 'vmware_vm_network_info' : vmware_vm_network_info } , { 'sap_host_type' : lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan][scaleout_origin_host_spec | default(inventory_hostname)].sap_host_type } , { 'sap_system_type' : (lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan][scaleout_origin_host_spec | default(inventory_hostname)].sap_system_type | default('')) } ) }}"
+    __sap_vm_provision_task_provision_host_single: "{{ __sap_vm_provision_task_provision_host_single_info | combine( { 'host_node' : inventory_hostname } , { 'vmware_vm_network_info' : vmware_vm_network_info } , { 'sap_host_type' : lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan][scaleout_origin_host_spec | default(inventory_hostname)].sap_host_type } , { 'sap_system_type' : (lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan][scaleout_origin_host_spec | default(inventory_hostname)].sap_system_type | default('')) } ) }}"
 
 - name: Append output to merged register
   ansible.builtin.set_fact:
-    register_provisioned_host_all: "{{ register_provisioned_host_all + [register_provisioned_host_single] }}"
+    register_provisioned_host_all: "{{ register_provisioned_host_all + [__sap_vm_provision_task_provision_host_single] }}"
