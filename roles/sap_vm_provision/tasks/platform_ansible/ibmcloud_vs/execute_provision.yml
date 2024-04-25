@@ -15,7 +15,7 @@
     - not inventory_hostname in lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan].keys()
 
 - name: Provision IBM Cloud Virtual Server instance
-  no_log: true
+  no_log: "{{ __sap_vm_provision_no_log }}"
   register: __sap_vm_provision_task_provision_host_single
   ibm.cloudcollection.ibm_is_instance:
     state: available
@@ -75,7 +75,7 @@
       {{ disks_map }}
 
 - name: Provision IBM Cloud Block Storage volumes for IBM Cloud VS instance filesystems
-  no_log: true
+  no_log: "{{ __sap_vm_provision_no_log }}"
   register: __sap_vm_provision_task_provision_host_single_volumes
   ibm.cloudcollection.ibm_is_volume:
     resource_group: "{{ __sap_vm_provision_task_ibmcloud_resource_group.resource.id }}"
@@ -93,7 +93,7 @@
     - vol_item.size > 0
 
 - name: Attach IBM Cloud Block Storage volumes as filesystem for IBM Cloud VS instance
-  no_log: true
+  no_log: "{{ __sap_vm_provision_no_log }}"
   register: __sap_vm_provision_task_provision_host_single_volume_attachments
   ibm.cloudcollection.ibm_is_instance_volume_attachment:
     name: "{{ vol_item.resource.name }}-attach"
@@ -110,7 +110,7 @@
 
 
 - name: Read IBM Cloud VS information
-  no_log: true
+  no_log: "{{ __sap_vm_provision_no_log }}"
   register: __sap_vm_provision_task_provision_host_single_info
   ibm.cloudcollection.ibm_is_instance:
     name: "{{ __sap_vm_provision_task_provision_host_single.resource.name }}"

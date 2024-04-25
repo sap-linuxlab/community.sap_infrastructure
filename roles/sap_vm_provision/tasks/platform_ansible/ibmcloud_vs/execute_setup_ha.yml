@@ -1,6 +1,7 @@
 ---
 
 - name: Create IBM Cloud IAM Authorization Policy for IBM Cloud Load Balancer to communicate with IBM Cloud Private DNS
+  no_log: "{{ __sap_vm_provision_no_log }}"
   register: __sap_vm_provision_task_ibmcloud_iam_auth_policy
   ibm.cloudcollection.ibm_iam_authorization_policy:
     roles: Manager
@@ -26,6 +27,7 @@
 # Private Network Load Balancer (Layer 4), restricts HA within single Availability Zone. Permits TCP and UDP, does not permit HTTP/S.
 # Use async with poll '0' to create all IBM Cloud Load Balancers in parallel
 - name: Create IBM Cloud Load Balancer (Private ALB) for each Virtual Hostname / Virtual IP required
+  no_log: "{{ __sap_vm_provision_no_log }}"
   register: __sap_vm_provision_task_ibmcloud_lb_provision_parallel
   ibm.cloudcollection.ibm_is_lb:
     resource_group: "{{ __sap_vm_provision_task_ibmcloud_resource_group.resource.id }}"
@@ -64,7 +66,7 @@
 
 # Workaround to missing Ansible Module functionality in legacy Ansible Collection
 - name: IBM Cloud CLI append DNS to Load Balancer
-  no_log: true
+  no_log: "{{ __sap_vm_provision_no_log }}"
   register: __sap_vm_provision_task_ibmcloud_lb_update_dns
   ansible.builtin.shell: |
     ibmcloud config --quiet --check-version false && ibmcloud login --apikey="{{ sap_vm_provision_ibmcloud_api_key }}" -g {{ sap_vm_provision_ibmcloud_resource_group_name }} -r {{ sap_vm_provision_ibmcloud_region }} --quiet
@@ -79,6 +81,7 @@
   failed_when: not __sap_vm_provision_task_ibmcloud_lb_update_dns.rc == 0 and not 'nothing to update the load balancer with' in __sap_vm_provision_task_ibmcloud_lb_update_dns.stderr
 
 - name: Identify IBM Cloud Virtual Servers info
+  no_log: "{{ __sap_vm_provision_no_log }}"
   register: __sap_vm_provision_task_ibmcloud_vs_all_info
   ibm.cloudcollection.ibm_is_instances_info:
     vpc: "{{ __sap_vm_provision_task_ibmcloud_vpc_subnet.resource.vpc }}"
@@ -87,7 +90,7 @@
 
 # Workaround for bug which populates region and ibmcloud_api_key as TF arguments for ibm_is_lbs_info Ansible Module in legacy Ansible Collection
 - name: IBM Cloud CLI execution to list Load Balancer/s info
-  no_log: true
+  no_log: "{{ __sap_vm_provision_no_log }}"
   register: __sap_vm_provision_task_ibmcloud_lb_all_info_shell
   ansible.builtin.shell: |
     ibmcloud config --quiet --check-version false && ibmcloud login --apikey="{{ sap_vm_provision_ibmcloud_api_key }}" -g {{ sap_vm_provision_ibmcloud_resource_group_name }} -r {{ sap_vm_provision_ibmcloud_region }} --quiet
@@ -108,6 +111,7 @@
 # Create IBM Cloud Load Balancer Back-end Pools
 
 - name: Create IBM Cloud Load Balancer Back-end Pool for SAP HANA - System DB SQL
+  no_log: "{{ __sap_vm_provision_no_log }}"
   register: __sap_vm_provision_task_ibmcloud_lb_pool_hana1
   ibm.cloudcollection.ibm_is_lb_pool:
     name: lb-sap-ha-hana-pool-sysdb-sql
@@ -123,6 +127,7 @@
   when: (groups['hana_secondary'] is defined and (groups['hana_secondary'] | length>0))
 
 - name: Create IBM Cloud Load Balancer Back-end Pool for SAP HANA - MDC Tenant 1 SQL
+  no_log: "{{ __sap_vm_provision_no_log }}"
   register: __sap_vm_provision_task_ibmcloud_lb_pool_hana2
   ibm.cloudcollection.ibm_is_lb_pool:
     name: lb-sap-ha-hana-pool-mdc1-sql
@@ -138,6 +143,7 @@
   when: (groups['hana_secondary'] is defined and (groups['hana_secondary'] | length>0))
 
 - name: Create IBM Cloud Load Balancer Back-end Pool for SAP HANA - startsrv HTTP
+  no_log: "{{ __sap_vm_provision_no_log }}"
   register: __sap_vm_provision_task_ibmcloud_lb_pool_hana3
   ibm.cloudcollection.ibm_is_lb_pool:
     name: lb-sap-ha-hana-pool-startsrv-http
@@ -153,6 +159,7 @@
   when: (groups['hana_secondary'] is defined and (groups['hana_secondary'] | length>0))
 
 - name: Create IBM Cloud Load Balancer Back-end Pool for SAP HANA - startsrv HTTPS
+  no_log: "{{ __sap_vm_provision_no_log }}"
   register: __sap_vm_provision_task_ibmcloud_lb_pool_hana4
   ibm.cloudcollection.ibm_is_lb_pool:
     name: lb-sap-ha-hana-pool-startsrv-https
@@ -168,6 +175,7 @@
   when: (groups['hana_secondary'] is defined and (groups['hana_secondary'] | length>0))
 
 - name: Create IBM Cloud Load Balancer Back-end Pool for SAP AnyDB - IBM Db2 Communication Port
+  no_log: "{{ __sap_vm_provision_no_log }}"
   ibm.cloudcollection.ibm_is_lb_pool:
     name: lb-sap-ha-anydb-pool-ibmdb2
     lb: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', 'lb-sap-ha-anydb'))[0].id }}"
@@ -182,6 +190,7 @@
   when: (groups['anydb_secondary'] is defined and (groups['anydb_secondary'] | length>0))
 
 - name: Create IBM Cloud Load Balancer Back-end Pool for SAP NetWeaver ASCS - Dispatcher sapdp<ASCS_NN> process
+  no_log: "{{ __sap_vm_provision_no_log }}"
   register: __sap_vm_provision_task_ibmcloud_lb_pool_nwas_ascs1
   ibm.cloudcollection.ibm_is_lb_pool:
     name: lb-sap-ha-nwas-ascs-pool-dp
@@ -197,6 +206,7 @@
   when: (groups['nwas_ers'] is defined and (groups['nwas_ers'] | length>0))
 
 - name: Create IBM Cloud Load Balancer Back-end Pool for SAP NetWeaver ASCS - Message Server sapms<SAPSID> process
+  no_log: "{{ __sap_vm_provision_no_log }}"
   register: __sap_vm_provision_task_ibmcloud_lb_pool_nwas_ascs2
   ibm.cloudcollection.ibm_is_lb_pool:
     name: lb-sap-ha-nwas-ascs-pool-ms
@@ -212,6 +222,7 @@
   when: (groups['nwas_ers'] is defined and (groups['nwas_ers'] | length>0))
 
 - name: Create IBM Cloud Load Balancer Back-end Pool for SAP NetWeaver ASCS - Enqueue Server sapenq<SAPSID> process
+  no_log: "{{ __sap_vm_provision_no_log }}"
   register: __sap_vm_provision_task_ibmcloud_lb_pool_nwas_ascs3
   ibm.cloudcollection.ibm_is_lb_pool:
     name: lb-sap-ha-nwas-ascs-pool-enq
@@ -227,6 +238,7 @@
   when: (groups['nwas_ers'] is defined and (groups['nwas_ers'] | length>0))
 
 - name: Create IBM Cloud Load Balancer Back-end Pool for SAP NetWeaver ASCS - SAP Start Service (SAPControl SOAP) HTTP sapctrl<ASCS_NN> process
+  no_log: "{{ __sap_vm_provision_no_log }}"
   register: __sap_vm_provision_task_ibmcloud_lb_pool_nwas_ascs4
   ibm.cloudcollection.ibm_is_lb_pool:
     name: lb-sap-ha-nwas-ascs-pool-sapctrl
@@ -242,6 +254,7 @@
   when: (groups['nwas_ers'] is defined and (groups['nwas_ers'] | length>0))
 
 - name: Create IBM Cloud Load Balancer Back-end Pool for SAP NetWeaver ASCS - SAP Start Service (SAPControl SOAP) HTTPS (Secure) sapctrls<ASCS_NN>
+  no_log: "{{ __sap_vm_provision_no_log }}"
   register: __sap_vm_provision_task_ibmcloud_lb_pool_nwas_ascs5
   ibm.cloudcollection.ibm_is_lb_pool:
     name: lb-sap-ha-nwas-ascs-pool-sapctrls
@@ -257,6 +270,7 @@
   when: (groups['nwas_ers'] is defined and (groups['nwas_ers'] | length>0))
 
 # - name: Create IBM Cloud Load Balancer Back-end Pool for SAP NetWeaver ERS - Dispatcher sapdp<ERS_NN> process
+#   no_log: "{{ __sap_vm_provision_no_log }}"
 #   register: __sap_vm_provision_task_ibmcloud_lb_pool_nwas_ers1
 #   ibm.cloudcollection.ibm_is_lb_pool:
 #     name: lb-sap-ha-nwas-ers-pool-dp
@@ -272,6 +286,7 @@
 #   when: (groups['nwas_ers'] is defined and (groups['nwas_ers'] | length>0))
 
 # - name: Create IBM Cloud Load Balancer Back-end Pool for SAP NetWeaver ERS - Message Server sapms<SAPSID> process
+#   no_log: "{{ __sap_vm_provision_no_log }}"
 #   register: __sap_vm_provision_task_ibmcloud_lb_pool_nwas_ers2
 #   ibm.cloudcollection.ibm_is_lb_pool:
 #     name: lb-sap-ha-nwas-ers-pool-ms
@@ -287,6 +302,7 @@
 #   when: (groups['nwas_ers'] is defined and (groups['nwas_ers'] | length>0))
 
 - name: Create IBM Cloud Load Balancer Back-end Pool for SAP NetWeaver ERS - Enqueue Replication Server sapenqr<SAPSID> process
+  no_log: "{{ __sap_vm_provision_no_log }}"
   register: __sap_vm_provision_task_ibmcloud_lb_pool_nwas_ers3
   ibm.cloudcollection.ibm_is_lb_pool:
     name: lb-sap-ha-nwas-ers-pool-enqr
@@ -302,6 +318,7 @@
   when: (groups['nwas_ers'] is defined and (groups['nwas_ers'] | length>0))
 
 - name: Create IBM Cloud Load Balancer Back-end Pool for SAP NetWeaver ERS - SAP Start Service (SAPControl SOAP) HTTP sapctrl<ERS_NN> process
+  no_log: "{{ __sap_vm_provision_no_log }}"
   register: __sap_vm_provision_task_ibmcloud_lb_pool_nwas_ers4
   ibm.cloudcollection.ibm_is_lb_pool:
     name: lb-sap-ha-nwas-ers-pool-sapctrl
@@ -317,6 +334,7 @@
   when: (groups['nwas_ers'] is defined and (groups['nwas_ers'] | length>0))
 
 - name: Create IBM Cloud Load Balancer Back-end Pool for SAP NetWeaver ERS - SAP Start Service (SAPControl SOAP) HTTPS (Secure) sapctrls<ERS_NN>
+  no_log: "{{ __sap_vm_provision_no_log }}"
   register: __sap_vm_provision_task_ibmcloud_lb_pool_nwas_ers5
   ibm.cloudcollection.ibm_is_lb_pool:
     name: lb-sap-ha-nwas-ers-pool-sapctrls
@@ -335,6 +353,7 @@
 # Identify the provisioned IBM Cloud Load Balancer Back-end Pools
 
 - name: Identify IBM Cloud Load Balancer Back-end Pools
+  no_log: "{{ __sap_vm_provision_no_log }}"
   register: __sap_vm_provision_task_ibmcloud_lb_pools
   ibm.cloudcollection.ibm_is_lb_pools_info:
     lb: "{{ item }}"
@@ -346,6 +365,7 @@
 
 # Primary
 - name: Create IBM Cloud Load Balancer Back-end Pool Members for SAP HANA - System DB SQL - Member 1
+  no_log: "{{ __sap_vm_provision_no_log }}"
   register: __sap_vm_provision_task_ibmcloud_lb_pool_members_hana1
   ibm.cloudcollection.ibm_is_lb_pool_member:
     lb: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', 'lb-sap-ha-hana'))[0].id }}"
@@ -362,6 +382,7 @@
 
 # Secondary
 - name: Create IBM Cloud Load Balancer Back-end Pool Members for SAP HANA - System DB SQL - Member 2 (Failover/Secondary)
+  no_log: "{{ __sap_vm_provision_no_log }}"
   register: __sap_vm_provision_task_ibmcloud_lb_pool_members_hana2
   ibm.cloudcollection.ibm_is_lb_pool_member:
     lb: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', 'lb-sap-ha-hana'))[0].id }}"
@@ -379,6 +400,7 @@
 
 # Primary
 - name: Create IBM Cloud Load Balancer Back-end Pool Members for SAP HANA - MDC Tenant 1 SQL - Member 1
+  no_log: "{{ __sap_vm_provision_no_log }}"
   register: __sap_vm_provision_task_ibmcloud_lb_pool_members_hana3
   ibm.cloudcollection.ibm_is_lb_pool_member:
     lb: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', 'lb-sap-ha-hana'))[0].id }}"
@@ -395,6 +417,7 @@
 
 # Secondary
 - name: Create IBM Cloud Load Balancer Back-end Pool Members for SAP HANA - MDC Tenant 1 SQL - Member 2 (Failover/Secondary)
+  no_log: "{{ __sap_vm_provision_no_log }}"
   register: __sap_vm_provision_task_ibmcloud_lb_pool_members_hana4
   ibm.cloudcollection.ibm_is_lb_pool_member:
     lb: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', 'lb-sap-ha-hana'))[0].id }}"
@@ -412,6 +435,7 @@
 
 # Primary
 - name: Create IBM Cloud Load Balancer Back-end Pool Members for SAP HANA - startsrv HTTP - Member 1
+  no_log: "{{ __sap_vm_provision_no_log }}"
   register: __sap_vm_provision_task_ibmcloud_lb_pool_members_hana5
   ibm.cloudcollection.ibm_is_lb_pool_member:
     lb: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', 'lb-sap-ha-hana'))[0].id }}"
@@ -428,6 +452,7 @@
 
 # Secondary
 - name: Create IBM Cloud Load Balancer Back-end Pool Members for SAP HANA - startsrv HTTP - Member 2 (Failover/Secondary)
+  no_log: "{{ __sap_vm_provision_no_log }}"
   register: __sap_vm_provision_task_ibmcloud_lb_pool_members_hana6
   ibm.cloudcollection.ibm_is_lb_pool_member:
     lb: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', 'lb-sap-ha-hana'))[0].id }}"
@@ -445,6 +470,7 @@
 
 # Primary
 - name: Create IBM Cloud Load Balancer Back-end Pool Members for SAP HANA - startsrv HTTPS - Member 1
+  no_log: "{{ __sap_vm_provision_no_log }}"
   register: __sap_vm_provision_task_ibmcloud_lb_pool_members_hana7
   ibm.cloudcollection.ibm_is_lb_pool_member:
     lb: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', 'lb-sap-ha-hana'))[0].id }}"
@@ -461,6 +487,7 @@
 
 # Secondary
 - name: Create IBM Cloud Load Balancer Back-end Pool Members for SAP HANA - startsrv HTTPS - Member 2 (Failover/Secondary)
+  no_log: "{{ __sap_vm_provision_no_log }}"
   register: __sap_vm_provision_task_ibmcloud_lb_pool_members_hana8
   ibm.cloudcollection.ibm_is_lb_pool_member:
     lb: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', 'lb-sap-ha-hana'))[0].id }}"
@@ -478,6 +505,7 @@
 
 # Primary
 - name: Create IBM Cloud Load Balancer Back-end Pool Members for SAP AnyDB - IBM Db2 Communication Port - Member 1
+  no_log: "{{ __sap_vm_provision_no_log }}"
   register: __sap_vm_provision_task_ibmcloud_lb_pool_members_anydb1
   ibm.cloudcollection.ibm_is_lb_pool_member:
     lb: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', 'lb-sap-ha-anydb'))[0].id }}"
@@ -494,6 +522,7 @@
 
 # Secondary
 - name: Create IBM Cloud Load Balancer Back-end Pool Members for SAP AnyDB - IBM Db2 Communication Port - Member 2 (Failover/Secondary)
+  no_log: "{{ __sap_vm_provision_no_log }}"
   register: __sap_vm_provision_task_ibmcloud_lb_pool_members_anydb2
   ibm.cloudcollection.ibm_is_lb_pool_member:
     lb: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', 'lb-sap-ha-anydb'))[0].id }}"
@@ -511,6 +540,7 @@
 
 # Primary
 - name: Create IBM Cloud Load Balancer Back-end Pool Members for SAP NetWeaver ASCS - Dispatcher sapdp<ASCS_NN> process - Member 1
+  no_log: "{{ __sap_vm_provision_no_log }}"
   register: __sap_vm_provision_task_ibmcloud_lb_pool_members_nwas_ascs1
   ibm.cloudcollection.ibm_is_lb_pool_member:
     lb: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', 'lb-sap-ha-nwas-ascs'))[0].id }}"
@@ -527,6 +557,7 @@
 
 # Secondary
 - name: Create IBM Cloud Load Balancer Back-end Pool Members for SAP NetWeaver ASCS - Dispatcher sapdp<ASCS_NN> process - Member 2 (Failover/Secondary)
+  no_log: "{{ __sap_vm_provision_no_log }}"
   register: __sap_vm_provision_task_ibmcloud_lb_pool_members_nwas_ascs2
   ibm.cloudcollection.ibm_is_lb_pool_member:
     lb: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', 'lb-sap-ha-nwas-ascs'))[0].id }}"
@@ -544,6 +575,7 @@
 
 # Primary
 - name: Create IBM Cloud Load Balancer Back-end Pool Members for SAP NetWeaver ASCS - Message Server sapms<SAPSID> process - Member 1
+  no_log: "{{ __sap_vm_provision_no_log }}"
   register: __sap_vm_provision_task_ibmcloud_lb_pool_members_nwas_ascs3
   ibm.cloudcollection.ibm_is_lb_pool_member:
     lb: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', 'lb-sap-ha-nwas-ascs'))[0].id }}"
@@ -560,6 +592,7 @@
 
 # Secondary
 - name: Create IBM Cloud Load Balancer Back-end Pool Members for SAP NetWeaver ASCS - Message Server sapms<SAPSID> process - Member 2 (Failover/Secondary)
+  no_log: "{{ __sap_vm_provision_no_log }}"
   register: __sap_vm_provision_task_ibmcloud_lb_pool_members_nwas_ascs4
   ibm.cloudcollection.ibm_is_lb_pool_member:
     lb: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', 'lb-sap-ha-nwas-ascs'))[0].id }}"
@@ -577,6 +610,7 @@
 
 # Primary
 - name: Create IBM Cloud Load Balancer Back-end Pool Members for SAP NetWeaver ASCS - Enqueue Server sapenq<SAPSID> process - Member 1
+  no_log: "{{ __sap_vm_provision_no_log }}"
   register: __sap_vm_provision_task_ibmcloud_lb_pool_members_nwas_ascs5
   ibm.cloudcollection.ibm_is_lb_pool_member:
     lb: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', 'lb-sap-ha-nwas-ascs'))[0].id }}"
@@ -593,6 +627,7 @@
 
 # Secondary
 - name: Create IBM Cloud Load Balancer Back-end Pool Members for SAP NetWeaver ASCS - Enqueue Server sapenq<SAPSID> process - Member 2 (Failover/Secondary)
+  no_log: "{{ __sap_vm_provision_no_log }}"
   register: __sap_vm_provision_task_ibmcloud_lb_pool_members_nwas_ascs6
   ibm.cloudcollection.ibm_is_lb_pool_member:
     lb: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', 'lb-sap-ha-nwas-ascs'))[0].id }}"
@@ -610,6 +645,7 @@
 
 # Primary
 - name: Create IBM Cloud Load Balancer Back-end Pool Members for SAP NetWeaver ASCS - SAP Start Service (SAPControl SOAP) HTTP sapctrl<ASCS_NN> process - Member 1
+  no_log: "{{ __sap_vm_provision_no_log }}"
   register: __sap_vm_provision_task_ibmcloud_lb_pool_members_nwas_ascs7
   ibm.cloudcollection.ibm_is_lb_pool_member:
     lb: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', 'lb-sap-ha-nwas-ascs'))[0].id }}"
@@ -626,6 +662,7 @@
 
 # Secondary
 - name: Create IBM Cloud Load Balancer Back-end Pool Members for SAP NetWeaver ASCS - SAP Start Service (SAPControl SOAP) HTTP sapctrl<ASCS_NN> process - Member 2 (Failover/Secondary)
+  no_log: "{{ __sap_vm_provision_no_log }}"
   register: __sap_vm_provision_task_ibmcloud_lb_pool_members_nwas_ascs8
   ibm.cloudcollection.ibm_is_lb_pool_member:
     lb: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', 'lb-sap-ha-nwas-ascs'))[0].id }}"
@@ -643,6 +680,7 @@
 
 # Primary
 - name: Create IBM Cloud Load Balancer Back-end Pool Members for SAP NetWeaver ASCS - SAP Start Service (SAPControl SOAP) HTTPS (Secure) sapctrls<ASCS_NN> - Member 1
+  no_log: "{{ __sap_vm_provision_no_log }}"
   register: __sap_vm_provision_task_ibmcloud_lb_pool_members_nwas_ascs9
   ibm.cloudcollection.ibm_is_lb_pool_member:
     lb: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', 'lb-sap-ha-nwas-ascs'))[0].id }}"
@@ -659,6 +697,7 @@
 
 # Secondary
 - name: Create IBM Cloud Load Balancer Back-end Pool Members for SAP NetWeaver ASCS - SAP Start Service (SAPControl SOAP) HTTPS (Secure) sapctrls<ASCS_NN> - Member 2 (Failover/Secondary)
+  no_log: "{{ __sap_vm_provision_no_log }}"
   register: __sap_vm_provision_task_ibmcloud_lb_pool_members_nwas_ascs10
   ibm.cloudcollection.ibm_is_lb_pool_member:
     lb: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', 'lb-sap-ha-nwas-ascs'))[0].id }}"
@@ -676,6 +715,7 @@
 
 # Primary
 # - name: Create IBM Cloud Load Balancer Back-end Pool Members for SAP NetWeaver ERS - Dispatcher sapdp<ERS_NN> process - Member 1
+#   no_log: "{{ __sap_vm_provision_no_log }}"
 #   register: __sap_vm_provision_task_ibmcloud_lb_pool_members_nwas_ers1
 #   ibm.cloudcollection.ibm_is_lb_pool_member:
 #     lb: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', 'lb-sap-ha-nwas-ers'))[0].id }}"
@@ -692,6 +732,7 @@
 
 # Secondary
 # - name: Create IBM Cloud Load Balancer Back-end Pool Members for SAP NetWeaver ERS - Dispatcher sapdp<ERS_NN> process - Member 2 (Failover/Secondary)
+#   no_log: "{{ __sap_vm_provision_no_log }}"
 #   register: __sap_vm_provision_task_ibmcloud_lb_pool_members_nwas_ers2
 #   ibm.cloudcollection.ibm_is_lb_pool_member:
 #     lb: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', 'lb-sap-ha-nwas-ers'))[0].id }}"
@@ -709,6 +750,7 @@
 
 # Primary
 # - name: Create IBM Cloud Load Balancer Back-end Pool Members for SAP NetWeaver ERS - Message Server sapms<SAPSID> process - Member 1
+#   no_log: "{{ __sap_vm_provision_no_log }}"
 #   register: __sap_vm_provision_task_ibmcloud_lb_pool_members_nwas_ers3
 #   ibm.cloudcollection.ibm_is_lb_pool_member:
 #     lb: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', 'lb-sap-ha-nwas-ers'))[0].id }}"
@@ -725,6 +767,7 @@
 
 # Secondary
 # - name: Create IBM Cloud Load Balancer Back-end Pool Members for SAP NetWeaver ERS - Message Server sapms<SAPSID> process - Member 2 (Failover/Secondary)
+#   no_log: "{{ __sap_vm_provision_no_log }}"
 #   register: __sap_vm_provision_task_ibmcloud_lb_pool_members_nwas_ers4
 #   ibm.cloudcollection.ibm_is_lb_pool_member:
 #     lb: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', 'lb-sap-ha-nwas-ers'))[0].id }}"
@@ -742,6 +785,7 @@
 
 # Primary
 - name: Create IBM Cloud Load Balancer Back-end Pool Members for SAP NetWeaver ERS - Enqueue Replication Server sapenqr<SAPSID> process - Member 1
+  no_log: "{{ __sap_vm_provision_no_log }}"
   register: __sap_vm_provision_task_ibmcloud_lb_pool_members_nwas_ers5
   ibm.cloudcollection.ibm_is_lb_pool_member:
     lb: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', 'lb-sap-ha-nwas-ers'))[0].id }}"
@@ -758,6 +802,7 @@
 
 # Secondary
 - name: Create IBM Cloud Load Balancer Back-end Pool Members for SAP NetWeaver ERS - Enqueue Replication Server sapenqr<SAPSID> process - Member 2 (Failover/Secondary)
+  no_log: "{{ __sap_vm_provision_no_log }}"
   register: __sap_vm_provision_task_ibmcloud_lb_pool_members_nwas_ers6
   ibm.cloudcollection.ibm_is_lb_pool_member:
     lb: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', 'lb-sap-ha-nwas-ers'))[0].id }}"
@@ -775,6 +820,7 @@
 
 # Primary
 - name: Create IBM Cloud Load Balancer Back-end Pool Members for SAP NetWeaver ERS - SAP Start Service (SAPControl SOAP) HTTP sapctrl<ERS_NN> process - Member 1
+  no_log: "{{ __sap_vm_provision_no_log }}"
   register: __sap_vm_provision_task_ibmcloud_lb_pool_members_nwas_ers7
   ibm.cloudcollection.ibm_is_lb_pool_member:
     lb: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', 'lb-sap-ha-nwas-ers'))[0].id }}"
@@ -791,6 +837,7 @@
 
 # Secondary
 - name: Create IBM Cloud Load Balancer Back-end Pool Members for SAP NetWeaver ERS - SAP Start Service (SAPControl SOAP) HTTP sapctrl<ERS_NN> process - Member 2 (Failover/Secondary)
+  no_log: "{{ __sap_vm_provision_no_log }}"
   register: __sap_vm_provision_task_ibmcloud_lb_pool_members_nwas_ers8
   ibm.cloudcollection.ibm_is_lb_pool_member:
     lb: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', 'lb-sap-ha-nwas-ers'))[0].id }}"
@@ -808,6 +855,7 @@
 
 # Primary
 - name: Create IBM Cloud Load Balancer Back-end Pool Members for SAP NetWeaver ERS - SAP Start Service (SAPControl SOAP) HTTPS (Secure) sapctrls<ERS_NN> - Member 1
+  no_log: "{{ __sap_vm_provision_no_log }}"
   register: __sap_vm_provision_task_ibmcloud_lb_pool_members_nwas_ers9
   ibm.cloudcollection.ibm_is_lb_pool_member:
     lb: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', 'lb-sap-ha-nwas-ers'))[0].id }}"
@@ -824,6 +872,7 @@
 
 # Secondary
 - name: Create IBM Cloud Load Balancer Back-end Pool Members for SAP NetWeaver ERS - SAP Start Service (SAPControl SOAP) HTTPS (Secure) sapctrls<ERS_NN> - Member 2 (Failover/Secondary)
+  no_log: "{{ __sap_vm_provision_no_log }}"
   register: __sap_vm_provision_task_ibmcloud_lb_pool_members_nwas_ers10
   ibm.cloudcollection.ibm_is_lb_pool_member:
     lb: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', 'lb-sap-ha-nwas-ers'))[0].id }}"
@@ -842,6 +891,7 @@
 # Create IBM Cloud Load Balancer Front-end Listeners (open port for Virtual IPs)
 
 - name: Create IBM Cloud Load Balancer Front-end Listener for SAP HANA - System DB SQL
+  no_log: "{{ __sap_vm_provision_no_log }}"
   register: __sap_vm_provision_task_ibmcloud_lb_frontend_listener_hana1
   ibm.cloudcollection.ibm_is_lb_listener:
     lb: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', 'lb-sap-ha-hana'))[0].id }}"
@@ -853,6 +903,7 @@
   failed_when: not __sap_vm_provision_task_ibmcloud_lb_frontend_listener_hana1.rc == 0 and not 'listener_duplicate_port' in __sap_vm_provision_task_ibmcloud_lb_frontend_listener_hana1.stderr
 
 - name: Create IBM Cloud Load Balancer Front-end Listener for SAP HANA - MDC Tenant 1 SQL
+  no_log: "{{ __sap_vm_provision_no_log }}"
   register: __sap_vm_provision_task_ibmcloud_lb_frontend_listener_hana2
   ibm.cloudcollection.ibm_is_lb_listener:
     lb: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', 'lb-sap-ha-hana'))[0].id }}"
@@ -864,6 +915,7 @@
   failed_when: not __sap_vm_provision_task_ibmcloud_lb_frontend_listener_hana2.rc == 0 and not 'listener_duplicate_port' in __sap_vm_provision_task_ibmcloud_lb_frontend_listener_hana2.stderr
 
 - name: Create IBM Cloud Load Balancer Front-end Listener for SAP HANA - startsrv HTTP
+  no_log: "{{ __sap_vm_provision_no_log }}"
   register: __sap_vm_provision_task_ibmcloud_lb_frontend_listener_hana3
   ibm.cloudcollection.ibm_is_lb_listener:
     lb: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', 'lb-sap-ha-hana'))[0].id }}"
@@ -875,6 +927,7 @@
   failed_when: not __sap_vm_provision_task_ibmcloud_lb_frontend_listener_hana3.rc == 0 and not 'listener_duplicate_port' in __sap_vm_provision_task_ibmcloud_lb_frontend_listener_hana3.stderr
 
 - name: Create IBM Cloud Load Balancer Front-end Listener for SAP HANA - startsrv HTTPS
+  no_log: "{{ __sap_vm_provision_no_log }}"
   register: __sap_vm_provision_task_ibmcloud_lb_frontend_listener_hana4
   ibm.cloudcollection.ibm_is_lb_listener:
     lb: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', 'lb-sap-ha-hana'))[0].id }}"
@@ -886,6 +939,7 @@
   failed_when: not __sap_vm_provision_task_ibmcloud_lb_frontend_listener_hana4.rc == 0 and not 'listener_duplicate_port' in __sap_vm_provision_task_ibmcloud_lb_frontend_listener_hana4.stderr
 
 - name: Create IBM Cloud Load Balancer Front-end Listener for SAP AnyDB - IBM Db2 Communication Port
+  no_log: "{{ __sap_vm_provision_no_log }}"
   register: __sap_vm_provision_task_ibmcloud_lb_frontend_listener_anydb1
   ibm.cloudcollection.ibm_is_lb_listener:
     lb: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', 'lb-sap-ha-anydb'))[0].id }}"
@@ -897,6 +951,7 @@
   failed_when: not __sap_vm_provision_task_ibmcloud_lb_frontend_listener_anydb1.rc == 0 and not 'listener_duplicate_port' in __sap_vm_provision_task_ibmcloud_lb_frontend_listener_anydb1.stderr
 
 - name: Create IBM Cloud Load Balancer Front-end Listener for SAP NetWeaver ASCS - Dispatcher sapdp<ASCS_NN> process
+  no_log: "{{ __sap_vm_provision_no_log }}"
   register: __sap_vm_provision_task_ibmcloud_lb_frontend_listener_ascs1
   ibm.cloudcollection.ibm_is_lb_listener:
     lb: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', 'lb-sap-ha-nwas-ascs'))[0].id }}"
@@ -908,6 +963,7 @@
   failed_when: not __sap_vm_provision_task_ibmcloud_lb_frontend_listener_ascs1.rc == 0 and not 'listener_duplicate_port' in __sap_vm_provision_task_ibmcloud_lb_frontend_listener_ascs1.stderr
 
 - name: Create IBM Cloud Load Balancer Front-end Listener for SAP NetWeaver ASCS - Message Server sapms<SAPSID> process
+  no_log: "{{ __sap_vm_provision_no_log }}"
   register: __sap_vm_provision_task_ibmcloud_lb_frontend_listener_ascs2
   ibm.cloudcollection.ibm_is_lb_listener:
     lb: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', 'lb-sap-ha-nwas-ascs'))[0].id }}"
@@ -919,6 +975,7 @@
   failed_when: not __sap_vm_provision_task_ibmcloud_lb_frontend_listener_ascs2.rc == 0 and not 'listener_duplicate_port' in __sap_vm_provision_task_ibmcloud_lb_frontend_listener_ascs2.stderr
 
 - name: Create IBM Cloud Load Balancer Front-end Listener for SAP NetWeaver ASCS - Enqueue Server sapenq<SAPSID> process
+  no_log: "{{ __sap_vm_provision_no_log }}"
   register: __sap_vm_provision_task_ibmcloud_lb_frontend_listener_ascs3
   ibm.cloudcollection.ibm_is_lb_listener:
     lb: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', 'lb-sap-ha-nwas-ascs'))[0].id }}"
@@ -930,6 +987,7 @@
   failed_when: not __sap_vm_provision_task_ibmcloud_lb_frontend_listener_ascs3.rc == 0 and not 'listener_duplicate_port' in __sap_vm_provision_task_ibmcloud_lb_frontend_listener_ascs3.stderr
 
 - name: Create IBM Cloud Load Balancer Front-end Listener for SAP NetWeaver ASCS - SAP Start Service (SAPControl SOAP) HTTP sapctrl<ASCS_NN> process
+  no_log: "{{ __sap_vm_provision_no_log }}"
   register: __sap_vm_provision_task_ibmcloud_lb_frontend_listener_ascs4
   ibm.cloudcollection.ibm_is_lb_listener:
     lb: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', 'lb-sap-ha-nwas-ascs'))[0].id }}"
@@ -941,6 +999,7 @@
   failed_when: not __sap_vm_provision_task_ibmcloud_lb_frontend_listener_ascs4.rc == 0 and not 'listener_duplicate_port' in __sap_vm_provision_task_ibmcloud_lb_frontend_listener_ascs4.stderr
 
 - name: Create IBM Cloud Load Balancer Front-end Listener for SAP NetWeaver ASCS - SAP Start Service (SAPControl SOAP) HTTPS (Secure) sapctrls<ASCS_NN>
+  no_log: "{{ __sap_vm_provision_no_log }}"
   register: __sap_vm_provision_task_ibmcloud_lb_frontend_listener_ascs5
   ibm.cloudcollection.ibm_is_lb_listener:
     lb: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', 'lb-sap-ha-nwas-ascs'))[0].id }}"
@@ -952,28 +1011,31 @@
   failed_when: not __sap_vm_provision_task_ibmcloud_lb_frontend_listener_ascs5.rc == 0 and not 'listener_duplicate_port' in __sap_vm_provision_task_ibmcloud_lb_frontend_listener_ascs5.stderr
 
 # - name: Create IBM Cloud Load Balancer Front-end Listener for SAP NetWeaver ERS - Dispatcher sapdp<ERS_NN> process
+#   no_log: "{{ __sap_vm_provision_no_log }}"
 #   register: __sap_vm_provision_task_ibmcloud_lb_frontend_listener_ers1
-#  ibm.cloudcollection.ibm_is_lb_listener:
-#    lb: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', 'lb-sap-ha-nwas-ers'))[0].id }}"
-#    default_pool: "{{ (__sap_vm_provision_task_ibmcloud_lb_pools.results | json_query('[*].resource.pools') | flatten | selectattr('name', '==', 'lb-sap-ha-nwas-ers-pool-dp'))[0].id }}"
-#    protocol: tcp
-#    port: "{{ ('32' + sap_system_nwas_abap_ers_instance_nr) | int }}"
-#    ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
+#   ibm.cloudcollection.ibm_is_lb_listener:
+#     lb: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', 'lb-sap-ha-nwas-ers'))[0].id }}"
+#     default_pool: "{{ (__sap_vm_provision_task_ibmcloud_lb_pools.results | json_query('[*].resource.pools') | flatten | selectattr('name', '==', 'lb-sap-ha-nwas-ers-pool-dp'))[0].id }}"
+#     protocol: tcp
+#     port: "{{ ('32' + sap_system_nwas_abap_ers_instance_nr) | int }}"
+#     ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
 #   when: (groups['nwas_ers'] is defined and (groups['nwas_ers'] | length>0))
 #   failed_when: not __sap_vm_provision_task_ibmcloud_lb_frontend_listener_ers1.rc == 0 and not 'listener_duplicate_port' in __sap_vm_provision_task_ibmcloud_lb_frontend_listener_ers1.stderr
 
 # - name: Create IBM Cloud Load Balancer Front-end Listener for SAP NetWeaver ERS - Message Server sapms<SAPSID> process
+#   no_log: "{{ __sap_vm_provision_no_log }}"
 #   register: __sap_vm_provision_task_ibmcloud_lb_frontend_listener_ers2
-#  ibm.cloudcollection.ibm_is_lb_listener:
-#    lb: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', 'lb-sap-ha-nwas-ers'))[0].id }}"
-#    default_pool: "{{ (__sap_vm_provision_task_ibmcloud_lb_pools.results | json_query('[*].resource.pools') | flatten | selectattr('name', '==', 'lb-sap-ha-nwas-ers-pool-ms'))[0].id }}"
-#    protocol: tcp
-#    port: "{{ ('36' + sap_system_nwas_abap_ers_instance_nr) | int }}"
-#    ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
+#   ibm.cloudcollection.ibm_is_lb_listener:
+#     lb: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', 'lb-sap-ha-nwas-ers'))[0].id }}"
+#     default_pool: "{{ (__sap_vm_provision_task_ibmcloud_lb_pools.results | json_query('[*].resource.pools') | flatten | selectattr('name', '==', 'lb-sap-ha-nwas-ers-pool-ms'))[0].id }}"
+#     protocol: tcp
+#     port: "{{ ('36' + sap_system_nwas_abap_ers_instance_nr) | int }}"
+#     ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
 #   when: (groups['nwas_ers'] is defined and (groups['nwas_ers'] | length>0))
 #   failed_when: not __sap_vm_provision_task_ibmcloud_lb_frontend_listener_ers2.rc == 0 and not 'listener_duplicate_port' in __sap_vm_provision_task_ibmcloud_lb_frontend_listener_ers2.stderr
 
 - name: Create IBM Cloud Load Balancer Front-end Listener for SAP NetWeaver ERS - Enqueue Replication Server sapenqr<SAPSID> process
+  no_log: "{{ __sap_vm_provision_no_log }}"
   register: __sap_vm_provision_task_ibmcloud_lb_frontend_listener_ers3
   ibm.cloudcollection.ibm_is_lb_listener:
     lb: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', 'lb-sap-ha-nwas-ers'))[0].id }}"
@@ -985,6 +1047,7 @@
   failed_when: not __sap_vm_provision_task_ibmcloud_lb_frontend_listener_ers3.rc == 0 and not 'listener_duplicate_port' in __sap_vm_provision_task_ibmcloud_lb_frontend_listener_ers3.stderr
 
 - name: Create IBM Cloud Load Balancer Front-end Listener for SAP NetWeaver ERS - SAP Start Service (SAPControl SOAP) HTTP sapctrl<ERS_NN> process
+  no_log: "{{ __sap_vm_provision_no_log }}"
   register: __sap_vm_provision_task_ibmcloud_lb_frontend_listener_ers4
   ibm.cloudcollection.ibm_is_lb_listener:
     lb: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', 'lb-sap-ha-nwas-ers'))[0].id }}"
@@ -996,6 +1059,7 @@
   failed_when: not __sap_vm_provision_task_ibmcloud_lb_frontend_listener_ers4.rc == 0 and not 'listener_duplicate_port' in __sap_vm_provision_task_ibmcloud_lb_frontend_listener_ers4.stderr
 
 - name: Create IBM Cloud Load Balancer Front-end Listener for SAP NetWeaver ERS - SAP Start Service (SAPControl SOAP) HTTPS (Secure) sapctrls<ERS_NN>
+  no_log: "{{ __sap_vm_provision_no_log }}"
   register: __sap_vm_provision_task_ibmcloud_lb_frontend_listener_ers5
   ibm.cloudcollection.ibm_is_lb_listener:
     lb: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', 'lb-sap-ha-nwas-ers'))[0].id }}"
@@ -1010,6 +1074,7 @@
 # Set DNS A Record for Virtual IP (use the first of the IBM Cloud Load Balancer instance assigned Private IPs in the VPC Subnet Range)
 
 - name: IBM Cloud Private DNS Record for SAP HANA HA Virtual Hostname
+  no_log: "{{ __sap_vm_provision_no_log }}"
   register: __sap_vm_provision_task_ibmcloud_pdns_record_ha_hana
   ibm.cloudcollection.ibm_dns_resource_record:
     instance_id: "{{ __sap_vm_provision_task_ibmcloud_pdns_service_instance.resource.guid }}"
@@ -1027,6 +1092,7 @@
     - groups["hana_secondary"] is defined and (groups["hana_secondary"]|length>0)
 
 - name: IBM Cloud Private DNS Record for SAP AnyDB HA Virtual Hostname
+  no_log: "{{ __sap_vm_provision_no_log }}"
   register: __sap_vm_provision_task_ibmcloud_pdns_record_ha_anydb
   ibm.cloudcollection.ibm_dns_resource_record:
     instance_id: "{{ __sap_vm_provision_task_ibmcloud_pdns_service_instance.resource.guid }}"
@@ -1044,6 +1110,7 @@
     - groups["anydb_secondary"] is defined and (groups["anydb_secondary"]|length>0)
 
 - name: IBM Cloud Private DNS Record for SAP NetWeaver ASCS HA Virtual Hostname
+  no_log: "{{ __sap_vm_provision_no_log }}"
   register: __sap_vm_provision_task_ibmcloud_pdns_record_ha_nwas_ascs
   ibm.cloudcollection.ibm_dns_resource_record:
     instance_id: "{{ __sap_vm_provision_task_ibmcloud_pdns_service_instance.resource.guid }}"
@@ -1061,6 +1128,7 @@
     - groups["nwas_ers"] is defined and (groups["nwas_ers"]|length>0)
 
 - name: IBM Cloud Private DNS Record for SAP NetWeaver ERS HA Virtual Hostname
+  no_log: "{{ __sap_vm_provision_no_log }}"
   register: __sap_vm_provision_task_ibmcloud_pdns_record_ha_nwas_ers
   ibm.cloudcollection.ibm_dns_resource_record:
     instance_id: "{{ __sap_vm_provision_task_ibmcloud_pdns_service_instance.resource.guid }}"
