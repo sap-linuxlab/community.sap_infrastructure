@@ -17,19 +17,20 @@
 
 # Status will change from Building > Warning (VM = Active, Health = Warning) > Active. The Ansible Task will continue once the Active status has been reached.
 - name: Provision IBM Power Virtual Server instance on IBM Cloud
+  no_log: "{{ __sap_vm_provision_no_log }}"
   register: __sap_vm_provision_task_provision_host_single
   ibm.cloudcollection.ibm_pi_instance:
-    pi_cloud_instance_id: "{{ register_ibmcloud_power_iaas_workspace_service_instance.resource.guid }}" # must be GUID, not CRN
+    pi_cloud_instance_id: "{{ __sap_vm_provision_task_ibmcloud_pi_workspace_service_instance.resource.guid }}" # must be GUID, not CRN
 
     pi_instance_name: "{{ inventory_hostname }}"
-    pi_image_id: "{{ register_provisioned_os_image.resource.id if register_provisioned_os_image.rc == 0 else register_existing_os_image.resource.id }}"
+    pi_image_id: "{{ __sap_vm_provision_task_ibmcloud_pi_os_image_provisioned.resource.id if __sap_vm_provision_task_ibmcloud_pi_os_image_provisioned.rc == 0 else __sap_vm_provision_task_ibmcloud_pi_os_image_existing.resource.id }}"
 
     pi_sys_type: e980
     pi_sap_profile_id: "{{ lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan][scaleout_origin_host_spec | default(inventory_hostname)].virtual_machine_profile }}"
     pi_key_pair_name: "{{ sap_vm_provision_ibmcloud_powervs_key_pair_name_ssh_host_public_key }}"
 
     pi_network:
-      - network_id: "{{ register_ibmcloud_pi_subnet.resource.id }}"
+      - network_id: "{{ __sap_vm_provision_task_ibmcloud_pi_subnet.resource.id }}"
 
     pi_storage_type: tier1
     #pi_volume_ids: []
@@ -37,12 +38,16 @@
     pi_pin_policy: none
     pi_health_status: OK
 
+    ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
+
 # Use check to avoid idempotency issues with legacy ibm.cloudcollection Ansible Collection (until ibm.cloud Ansible Collection is out of beta)
 - name: Check IBM Power Virtual Server instance on IBM Cloud
+  no_log: "{{ __sap_vm_provision_no_log }}"
   register: __sap_vm_provision_task_provision_host_single
   ibm.cloudcollection.ibm_pi_instance_info:
-    pi_cloud_instance_id: "{{ register_ibmcloud_power_iaas_workspace_service_instance.resource.guid }}" # must be GUID, not CRN
+    pi_cloud_instance_id: "{{ __sap_vm_provision_task_ibmcloud_pi_workspace_service_instance.resource.guid }}" # must be GUID, not CRN
     pi_instance_name: "{{ inventory_hostname }}"
+    ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
 
 
 # Create flat list with names for each volume to be created.
@@ -71,15 +76,17 @@
 
 
 - name: Provision IBM Power Infrastructure Block Storage volumes for IBM Power VS instance filesystems
+  no_log: "{{ __sap_vm_provision_no_log }}"
   register: __sap_vm_provision_task_provision_host_single_volumes
   ibm.cloudcollection.ibm_pi_volume:
-    pi_cloud_instance_id: "{{ register_ibmcloud_power_iaas_workspace_service_instance.resource.guid }}" # must be GUID, not CRN
+    pi_cloud_instance_id: "{{ __sap_vm_provision_task_ibmcloud_pi_workspace_service_instance.resource.guid }}" # must be GUID, not CRN
     pi_volume_name: "{{ inventory_hostname + '-vol-' + vol_item.name | replace('_', '-')}}"
     pi_volume_type: "{{ vol_item.type }}"
     pi_volume_size: "{{ vol_item.size }}"
     pi_volume_shareable: false
     pi_replication_enabled: false
     #delete_on_termination: true
+    ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
   loop: "{{ storage_disks_map }}"
   loop_control:
     loop_var: vol_item
@@ -93,10 +100,12 @@
 
 # Use check to avoid idempotency issues with legacy ibm.cloudcollection Ansible Collection (until ibm.cloud Ansible Collection is out of beta)
 - name: Check status of IBM Power Infrastructure Block Storage volumes
+  no_log: "{{ __sap_vm_provision_no_log }}"
   register: __sap_vm_provision_task_provision_host_single_volumes_info
   ibm.cloudcollection.ibm_pi_volume_info:
-    pi_cloud_instance_id: "{{ register_ibmcloud_power_iaas_workspace_service_instance.resource.guid }}" # must be GUID, not CRN
+    pi_cloud_instance_id: "{{ __sap_vm_provision_task_ibmcloud_pi_workspace_service_instance.resource.guid }}" # must be GUID, not CRN
     pi_volume_name: "{{ inventory_hostname + '-vol-' + vol_item.name | replace('_', '-')}}"
+    ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
   loop: "{{ storage_disks_map }}"
   loop_control:
     loop_var: vol_item
@@ -109,11 +118,13 @@
   delay: 20
 
 - name: Attach IBM Power Infrastructure Block Storage volumes as filesystem for IBM Power VS instance
+  no_log: "{{ __sap_vm_provision_no_log }}"
   register: __sap_vm_provision_task_provision_host_single_volume_attachments
   ibm.cloudcollection.ibm_pi_volume_attach:
-    pi_cloud_instance_id: "{{ register_ibmcloud_power_iaas_workspace_service_instance.resource.guid }}" # must be GUID, not CRN
+    pi_cloud_instance_id: "{{ __sap_vm_provision_task_ibmcloud_pi_workspace_service_instance.resource.guid }}" # must be GUID, not CRN
     pi_volume_id: "{{ vol_item.resource.id }}"
     pi_instance_id: "{{ __sap_vm_provision_task_provision_host_single.resource.id }}"
+    ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
   loop: "{{ __sap_vm_provision_task_provision_host_single_volumes_info.results }}"
   loop_control:
     loop_var: vol_item
@@ -127,10 +138,12 @@
   delay: 10
 
 - name: Read IBM Power Virtual Server information
+  no_log: "{{ __sap_vm_provision_no_log }}"
   register: __sap_vm_provision_task_provision_host_single_info
   ibm.cloudcollection.ibm_pi_instance_info:
-    pi_cloud_instance_id: "{{ register_ibmcloud_power_iaas_workspace_service_instance.resource.guid }}" # must be GUID, not CRN
+    pi_cloud_instance_id: "{{ __sap_vm_provision_task_ibmcloud_pi_workspace_service_instance.resource.guid }}" # must be GUID, not CRN
     pi_instance_name: "{{ __sap_vm_provision_task_provision_host_single.resource.pi_instance_name }}"
+    ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
 
 - name: Add host facts
   ansible.builtin.set_fact:
@@ -182,7 +195,7 @@
         dest: /root/.ssh/authorized_keys
         mode: '0600'
         content: |
-          {{ register_ibmcloud_pi_ssh_public_key.resource.ssh_key }}
+          {{ __sap_vm_provision_task_ibmcloud_pi_ssh_public_key.resource.ssh_key }}
 
     - name: Permit root login
       register: __sap_vm_provision_task_os_sshd_config
