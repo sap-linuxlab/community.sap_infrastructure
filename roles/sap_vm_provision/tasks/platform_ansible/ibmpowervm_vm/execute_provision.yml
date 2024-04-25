@@ -24,21 +24,21 @@
 - name: Check if VM exists
   register: __sap_vm_provision_task_provision_host_single_check_exists
   openstack.cloud.server_info:
-    auth: "{{ openstack_auth_delegate }}"
+    auth: "{{ __sap_vm_provision_task_ibmpowervm_openstack_auth_delegate }}"
     validate_certs: false # Allow Self-Signed Certificate
     name: "{{ inventory_hostname }}"
 
 - name: Check OS Image available in IBM PowerVM
-  register: register_ibmpowervm_available_os
+  register: __sap_vm_provision_task_ibmpowervm_os_image_info
   openstack.cloud.image_info:
-    auth: "{{ openstack_auth_delegate }}"
+    auth: "{{ __sap_vm_provision_task_ibmpowervm_openstack_auth_delegate }}"
     validate_certs: false # Allow Self-Signed Certificate
     image: "{{ sap_vm_provision_ibmpowervm_vm_host_os_image }}"
 
 - name: Check network available in IBM PowerVM
-  register: register_ibmpowervm_available_network
+  register: __sap_vm_provision_task_ibmpowervm_network
   openstack.cloud.networks_info:
-    auth: "{{ openstack_auth }}"
+    auth: "{{ __sap_vm_provision_task_ibmpowervm_openstack_auth }}"
     validate_certs: false # Allow Self-Signed Certificate
     name: "{{ sap_vm_provision_ibmpowervm_network_name }}"
 
@@ -54,9 +54,9 @@
 
     # See documented IBM PowerVM Compute Template (OpenStack Flavor) extra specs - https://www.ibm.com/docs/en/powervc-cloud/latest?topic=apis-flavors-extra-specs
     - name: Create IBM PowerVM Compute Template
-      register: register_ibmpowervm_compute_template
+      register: __sap_vm_provision_task_ibmpowervm_compute_template
       openstack.cloud.compute_flavor:
-        auth: "{{ openstack_auth }}"
+        auth: "{{ __sap_vm_provision_task_ibmpowervm_openstack_auth }}"
         validate_certs: false # Allow Self-Signed Certificate
 
         state: present
@@ -104,9 +104,9 @@
 
 
     - name: Provision IBM PowerVM vNIC (Network Port)
-      register: register_provisioned_host_vnic_single
+      register: __sap_vm_provision_task_provision_host_single_vnic
       openstack.cloud.port:
-        auth: "{{ openstack_auth }}"
+        auth: "{{ __sap_vm_provision_task_ibmpowervm_openstack_auth }}"
         validate_certs: false # Allow Self-Signed Certificate
         state: present
         name: "{{ inventory_hostname }}-vnic0"
@@ -134,7 +134,7 @@
     - name: Provision IBM PowerVM Virtual Machine (LPAR)
       register: __sap_vm_provision_task_provision_host_single
       openstack.cloud.server:
-        auth: "{{ openstack_auth }}"
+        auth: "{{ __sap_vm_provision_task_ibmpowervm_openstack_auth }}"
         validate_certs: false # Allow Self-Signed Certificate
 
         ## Virtual Machine target Hypervisor definition
@@ -149,7 +149,7 @@
         description: "{{ inventory_hostname }} created by Ansible Playbook for SAP"
 
         ## Virtual Machine main resources definition
-        flavor: "{{ register_ibmpowervm_compute_template.flavor.id }}"
+        flavor: "{{ __sap_vm_provision_task_ibmpowervm_compute_template.flavor.id }}"
         image: "{{ sap_vm_provision_ibmpowervm_vm_host_os_image }}" # Do not set boot_from_volume, boot_volume or volumes parameters when cloning OS Image template
         terminate_volume: true
         key_name: "{{ sap_vm_provision_ibmpowervm_key_pair_name_ssh_host_public_key }}"
@@ -177,16 +177,16 @@
 
 
 - name: Collect info on IBM PowerVM vNIC (Network Port)
-  register: register_provisioned_host_vnic_single
+  register: __sap_vm_provision_task_provision_host_single_vnic
   openstack.cloud.port_info:
-    auth: "{{ openstack_auth }}"
+    auth: "{{ __sap_vm_provision_task_ibmpowervm_openstack_auth }}"
     validate_certs: false # Allow Self-Signed Certificate
     name: "{{ inventory_hostname }}-vnic0"
 
 
 - name: Create fact for delegate host IP
   ansible.builtin.set_fact:
-    provisioned_private_ip: "{{ register_provisioned_host_vnic_single.ports[0].fixed_ips[0].ip_address }}"
+    provisioned_private_ip: "{{ __sap_vm_provision_task_provision_host_single_vnic.ports[0].fixed_ips[0].ip_address }}"
 
 
 # OpenStack APIs cannot query the IBM PowerVC APIs directly,
@@ -282,9 +282,10 @@
 # The volume creation task requires the above task to define the parameter
 # which contains the calculated unique device names.
 - name: Provision Virtual Disk volumes for IBM PowerVM VM filesystems
+  no_log: "{{ __sap_vm_provision_no_log }}"
   register: __sap_vm_provision_task_provision_host_single_volumes
   openstack.cloud.volume:
-    auth: "{{ openstack_auth_delegate }}"
+    auth: "{{ __sap_vm_provision_task_ibmpowervm_openstack_auth_delegate }}"
     validate_certs: false # Allow Self-Signed Certificate
     state: present
     name: "{{ inventory_hostname }}-vol_{{ vol_item.name }}"
@@ -307,8 +308,10 @@
     - vol_item.size > 0
 
 - name: Attach Virtual Disk volumes to the IBM PowerVM VM
+  no_log: "{{ __sap_vm_provision_no_log }}"
+  register: __sap_vm_provision_task_provision_host_single_volume_attachments
   openstack.cloud.server_volume:
-    auth: "{{ openstack_auth_delegate }}"
+    auth: "{{ __sap_vm_provision_task_ibmpowervm_openstack_auth_delegate }}"
     validate_certs: false # Allow Self-Signed Certificate
     state: present
     server: "{{ inventory_hostname }}"
@@ -322,8 +325,9 @@
   delay: 5
 
 - name: Re-scan IBM PowerVM VM SCSI Bus
-  ansible.builtin.command: "/usr/bin/rescan-scsi-bus.sh"
+  no_log: "{{ __sap_vm_provision_no_log }}"
   register: __sap_vm_provision_task_os_rescan_scsi_bus_output
+  ansible.builtin.command: "/usr/bin/rescan-scsi-bus.sh"
   changed_when: __sap_vm_provision_task_os_rescan_scsi_bus_output.rc != 0
   remote_user: root
   become: true
@@ -341,9 +345,10 @@
 
 
 - name: Check VM status
+  no_log: "{{ __sap_vm_provision_no_log }}"
   register: __sap_vm_provision_task_provision_host_single_info
   openstack.cloud.server_info:
-    auth: "{{ openstack_auth_delegate }}"
+    auth: "{{ __sap_vm_provision_task_ibmpowervm_openstack_auth_delegate }}"
     validate_certs: false # Allow Self-Signed Certificate
     name: "{{ inventory_hostname }}"
 
