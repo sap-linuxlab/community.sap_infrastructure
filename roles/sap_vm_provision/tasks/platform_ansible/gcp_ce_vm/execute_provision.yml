@@ -74,7 +74,7 @@
           'interface': 'SCSI',
           'initialize_params': {
             'disk_type': 'pd-standard',
-            'source_image': register_gcp_os_image.resources[0].selfLink
+            'source_image': __sap_vm_provision_task_gcp_os_image_info.resources[0].selfLink
           }
         }
       ] -%}
@@ -105,9 +105,9 @@
     can_ip_forward: "{{ lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan][scaleout_origin_host_spec | default(inventory_hostname)].disable_ip_anti_spoofing }}" # When disable the Anti IP Spoofing = true, then Can IP Forward = true
     network_interfaces:
       - network:
-          selfLink: "{{ gcp_vpc_info.resources[0].selfLink }}"
+          selfLink: "{{ __sap_vm_provision_task_gcp_vpc_info.resources[0].selfLink }}"
         subnetwork:
-          selfLink: "{{ gcp_vpc_subnet_info.resources[0].selfLink }}"
+          selfLink: "{{ __sap_vm_provision_task_gcp_vpc_subnet_info.resources[0].selfLink }}"
     # 'NVME interface is only supported for confidential VMs or the following VM families: [a3-vm, c1-metal, c2-metal, c3-metal, c3-vm, c3d-vm, ct5p-vm, g2-vm, h3-vm, m3-vm, t2a-vm]
     disks: "{{ provisioned_disks_map }}"
     metadata:

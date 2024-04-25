@@ -14,7 +14,7 @@
 
     - name: Identify GCP OS Image
       no_log: "{{ __sap_vm_provision_no_log }}"
-      register: register_gcp_os_image
+      register: __sap_vm_provision_task_gcp_os_image_info
       google.cloud.gcp_compute_image_info:
         project: "{{ lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_os_image_dictionary')[sap_vm_provision_gcp_ce_vm_host_os_image].project }}"
         filters:
@@ -25,7 +25,7 @@
 
     - name: Identify GCP Network (VPC)
       no_log: "{{ __sap_vm_provision_no_log }}"
-      register: gcp_vpc_info
+      register: __sap_vm_provision_task_gcp_vpc_info
       google.cloud.gcp_compute_network_info:
         project: "{{ sap_vm_provision_gcp_project }}"
         filters:
@@ -35,7 +35,7 @@
 
     - name: Identify GCP Subnetwork (VPC Subnet)
       no_log: "{{ __sap_vm_provision_no_log }}"
-      register: gcp_vpc_subnet_info
+      register: __sap_vm_provision_task_gcp_vpc_subnet_info
       google.cloud.gcp_compute_subnetwork_info:
         project: "{{ sap_vm_provision_gcp_project }}"
         region: "{{ sap_vm_provision_gcp_region }}"
@@ -86,7 +86,7 @@
 
     - name: Gather GCP VM information
       no_log: "{{ __sap_vm_provision_no_log }}"
-      register: gcp_vm_info
+      register: __sap_vm_provision_task_provision_host_single_info
       google.cloud.gcp_compute_instance_info:
         project: "{{ sap_vm_provision_gcp_project }}"
         zone: "{{ sap_vm_provision_gcp_region_zone }}"
@@ -97,7 +97,7 @@
 
     - name: Gather GCP VPC Subnet information
       no_log: "{{ __sap_vm_provision_no_log }}"
-      register: gcp_vpc_subnet_info
+      register: __sap_vm_provision_task_gcp_vpc_subnet_info
       google.cloud.gcp_compute_subnetwork_info:
         project: "{{ sap_vm_provision_gcp_project }}"
         region: "{{ sap_vm_provision_gcp_region }}"
@@ -108,7 +108,7 @@
 
     - name: Gather GCP Private DNS information
       no_log: "{{ __sap_vm_provision_no_log }}"
-      register: gcp_pdns_info
+      register: __sap_vm_provision_task_gcp_pdns_info
       google.cloud.gcp_dns_managed_zone_info:
         project: "{{ sap_vm_provision_gcp_project }}"
         dns_name: "{{ sap_vm_provision_dns_root_domain }}."
@@ -117,12 +117,12 @@
 
     # - name: Gather information about GCP Router and table for the VPC Subnet
     #   no_log: "{{ __sap_vm_provision_no_log }}"
-    #   register: gcp_router_info
+    #   register: __sap_vm_provision_task_gcp_router_info
     #   google.cloud.gcp_compute_router_info:
     #     project: "{{ sap_vm_provision_gcp_project }}"
     #     region: "{{ sap_vm_provision_gcp_region }}"
     #     filters:
-    #       - network = "{{ gcp_vpc_info.resources[0].selfLink }}"
+    #       - network = "{{ __sap_vm_provision_task_gcp_vpc_info.resources[0].selfLink }}"
     #     #  - name = sap-vpc-router
     #     auth_kind: "serviceaccount"
     #     service_account_contents: "{{ sap_vm_provision_gcp_credentials_json }}"
@@ -130,16 +130,16 @@
     # - name: Verify IP Forwarding for GCP VMs
     #   ansible.builtin.fail:
     #     msg: GCP CE VM does not have IP Forwarding enabled
-    #   when: not gcp_vm_info.resources[0].canIpForward
+    #   when: not __sap_vm_provision_task_provision_host_single_info.resources[0].canIpForward
 
     - name: GCP Private DNS Records for hosts
       no_log: "{{ __sap_vm_provision_no_log }}"
-      register: gcp_pdns_records
+      register: __sap_vm_provision_task_gcp_pdns_records
       google.cloud.gcp_dns_resource_record_set:
         state: present
         project: "{{ sap_vm_provision_gcp_project }}"
         managed_zone:
-          name: "{{ gcp_pdns_info.resources[0].name }}"
+          name: "{{ __sap_vm_provision_task_gcp_pdns_info.resources[0].name }}"
           dnsName: "{{ hostvars[inventory_hostname].sap_vm_provision_dns_root_domain }}."
         name: "{{ inventory_hostname }}.{{ hostvars[inventory_hostname].sap_vm_provision_dns_root_domain }}."
         target:
@@ -148,7 +148,7 @@
         ttl: 7200
         auth_kind: "serviceaccount"
         service_account_contents: "{{ sap_vm_provision_gcp_credentials_json }}"
-      until: not gcp_pdns_records.failed
+      until: not __sap_vm_provision_task_gcp_pdns_records.failed
       retries: 5
       delay: 5
 
@@ -163,21 +163,18 @@
       ansible.builtin.fail:
         msg: "{{ lookup('ansible.builtin.vars', loop_item) }}"
       loop:
-        - __sap_vm_provision_task_ibmcloud_resource_group
-        - __sap_vm_provision_task_ibmcloud_resource_group_dns
-        - __sap_vm_provision_task_ibmcloud_ssh_public_key
-        - __sap_vm_provision_task_ibmcloud_vpc_subnet
-        - __sap_vm_provision_task_ibmcloud_vpc_sg
-        - __sap_vm_provision_task_ibmcloud_pdns_service_instance
-        - __sap_vm_provision_task_ibmcloud_pdns
-        - __sap_vm_provision_task_ibmcloud_os_image_list
+        - __sap_vm_provision_task_gcp_os_image_info
+        - __sap_vm_provision_task_gcp_vpc_info
+        - __sap_vm_provision_task_gcp_vpc_subnet_info
         - __sap_vm_provision_task_provision_host_all_run
-        - __sap_vm_provision_task_provision_host_all_add
-        - __sap_vm_provision_task_provision_host_single
         - __sap_vm_provision_task_provision_host_single_volumes
-        - __sap_vm_provision_task_provision_host_single_volume_attachments
+        - __sap_vm_provision_task_provision_host_single
         - __sap_vm_provision_task_provision_host_single_info
-        - __sap_vm_provision_task_ibmcloud_pdns_record
+        - __sap_vm_provision_task_provision_host_all_add
+        - __sap_vm_provision_task_gcp_vpc_subnet_info
+        - __sap_vm_provision_task_gcp_pdns_info
+        - __sap_vm_provision_task_gcp_router_info
+        - __sap_vm_provision_task_gcp_pdns_records
       loop_control:
         loop_var: loop_item
         index_var: loop_item_index
@@ -330,17 +327,23 @@
       ansible.builtin.fail:
         msg: "{{ lookup('ansible.builtin.vars', loop_item) }}"
       loop:
-        - __sap_vm_provision_task_ibmcloud_iam_auth_policy
-        - __sap_vm_provision_task_ibmcloud_lb_provision_parallel
-        - __sap_vm_provision_task_ibmcloud_lb_provision_parallel_async_status
-        - __sap_vm_provision_task_ibmcloud_lb_update_dns
-        - __sap_vm_provision_task_ibmcloud_vs_all_info
-        - __sap_vm_provision_task_ibmcloud_lb_all_info_shell
-        - __sap_vm_provision_task_ibmcloud_lb_pool_hana1
-        - __sap_vm_provision_task_ibmcloud_pdns_record_ha_hana
-        - __sap_vm_provision_task_ibmcloud_pdns_record_ha_anydb
-        - __sap_vm_provision_task_ibmcloud_pdns_record_ha_nwas_ascs
-        - __sap_vm_provision_task_ibmcloud_pdns_record_ha_nwas_ers
+        - __sap_vm_provision_task_gcp_vpc_subnet_rt_route_sap_hana
+        - __sap_vm_provision_task_gcp_vpc_subnet_rt_route_sap_netweaver_ascs
+        - __sap_vm_provision_task_gcp_vpc_subnet_rt_route_sap_netweaver_ers
+        - __sap_vm_provision_task_gcp_vpc_subnet_rt_route_sap_netweaver_pas
+        - __sap_vm_provision_task_gcp_vpc_subnet_rt_route_sap_netweaver_aas
+        - __sap_vm_provision_task_gcp_lb_reserved_address
+        - __sap_vm_provision_task_gcp_lb_healthcheck_service
+        - __sap_vm_provision_task_gcp_lb_healthcheck_service_ascs
+        - __sap_vm_provision_task_gcp_lb_healthcheck_service_ers
+        - __sap_vm_provision_task_provision_host_single_info
+        - __sap_vm_provision_task_gcp_lb_instance_group1
+        - __sap_vm_provision_task_gcp_lb_instance_group2
+        - __sap_vm_provision_task_gcp_lb_backend_service_regional
+        - __sap_vm_provision_task_gcp_lb_backend_service_regional_ascs
+        - __sap_vm_provision_task_gcp_lb_backend_service_regional_ers
+        - __sap_vm_provision_task_gcp_lb_forwarding_rule
+        - __sap_vm_provision_task_gcp_lb_reserved_address
       loop_control:
         loop_var: loop_item
         index_var: loop_item_index

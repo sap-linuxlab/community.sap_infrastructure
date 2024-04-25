@@ -16,44 +16,44 @@
 
     - name: Inherit variable - set fact for Google Cloud Compute Engine Health Check (Global) - SAP HANA
       ansible.builtin.set_fact:
-        gcp_lb_healthcheck_hana: "{{ sap_ha_pacemaker_cluster_healthcheck_hana_primary_port | default('') }}"
+        __sap_vm_provision_task_gcp_lb_healthcheck_hana: "{{ sap_ha_pacemaker_cluster_healthcheck_hana_primary_port | default('') }}"
       when: sap_ha_pacemaker_cluster_healthcheck_hana_primary_port is defined
 
     - name: Inherit variable - set fact for Google Cloud Compute Engine Health Check (Global) - SAP NWAS ASCS
       ansible.builtin.set_fact:
-        gcp_lb_healthcheck_nwas_ascs: "{{ sap_ha_pacemaker_cluster_healthcheck_nwas_abap_ascs_port | default('') }}"
+        __sap_vm_provision_task_gcp_lb_healthcheck_nwas_ascs: "{{ sap_ha_pacemaker_cluster_healthcheck_nwas_abap_ascs_port | default('') }}"
       when: sap_ha_pacemaker_cluster_healthcheck_nwas_abap_ascs_port is defined
 
     - name: Inherit variable - set fact for Google Cloud Compute Engine Health Check (Global) - SAP NWAS ERS
       ansible.builtin.set_fact:
-        gcp_lb_healthcheck_nwas_ers: "{{ sap_ha_pacemaker_cluster_healthcheck_nwas_abap_ers_port | default('') }}"
+        __sap_vm_provision_task_gcp_lb_healthcheck_nwas_ers: "{{ sap_ha_pacemaker_cluster_healthcheck_nwas_abap_ers_port | default('') }}"
       when: sap_ha_pacemaker_cluster_healthcheck_nwas_abap_ers_port is defined
 
     - name: Default variable - Set fact for Google Cloud Compute Engine Health Check (Global) - SAP HANA
       ansible.builtin.set_fact:
-        gcp_lb_healthcheck_hana: "{{ ('620' + (sap_system_hana_db_instance_nr | default('')) | string) | int }}"
+        __sap_vm_provision_task_gcp_lb_healthcheck_hana: "{{ ('620' + (sap_system_hana_db_instance_nr | default('')) | string) | int }}"
       when: not sap_ha_pacemaker_cluster_healthcheck_hana_primary_port is defined
 
     - name: Default variable - Set fact for Google Cloud Compute Engine Health Check (Global) - SAP NWAS ASCS
       ansible.builtin.set_fact:
-        gcp_lb_healthcheck_nwas_ascs: "{{ ('620' + (sap_system_nwas_abap_ascs_instance_nr | default('')) | string) | int }}"
+        __sap_vm_provision_task_gcp_lb_healthcheck_nwas_ascs: "{{ ('620' + (sap_system_nwas_abap_ascs_instance_nr | default('')) | string) | int }}"
       when: not sap_ha_pacemaker_cluster_healthcheck_nwas_abap_ascs_port is defined
 
     - name: Default variable - Set fact for Google Cloud Compute Engine Health Check (Global) - SAP NWAS ERS
       ansible.builtin.set_fact:
-        gcp_lb_healthcheck_nwas_ers: "{{ ('620' + (sap_system_nwas_abap_ers_instance_nr | default('')) | string) | int }}"
+        __sap_vm_provision_task_gcp_lb_healthcheck_nwas_ers: "{{ ('620' + (sap_system_nwas_abap_ers_instance_nr | default('')) | string) | int }}"
       when: not sap_ha_pacemaker_cluster_healthcheck_nwas_abap_ers_port is defined
 
     - name: Create Google Cloud Compute Engine Health Check (Global) service instance for SAP HANA
       no_log: "{{ __sap_vm_provision_no_log }}"
-      register: gcp_lb_healthcheck_service
+      register: __sap_vm_provision_task_gcp_lb_healthcheck_service
       google.cloud.gcp_compute_health_check:
         state: present
         project: "{{ sap_vm_provision_gcp_project }}"
         name: "lb-probe-hc-vip-hana"
         type: TCP
         tcp_health_check:
-          port: "{{ gcp_lb_healthcheck_hana }}"
+          port: "{{ __sap_vm_provision_task_gcp_lb_healthcheck_hana }}"
           proxy_header: NONE
         check_interval_sec: 10
         timeout_sec: 10
@@ -66,7 +66,7 @@
 
     - name: Create Google Cloud Compute Engine Health Check (Global) service instance for SAP AnyDB
       no_log: "{{ __sap_vm_provision_no_log }}"
-      register: gcp_lb_healthcheck_service
+      register: __sap_vm_provision_task_gcp_lb_healthcheck_service
       google.cloud.gcp_compute_health_check:
         state: present
         project: "{{ sap_vm_provision_gcp_project }}"
@@ -86,14 +86,14 @@
 
     - name: Create Google Cloud Compute Engine Health Check (Global) service instance for SAP NetWeaver ASCS
       no_log: "{{ __sap_vm_provision_no_log }}"
-      register: gcp_lb_healthcheck_service_ascs
+      register: __sap_vm_provision_task_gcp_lb_healthcheck_service_ascs
       google.cloud.gcp_compute_health_check:
         state: present
         project: "{{ sap_vm_provision_gcp_project }}"
         name: "lb-probe-hc-vip-nwas-ascs"
         type: TCP
         tcp_health_check:
-          port: "{{ gcp_lb_healthcheck_nwas_ascs }}"
+          port: "{{ __sap_vm_provision_task_gcp_lb_healthcheck_nwas_ascs }}"
           proxy_header: NONE
         check_interval_sec: 10
         timeout_sec: 10
@@ -106,14 +106,14 @@
 
     - name: Create Google Cloud Compute Engine Health Check (Global) service instance for SAP NetWeaver ERS
       no_log: "{{ __sap_vm_provision_no_log }}"
-      register: gcp_lb_healthcheck_service_ers
+      register: __sap_vm_provision_task_gcp_lb_healthcheck_service_ers
       google.cloud.gcp_compute_health_check:
         state: present
         project: "{{ sap_vm_provision_gcp_project }}"
         name: "lb-probe-hc-vip-nwas-ers"
         type: TCP
         tcp_health_check:
-          port: "{{ gcp_lb_healthcheck_nwas_ers }}"
+          port: "{{ __sap_vm_provision_task_gcp_lb_healthcheck_nwas_ers }}"
           proxy_header: NONE
         check_interval_sec: 10
         timeout_sec: 10
