@@ -183,7 +183,7 @@
 ## For HA of PAS and AAS, if required
 
 # - name: Ansible AWS VPC Route Table append route for SAP NetWeaver PAS HA
-#   register: aws_vpc_subnet_rt_route_sap_netweaver_pas
+#   register: __sap_vm_provision_task_aws_route53_sap_netweaver_pas
 #   no_log: "{{ __sap_vm_provision_no_log }}"
 #   amazon.aws.ec2_vpc_route_table:
 #     lookup: id
@@ -219,7 +219,7 @@
 
 
 # - name: Ansible AWS VPC Route Table append route for SAP NetWeaver AAS HA
-#   register: aws_vpc_subnet_rt_route_sap_netweaver_aas
+#   register: __sap_vm_provision_task_aws_route53_sap_netweaver_aas
 #   no_log: "{{ __sap_vm_provision_no_log }}"
 #   amazon.aws.ec2_vpc_route_table:
 #     lookup: id

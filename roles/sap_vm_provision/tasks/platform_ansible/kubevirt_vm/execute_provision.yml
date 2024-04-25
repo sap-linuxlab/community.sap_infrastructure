@@ -245,7 +245,7 @@
 
 
 - name: Collect only facts about hardware
-  register: host_disks_info
+  register: __sap_vm_provision_task_ansible_facts_host_disks_info
   ansible.builtin.setup:
     gather_subset:
       - hardware
@@ -263,7 +263,7 @@
 
 #- name: Debug Ansible Facts devices used list
 #  ansible.builtin.debug:
-#    msg: "{{ host_disks_info.ansible_facts.ansible_device_links.ids.keys() | list }}"
+#    msg: "{{ __sap_vm_provision_task_ansible_facts_host_disks_info.ansible_facts.ansible_device_links.ids.keys() | list }}"
 
 
 - name: Append loop value to register

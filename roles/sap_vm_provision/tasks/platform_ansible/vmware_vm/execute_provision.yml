@@ -55,19 +55,19 @@
     vmware_vm_template_id: "{{ (register_vmware_vm_content_library_items.value | selectattr('type', '==', 'vm-template') | selectattr('name', '==', sap_vm_provision_vmware_vm_template_name) | first).id }}"
 
 - name: Check if VM exists
-  register: register_check_vm_exists
+  register: __sap_vm_provision_task_provision_host_single_check_exists
   vmware.vmware_rest.vcenter_vm_info:
     names: "{{ inventory_hostname }}"
 
 
 - name: Set VM ID
-  when: not register_check_vm_exists.value | length == 0
+  when: not __sap_vm_provision_task_provision_host_single_check_exists.value | length == 0
   ansible.builtin.set_fact:
-    register_vmware_vm_cluster_host_id: "{{ register_check_vm_exists.value[0].vm }}" # VM ID
+    register_vmware_vm_cluster_host_id: "{{ __sap_vm_provision_task_provision_host_single_check_exists.value[0].vm }}" # VM ID
 
 - name: Check VM status
   register: __sap_vm_provision_task_provision_host_single_info
-  when: not register_check_vm_exists.value | length == 0
+  when: not __sap_vm_provision_task_provision_host_single_check_exists.value | length == 0
   vmware.vmware_rest.vcenter_vm:
     vm: "{{ register_vmware_vm_cluster_host_id }}" # VM ID
 
@@ -75,7 +75,7 @@
 # VM creation block:
 # This block is run when the VM does not exist yet.
 - name: Block that provisions the VM
-  when: register_check_vm_exists.value | length == 0
+  when: __sap_vm_provision_task_provision_host_single_check_exists.value | length == 0
   block:
 
     # Deploy a Virtual Machine from a VM Template in a Content Library
@@ -126,7 +126,7 @@
 
 
 - name: Set VM ID
-  when: register_check_vm_exists.value | length == 0
+  when: __sap_vm_provision_task_provision_host_single_check_exists.value | length == 0
   ansible.builtin.set_fact:
     register_vmware_vm_cluster_host_id: "{{ __sap_vm_provision_task_provision_host_single.value }}" # Returned from VM provision
 
@@ -260,7 +260,7 @@
 
 
 - name: Collect only facts about hardware
-  register: host_disks_info
+  register: __sap_vm_provision_task_ansible_facts_host_disks_info
   ansible.builtin.setup:
     gather_subset:
       - hardware
@@ -294,14 +294,14 @@
 
 #- name: Debug Ansible Facts devices used list
 #  ansible.builtin.debug:
-#    msg: "{{ host_disks_info.ansible_facts.ansible_device_links.ids.keys() | list }}"
+#    msg: "{{ __sap_vm_provision_task_ansible_facts_host_disks_info.ansible_facts.ansible_device_links.ids.keys() | list }}"
 
 
 - name: Set fact for available storage volume device names
   ansible.builtin.set_fact:
     available_volumes: |-
       {% set letters = 'bcdefghijklmnopqrstuvwxyz' %}
-      {% set ansible_facts_devices_used_list = host_disks_info.ansible_facts.ansible_device_links.ids.keys() | list %}
+      {% set ansible_facts_devices_used_list = __sap_vm_provision_task_ansible_facts_host_disks_info.ansible_facts.ansible_device_links.ids.keys() | list %}
       {% set volumes = [] %}
       {%- for letter in letters -%}
         {% for device in ansible_facts_devices_used_list -%}

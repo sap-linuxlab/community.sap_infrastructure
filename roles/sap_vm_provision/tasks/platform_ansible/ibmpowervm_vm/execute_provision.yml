@@ -22,7 +22,7 @@
     - not inventory_hostname in lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan].keys()
 
 - name: Check if VM exists
-  register: register_check_vm_exists
+  register: __sap_vm_provision_task_provision_host_single_check_exists
   openstack.cloud.server_info:
     auth: "{{ openstack_auth_delegate }}"
     validate_certs: false # Allow Self-Signed Certificate
@@ -48,8 +48,8 @@
 #
 - name: Block that provisions the VM
   when:
-    - register_check_vm_exists.servers is defined
-    - register_check_vm_exists.servers | length == 0
+    - __sap_vm_provision_task_provision_host_single_check_exists.servers is defined
+    - __sap_vm_provision_task_provision_host_single_check_exists.servers | length == 0
   block:
 
     # See documented IBM PowerVM Compute Template (OpenStack Flavor) extra specs - https://www.ibm.com/docs/en/powervc-cloud/latest?topic=apis-flavors-extra-specs
@@ -203,7 +203,7 @@
     timeout: 600
 
 - name: Collect only facts about hardware
-  register: host_disks_info
+  register: __sap_vm_provision_task_ansible_facts_host_disks_info
   ansible.builtin.setup:
     gather_subset:
       - hardware
@@ -222,14 +222,14 @@
 
 #- name: Debug Ansible Facts devices used list
 #  ansible.builtin.debug:
-#    msg: "{{ host_disks_info.ansible_facts.ansible_device_links.ids.keys() | list }}"
+#    msg: "{{ __sap_vm_provision_task_ansible_facts_host_disks_info.ansible_facts.ansible_device_links.ids.keys() | list }}"
 
 
 - name: Set fact for available storage volume device names
   ansible.builtin.set_fact:
     available_volumes: |-
       {% set letters = 'bcdefghijklmnopqrstuvwxyz' %}
-      {% set ansible_facts_devices_used_list = host_disks_info.ansible_facts.ansible_device_links.ids.keys() | list %}
+      {% set ansible_facts_devices_used_list = __sap_vm_provision_task_ansible_facts_host_disks_info.ansible_facts.ansible_device_links.ids.keys() | list %}
       {% set volumes = [] %}
       {%- for letter in letters -%}
         {% for device in ansible_facts_devices_used_list -%}
@@ -323,8 +323,8 @@
 
 - name: Re-scan IBM PowerVM VM SCSI Bus
   ansible.builtin.command: "/usr/bin/rescan-scsi-bus.sh"
-  register: rescan_scsi_bus_output
-  changed_when: rescan_scsi_bus_output.rc != 0
+  register: __sap_vm_provision_task_os_rescan_scsi_bus_output
+  changed_when: __sap_vm_provision_task_os_rescan_scsi_bus_output.rc != 0
   remote_user: root
   become: true
   become_user: root

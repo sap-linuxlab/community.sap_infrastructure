@@ -15,7 +15,7 @@
     - not inventory_hostname in lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan].keys()
 
 - name: Check if VM exists
-  register: register_check_vm_exists
+  register: __sap_vm_provision_task_provision_host_single_check_exists
   ovirt.ovirt.ovirt_vm_info:
     auth: "{{ ovirt_session.ansible_facts.ovirt_auth }}"
     pattern: name={{ inventory_hostname }} and cluster={{ sap_vm_provision_ovirt_hypervisor_cluster_name }}
@@ -33,8 +33,8 @@
 #
 - name: Block that provisions the VM
   when:
-    - register_check_vm_exists.ovirt_vms is defined
-    - register_check_vm_exists.ovirt_vms | length == 0
+    - __sap_vm_provision_task_provision_host_single_check_exists.ovirt_vms is defined
+    - __sap_vm_provision_task_provision_host_single_check_exists.ovirt_vms | length == 0
   block:
 
     - name: For Kickstart, provision Virtual Disk boot volume
@@ -193,7 +193,7 @@
 
 
 - name: Collect only facts about hardware
-  register: host_disks_info
+  register: __sap_vm_provision_task_ansible_facts_host_disks_info
   ansible.builtin.setup:
     gather_subset:
       - hardware
@@ -211,14 +211,14 @@
 
 #- name: Debug Ansible Facts devices used list
 #  ansible.builtin.debug:
-#    msg: "{{ host_disks_info.ansible_facts.ansible_device_links.ids.keys() | list }}"
+#    msg: "{{ __sap_vm_provision_task_ansible_facts_host_disks_info.ansible_facts.ansible_device_links.ids.keys() | list }}"
 
 
 - name: Set fact for available storage volume device names
   ansible.builtin.set_fact:
     available_volumes: |-
       {% set letters = 'bcdefghijklmnopqrstuvwxyz' %}
-      {% set ansible_facts_devices_used_list = host_disks_info.ansible_facts.ansible_device_links.ids.keys() | list %}
+      {% set ansible_facts_devices_used_list = __sap_vm_provision_task_ansible_facts_host_disks_info.ansible_facts.ansible_device_links.ids.keys() | list %}
       {% set volumes = [] %}
       {%- for letter in letters -%}
         {% for device in ansible_facts_devices_used_list -%}

@@ -51,7 +51,7 @@
         groups_merged_list: "{{ [ [ groups['hana_primary'] | default([]) ] , [ groups['hana_secondary'] | default([]) ] , [ groups['nwas_ascs'] | default([]) ] , [ groups['nwas_ers'] | default([]) ] , [ groups['nwas_pas'] | default([]) ] , [ groups['nwas_aas'] | default([]) ] ] | flatten | select() }}"
 
     - name: Set Ansible Vars
-      register: register_set_ansible_vars
+      register: __sap_vm_provision_task_ansible_vars_set
       ansible.builtin.include_tasks:
         file: common/set_ansible_vars.yml
 
@@ -75,26 +75,26 @@
         name: "{{ inventory_hostname_short }}"
 
     - name: Set /etc/hosts
-      register: register_etc_hosts_file
+      register: __sap_vm_provision_task_os_etc_hosts
       ansible.builtin.include_tasks:
         file: common/set_etc_hosts.yml
 
     - name: Set /etc/hosts for HA
-      register: register_etc_hosts_file_ha
+      register: __sap_vm_provision_task_os_etc_hosts_ha
       ansible.builtin.include_tasks:
         file: common/set_etc_hosts_ha.yml
       when:
         - (groups["hana_secondary"] is defined and (groups["hana_secondary"] | length>0)) or (groups["nwas_ers"] is defined and (groups["nwas_ers"] | length>0)) or (groups["anydb_secondary"] is defined and (groups["anydb_secondary"] | length>0))
 
     - name: Set /etc/hosts for Scale-Out
-      register: register_etc_hosts_file_scaleout
+      register: __sap_vm_provision_task_os_etc_hosts_scaleout
       ansible.builtin.include_tasks:
         file: common/set_etc_hosts_scaleout.yml
       when:
         - (groups["hana_primary"] is defined and (groups["hana_primary"] | length>0)) and (sap_hana_scaleout_active_coordinator is defined or sap_hana_scaleout_active_worker is defined or sap_hana_scaleout_standby is defined)
 
     - name: Set vars for sap_storage_setup Ansible Role
-      register: register_ansible_vars_storage
+      register: __sap_vm_provision_task_ansible_vars_storage
       ansible.builtin.include_tasks:
         file: common/set_ansible_vars_storage.yml
 

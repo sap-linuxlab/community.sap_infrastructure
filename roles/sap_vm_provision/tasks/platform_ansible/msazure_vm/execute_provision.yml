@@ -71,7 +71,7 @@
     name: "{{ inventory_hostname }}"
 
 - name: Read MS Azure VM attached disks information
-  register: api_host_disks_info
+  register: api___sap_vm_provision_task_ansible_facts_host_disks_info
   azure.azcollection.azure_rm_manageddisk_info:
     managed_by: "{{ api_host_info.vms[0].id }}"
 
@@ -92,7 +92,7 @@
     delegate_sap_vm_provision_ssh_host_private_key_file_path: "{{ sap_vm_provision_ssh_host_private_key_file_path }}"
 
 - name: Collect only facts about hardware
-  register: host_disks_info
+  register: __sap_vm_provision_task_ansible_facts_host_disks_info
   ansible.builtin.setup:
     gather_subset:
       - hardware
@@ -111,14 +111,14 @@
 
 #- name: Debug Ansible Facts devices used list
 #  ansible.builtin.debug:
-#    msg: "{{ host_disks_info.ansible_facts.ansible_device_links.ids.keys() | list }}"
+#    msg: "{{ __sap_vm_provision_task_ansible_facts_host_disks_info.ansible_facts.ansible_device_links.ids.keys() | list }}"
 
 
 - name: Set fact for available storage volume device names
   ansible.builtin.set_fact:
     available_volumes: |-
       {% set letters = 'bcdefghijklmnopqrstuvwxyz' %}
-      {% set ansible_facts_devices_used_list = host_disks_info.ansible_facts.ansible_device_links.ids.keys() | list %}
+      {% set ansible_facts_devices_used_list = __sap_vm_provision_task_ansible_facts_host_disks_info.ansible_facts.ansible_device_links.ids.keys() | list %}
       {% set volumes = [] %}
       {%- for letter in letters -%}
         {% for device in ansible_facts_devices_used_list -%}
@@ -242,7 +242,7 @@
         path: /etc/ssh/sshd_config
         regexp: '(^PermitRootLogin no)'
         replace: 'PermitRootLogin yes'
-      register: sshd_config
+      register: __sap_vm_provision_task_os_sshd_config
 
     - name: Reload sshd service
       ansible.builtin.service:

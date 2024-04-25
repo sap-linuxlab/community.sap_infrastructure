@@ -175,7 +175,7 @@
         replace: 'ssh-rsa'
 
     - name: Permit root login
-      register: sshd_config
+      register: __sap_vm_provision_task_os_sshd_config
       ansible.builtin.replace:
         path: /etc/ssh/sshd_config
         regexp: '(^PermitRootLogin no)'

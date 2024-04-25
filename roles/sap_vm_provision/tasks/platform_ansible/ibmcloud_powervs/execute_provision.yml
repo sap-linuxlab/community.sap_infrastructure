@@ -17,7 +17,7 @@
 
 # Status will change from Building > Warning (VM = Active, Health = Warning) > Active. The Ansible Task will continue once the Active status has been reached.
 - name: Provision IBM Power Virtual Server instance on IBM Cloud
-  register: register_provision_host_single
+  register: __sap_vm_provision_task_provision_host_single
   ibm.cloudcollection.ibm_pi_instance:
     pi_cloud_instance_id: "{{ register_ibmcloud_power_iaas_workspace_service_instance.resource.guid }}" # must be GUID, not CRN
 
@@ -71,7 +71,7 @@
 
 
 - name: Provision IBM Power Infrastructure Block Storage volumes for IBM Power VS instance filesystems
-  register: register_provisioned_volumes
+  register: __sap_vm_provision_task_provision_host_single_volumes
   ibm.cloudcollection.ibm_pi_volume:
     pi_cloud_instance_id: "{{ register_ibmcloud_power_iaas_workspace_service_instance.resource.guid }}" # must be GUID, not CRN
     pi_volume_name: "{{ inventory_hostname + '-vol-' + vol_item.name | replace('_', '-')}}"
@@ -88,12 +88,12 @@
   when:
     - vol_item.size > 0
   failed_when:
-    - not register_provisioned_volumes.rc == 0
-    - not 'already exists' in register_provisioned_volumes.stderr
+    - not __sap_vm_provision_task_provision_host_single_volumes.rc == 0
+    - not 'already exists' in __sap_vm_provision_task_provision_host_single_volumes.stderr
 
 # Use check to avoid idempotency issues with legacy ibm.cloudcollection Ansible Collection (until ibm.cloud Ansible Collection is out of beta)
 - name: Check status of IBM Power Infrastructure Block Storage volumes
-  register: register_volumes
+  register: __sap_vm_provision_task_provision_host_single_volumes_info
   ibm.cloudcollection.ibm_pi_volume_info:
     pi_cloud_instance_id: "{{ register_ibmcloud_power_iaas_workspace_service_instance.resource.guid }}" # must be GUID, not CRN
     pi_volume_name: "{{ inventory_hostname + '-vol-' + vol_item.name | replace('_', '-')}}"
@@ -105,25 +105,25 @@
   when:
     - vol_item.size > 0
   retries: 5
-  until: register_volumes.rc == 0 and (register_volumes.resource is defined and register_volumes.resource.state == "available", "in-use")
+  until: __sap_vm_provision_task_provision_host_single_volumes_info.rc == 0 and (__sap_vm_provision_task_provision_host_single_volumes_info.resource is defined and __sap_vm_provision_task_provision_host_single_volumes_info.resource.state == "available", "in-use")
   delay: 20
 
 - name: Attach IBM Power Infrastructure Block Storage volumes as filesystem for IBM Power VS instance
-  register: register_attached_volumes
+  register: __sap_vm_provision_task_provision_host_single_volume_attachments
   ibm.cloudcollection.ibm_pi_volume_attach:
     pi_cloud_instance_id: "{{ register_ibmcloud_power_iaas_workspace_service_instance.resource.guid }}" # must be GUID, not CRN
     pi_volume_id: "{{ vol_item.resource.id }}"
     pi_instance_id: "{{ __sap_vm_provision_task_provision_host_single.resource.id }}"
-  loop: "{{ register_volumes.results }}"
+  loop: "{{ __sap_vm_provision_task_provision_host_single_volumes_info.results }}"
   loop_control:
     loop_var: vol_item
     index_var: vol_item_index
     label: "{{ vol_item.resource.pi_volume_name }}"
   failed_when:
-    - not register_attached_volumes.rc == 0
-    - not 'volume cannot be attached in the current state' in register_attached_volumes.stderr # when already attached message
+    - not __sap_vm_provision_task_provision_host_single_volume_attachments.rc == 0
+    - not 'volume cannot be attached in the current state' in __sap_vm_provision_task_provision_host_single_volume_attachments.stderr # when already attached message
   retries: 1
-  until: register_attached_volumes is success
+  until: __sap_vm_provision_task_provision_host_single_volume_attachments is success
   delay: 10
 
 - name: Read IBM Power Virtual Server information
@@ -134,7 +134,7 @@
 
 - name: Add host facts
   ansible.builtin.set_fact:
-    __sap_vm_provision_task_provision_host_single_volumes: "{{ register_volumes }}"
+    __sap_vm_provision_task_provision_host_single_volumes: "{{ __sap_vm_provision_task_provision_host_single_volumes_info }}"
     __sap_vm_provision_task_provision_host_single_info: "{{ __sap_vm_provision_task_provision_host_single_info }}"
   delegate_to: "{{ inventory_hostname }}"
   delegate_facts: true
@@ -185,11 +185,11 @@
           {{ register_ibmcloud_pi_ssh_public_key.resource.ssh_key }}
 
     - name: Permit root login
+      register: __sap_vm_provision_task_os_sshd_config
       ansible.builtin.replace:
         path: /etc/ssh/sshd_config
         regexp: '(^PermitRootLogin no)'
         replace: 'PermitRootLogin yes'
-      register: sshd_config
 
     - name: Reload sshd service
       ansible.builtin.service:
