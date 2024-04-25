@@ -42,6 +42,7 @@
       when: not sap_ha_pacemaker_cluster_healthcheck_nwas_abap_ers_port is defined
 
     - name: Create Google Cloud Compute Engine Health Check (Global) service instance for SAP HANA
+      register: gcp_lb_healthcheck_service
       google.cloud.gcp_compute_health_check:
         state: present
         project: "{{ sap_vm_provision_gcp_project }}"
@@ -54,11 +55,11 @@
         timeout_sec: 10
         unhealthy_threshold: 2
         healthy_threshold: 2
-      register: gcp_lb_healthcheck_service
       when:
         - groups["hana_secondary"] is defined and (groups["hana_secondary"]|length>0)
 
     - name: Create Google Cloud Compute Engine Health Check (Global) service instance for SAP AnyDB
+      register: gcp_lb_healthcheck_service
       google.cloud.gcp_compute_health_check:
         state: present
         project: "{{ sap_vm_provision_gcp_project }}"
@@ -71,11 +72,11 @@
         timeout_sec: 10
         unhealthy_threshold: 2
         healthy_threshold: 2
-      register: gcp_lb_healthcheck_service
       when:
         - groups["anydb_secondary"] is defined and (groups["anydb_secondary"]|length>0)
 
     - name: Create Google Cloud Compute Engine Health Check (Global) service instance for SAP NetWeaver ASCS
+      register: gcp_lb_healthcheck_service_ascs
       google.cloud.gcp_compute_health_check:
         state: present
         project: "{{ sap_vm_provision_gcp_project }}"
@@ -88,11 +89,11 @@
         timeout_sec: 10
         unhealthy_threshold: 2
         healthy_threshold: 2
-      register: gcp_lb_healthcheck_service_ascs
       when:
         - groups["nwas_ers"] is defined and (groups["nwas_ers"]|length>0)
 
     - name: Create Google Cloud Compute Engine Health Check (Global) service instance for SAP NetWeaver ERS
+      register: gcp_lb_healthcheck_service_ers
       google.cloud.gcp_compute_health_check:
         state: present
         project: "{{ sap_vm_provision_gcp_project }}"
@@ -105,6 +106,5 @@
         timeout_sec: 10
         unhealthy_threshold: 2
         healthy_threshold: 2
-      register: gcp_lb_healthcheck_service_ers
       when:
         - groups["nwas_ers"] is defined and (groups["nwas_ers"]|length>0)

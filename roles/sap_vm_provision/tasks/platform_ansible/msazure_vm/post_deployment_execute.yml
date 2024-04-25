@@ -45,11 +45,11 @@
       when: not sap_ha_pacemaker_cluster_healthcheck_nwas_abap_ers_port is defined
 
     - name: Gather MS Azure Subnet ID
+      register: msazure_vnet_subnet_info
       azure.azcollection.azure_rm_subnet_info:
         resource_group: "{{ sap_vm_provision_msazure_resource_group_name }}"
         virtual_network_name: "{{ sap_vm_provision_msazure_vnet_name }}"
         name: "{{ sap_vm_provision_msazure_vnet_subnet_name }}"
-      register: msazure_vnet_subnet_info
 
 
     - name: Define Ansible Variables for Azure Load Balancer - VIP for SAP HANA
@@ -239,6 +239,7 @@
 
 
     - name: MS Azure Load Balancer (network L4) - Update NLB for SAP HANA with Virtual IP and Health Probe configuration
+      register: msazure_lb1_info
       azure.azcollection.azure_rm_loadbalancer:
         resource_group: "{{ sap_vm_provision_msazure_resource_group_name }}"
         name: "lb-sap-hana-ha" # "lb-sap-ha"
@@ -249,9 +250,9 @@
         probes: "{{ (lb_probes1 | default([])) }}" # "{{ (lb_probes1 | default([])) + (lb_probes2 | default([])) }}"
         load_balancing_rules: "{{ (lb_rules1 | default([])) }}" # "{{ (lb_rules1 | default([])) + (lb_rules2 | default([])) }}"
       when: (groups["hana_secondary"] is defined and (groups["hana_secondary"]|length>0))
-      register: msazure_lb1_info
 
     - name: MS Azure Load Balancer (network L4) - Update NLB for SAP AnyDB with Virtual IP and Health Probe configuration
+      register: msazure_lb1_info
       azure.azcollection.azure_rm_loadbalancer:
         resource_group: "{{ sap_vm_provision_msazure_resource_group_name }}"
         name: "lb-sap-anydb-ha" # "lb-sap-ha"
@@ -262,9 +263,9 @@
         probes: "{{ (lb_probes1 | default([])) }}" # "{{ (lb_probes1 | default([])) + (lb_probes2 | default([])) }}"
         load_balancing_rules: "{{ (lb_rules1 | default([])) }}" # "{{ (lb_rules1 | default([])) + (lb_rules2 | default([])) }}"
       when: (groups["anydb_secondary"] is defined and (groups["anydb_secondary"]|length>0))
-      register: msazure_lb1_info
 
     - name: MS Azure Load Balancer (network L4) - Update NLB for SAP NetWeaver with Virtual IP and Health Probe configuration
+      register: msazure_lb2_info
       azure.azcollection.azure_rm_loadbalancer:
         resource_group: "{{ sap_vm_provision_msazure_resource_group_name }}"
         name: "lb-sap-nwas-ha"
@@ -275,4 +276,3 @@
         probes: "{{ (lb_probes2 | default([])) }}"
         load_balancing_rules: "{{ (lb_rules2 | default([])) }}"
       when: (groups["nwas_ers"] is defined and (groups["nwas_ers"]|length>0))
-      register: msazure_lb2_info

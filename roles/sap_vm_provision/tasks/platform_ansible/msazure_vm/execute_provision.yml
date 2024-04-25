@@ -171,6 +171,7 @@
 # The volume creation task requires the above task to define the parameter
 # which contains the calculated unique device names.
 - name: Provision Azure Managed Disk volumes for Azure VM filesystems
+  register: __sap_vm_provision_task_provision_host_single_volumes
   azure.azcollection.azure_rm_manageddisk:
     resource_group: "{{ sap_vm_provision_msazure_resource_group_name }}"
     location: "{{ sap_vm_provision_msazure_location_region }}"
@@ -189,7 +190,6 @@
   when:
     - vol_item.fstype is defined
     - vol_item.size > 0
-  register: __sap_vm_provision_task_provision_host_single_volumes
   failed_when: "(__sap_vm_provision_task_provision_host_single_volumes.msg is defined) and ('already exists' not in __sap_vm_provision_task_provision_host_single_volumes.msg)"
 
 

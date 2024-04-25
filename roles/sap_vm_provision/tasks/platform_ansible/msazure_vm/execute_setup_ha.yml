@@ -1,12 +1,13 @@
 ---
 
 # - name: Gather information about MS Azure Route Table for the VNet Subnet
+#   register: msazure_vnet_subnet_rt_info
 #   azure.azcollection.azure_rm_routetable_info:
 #     resource_group: "{{ sap_vm_provision_msazure_resource_group_name }}"
 #     name: "name-here"
-#   register: msazure_vnet_subnet_rt_info
 
 # - name: Ansible MS Azure Route Table append route for SAP HANA HA
+#   register: msazure_vnet_subnet_rt_route_sap_hana
 #   azure.azcollection.azure_rm_route:
 #     resource_group: "{{ sap_vm_provision_msazure_resource_group_name }}"
 #     route_table_name: "{{ msazure_vnet_subnet_rt_info.route_tables[0].id }}"
@@ -17,7 +18,6 @@
 #   loop: "{{ (groups['hana_primary'] | default([])) }}"
 #   loop_control:
 #     loop_var: host_node
-#   register: msazure_vnet_subnet_rt_route_sap_hana
 #   when:
 #     - groups["hana_secondary"] is defined and (groups["hana_secondary"] | length>0)
 
@@ -38,6 +38,7 @@
 
 
 # - name: Ansible MS Azure Route Table append route for SAP NetWeaver ASCS HA
+#   register: msazure_vnet_subnet_rt_route_sap_netweaver_ascs
 #   azure.azcollection.azure_rm_route:
 #     resource_group: "{{ sap_vm_provision_msazure_resource_group_name }}"
 #     route_table_name: "{{ msazure_vnet_subnet_rt_info.route_tables[0].id }}"
@@ -48,7 +49,6 @@
 #   loop: "{{ (groups['nwas_ascs'] | default([])) }}"
 #   loop_control:
 #     loop_var: host_node
-#   register: msazure_vnet_subnet_rt_route_sap_netweaver_ascs
 #   when:
 #     - groups["nwas_ers"] is defined and (groups["nwas_ers"] | length>0)
 
@@ -69,6 +69,7 @@
 
 
 # - name: Ansible MS Azure Route Table append route for SAP NetWeaver ERS HA
+#   register: msazure_vnet_subnet_rt_route_sap_netweaver_ers
 #   azure.azcollection.azure_rm_route:
 #     resource_group: "{{ sap_vm_provision_msazure_resource_group_name }}"
 #     route_table_name: "{{ msazure_vnet_subnet_rt_info.route_tables[0].id }}"
@@ -79,7 +80,6 @@
 #   loop: "{{ (groups['nwas_ers'] | default([])) }}"
 #   loop_control:
 #     loop_var: host_node
-#   register: msazure_vnet_subnet_rt_route_sap_netweaver_ers
 #   when:
 #     - groups["nwas_ers"] is defined and (groups["nwas_ers"] | length>0)
 
@@ -102,6 +102,7 @@
 ## For HA of PAS and AAS, if required
 
 #    - name: Ansible MS Azure Route Table append route for SAP NetWeaver PAS HA
+#      register: msazure_vnet_subnet_rt_route_sap_netweaver_pas
 #      azure.azcollection.azure_rm_route:
 #        resource_group: "{{ sap_vm_provision_msazure_resource_group_name }}"
 #        route_table_name: "{{ msazure_vnet_subnet_rt_info.route_tables[0].id }}"
@@ -112,7 +113,6 @@
 #      loop: "{{ (groups['nwas_pas'] | default([])) }}"
 #      loop_control:
 #        loop_var: host_node
-#      register: msazure_vnet_subnet_rt_route_sap_netweaver_pas
 #      when:
 #        - groups["nwas_ers"] is defined and (groups["nwas_ers"] | length>0)
 
@@ -133,6 +133,7 @@
 
 
 # - name: Ansible MS Azure Route Table append route for SAP NetWeaver AAS HA
+#   register: msazure_vnet_subnet_rt_route_sap_netweaver_aas
 #   azure.azcollection.azure_rm_route:
 #     resource_group: "{{ sap_vm_provision_msazure_resource_group_name }}"
 #     route_table_name: "{{ msazure_vnet_subnet_rt_info.route_tables[0].id }}"
@@ -143,7 +144,6 @@
 #   loop: "{{ (groups['nwas_aas'] | default([])) }}"
 #   loop_control:
 #     loop_var: host_node
-#   register: msazure_vnet_subnet_rt_route_sap_netweaver_aas
 #   when:
 #     - groups["nwas_ers"] is defined and (groups["nwas_ers"] | length>0)
 
@@ -164,6 +164,7 @@
 
 
 - name: MS Azure IAM Role - Definition
+  register: msazure_iam_role_fencing
   azure.azcollection.azure_rm_roledefinition:
     name: "Linux Fence Agent Role"
     description: "Allows to power-off and start virtual machines"
@@ -178,15 +179,14 @@
       # - data_actions:
       # - not_actions:
       # - not_data_actions:
-  register: msazure_iam_role_fencing
 
 - name: MS Azure - GenericRestClient call to Virtual Machine API to identify Managed Service Identity (MSI)
+  register: msazure_vm_info_collect
   azure.azcollection.azure_rm_resource_info:
     resource_group: "{{ sap_vm_provision_msazure_resource_group_name }}"
     provider: Compute
     resource_type: virtualMachines
     resource_name: "{{ host_node }}"
-  register: msazure_vm_info_collect
   loop: "{{ groups_merged_list }}"
   loop_control:
     loop_var: host_node
@@ -243,11 +243,11 @@
   block:
 
     - name: Gather MS Azure Subnet ID
+      register: msazure_vnet_subnet_info
       azure.azcollection.azure_rm_subnet_info:
         resource_group: "{{ sap_vm_provision_msazure_resource_group_name }}"
         virtual_network_name: "{{ sap_vm_provision_msazure_vnet_name }}"
         name: "{{ sap_vm_provision_msazure_vnet_subnet_name }}"
-      register: msazure_vnet_subnet_info
 
 
     - name: Define Ansible Variables for Azure Load Balancer - VIP for SAP HANA
@@ -436,6 +436,7 @@
         loop_var: rule_item
 
     - name: MS Azure Load Balancer (network L4) - Create NLB for SAP HANA with Virtual IP and Health Probe configuration
+      register: msazure_lb1a_info
       azure.azcollection.azure_rm_loadbalancer:
         resource_group: "{{ sap_vm_provision_msazure_resource_group_name }}"
         name: "lb-sap-hana-ha" # "lb-sap-ha"
@@ -446,9 +447,9 @@
         probes: "{{ (lb_probes1 | default([])) }}" # "{{ (lb_probes1 | default([])) + (lb_probes2 | default([])) }}"
         load_balancing_rules: "{{ (lb_rules1 | default([])) }}" # "{{ (lb_rules1 | default([])) + (lb_rules2 | default([])) }}"
       when: (groups["hana_secondary"] is defined and (groups["hana_secondary"]|length>0))
-      register: msazure_lb1a_info
 
     - name: MS Azure Load Balancer (network L4) - Create NLB for SAP AnyDB with Virtual IP and Health Probe configuration
+      register: msazure_lb1b_info
       azure.azcollection.azure_rm_loadbalancer:
         resource_group: "{{ sap_vm_provision_msazure_resource_group_name }}"
         name: "lb-sap-anydb-ha" # "lb-sap-ha"
@@ -459,7 +460,6 @@
         probes: "{{ (lb_probes1 | default([])) }}" # "{{ (lb_probes1 | default([])) + (lb_probes2 | default([])) }}"
         load_balancing_rules: "{{ (lb_rules1 | default([])) }}" # "{{ (lb_rules1 | default([])) + (lb_rules2 | default([])) }}"
       when: (groups["anydb_secondary"] is defined and (groups["anydb_secondary"]|length>0))
-      register: msazure_lb1b_info
 
     - name: MS Azure Load Balancer (network L4) - Define Ansible Variable of Load Balancer for Database Server
       ansible.builtin.set_fact:
@@ -467,6 +467,7 @@
       when: (groups["hana_secondary"] is defined and (groups["hana_secondary"]|length>0)) or (groups["anydb_secondary"] is defined and (groups["anydb_secondary"]|length>0))
 
     - name: MS Azure Load Balancer (network L4) - Create NLB for SAP NetWeaver with Virtual IP and Health Probe configuration
+      register: msazure_lb2_info
       azure.azcollection.azure_rm_loadbalancer:
         resource_group: "{{ sap_vm_provision_msazure_resource_group_name }}"
         name: "lb-sap-nwas-ha"
@@ -477,7 +478,6 @@
         probes: "{{ (lb_probes2 | default([])) }}"
         load_balancing_rules: "{{ (lb_rules2 | default([])) }}"
       when: (groups["nwas_ers"] is defined and (groups["nwas_ers"]|length>0))
-      register: msazure_lb2_info
 
     - name: Set fact to hold loop variables from include_tasks when SAP HANA HA
       ansible.builtin.set_fact:

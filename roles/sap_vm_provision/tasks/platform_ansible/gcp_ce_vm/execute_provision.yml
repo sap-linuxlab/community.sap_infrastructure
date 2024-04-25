@@ -43,6 +43,7 @@
 # The volume creation task requires the above task to define the parameter
 # which contains the calculated unique device names.
 - name: Provision Google Cloud Persistent Disk volumes for Google Cloud VM filesystems
+  register: __sap_vm_provision_task_provision_host_single_volumes
   google.cloud.gcp_compute_disk:
     state: present
     project: "{{ sap_vm_provision_gcp_project }}"
@@ -56,7 +57,6 @@
     label: "{{ vol_item.definition_key }}: {{ vol_item.name }} (size: {{ vol_item.size }})"
   when:
     - vol_item.size > 0
-  register: __sap_vm_provision_task_provision_host_single_volumes
 #  failed_when: "(__sap_vm_provision_task_provision_host_single_volumes.msg is defined) and ('already exists' not in __sap_vm_provision_task_provision_host_single_volumes.msg)"
 
 
@@ -124,12 +124,12 @@
   when: __sap_vm_provision_task_provision_host_single.changed
 
 - name: Read Google Cloud VM information
+  register: __sap_vm_provision_task_provision_host_single_info
   google.cloud.gcp_compute_instance_info:
     project: "{{ sap_vm_provision_gcp_project }}"
     zone: "{{ sap_vm_provision_gcp_region_zone }}"
     filters:
       - name = {{ inventory_hostname }}
-  register: __sap_vm_provision_task_provision_host_single_info
 
 
 - name: Create fact for delegate host IP

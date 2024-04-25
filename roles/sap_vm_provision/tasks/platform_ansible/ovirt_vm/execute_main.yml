@@ -1,6 +1,7 @@
 ---
 
 - name: OVirt Authentication
+  register: ovirt_session
   ovirt.ovirt.ovirt_auth:
     insecure: "{{ sap_vm_provision_ovirt_engine_insecure_bool | default(true) }}"
     url: "{{ sap_vm_provision_ovirt_engine_url | default(lookup('env', 'OVIRT_URL')) | default(omit) }}"
@@ -9,7 +10,6 @@
     password: "{{ sap_vm_provision_ovirt_engine_password | default(lookup('env', 'OVIRT_PASSWORD')) | default(omit) }}"
     ca_file: "{{ sap_vm_provision_ovirt_engine_cafile | default(lookup('env', 'OVIRT_CAFILE')) | default(omit) }}"
   when: ovirt_auth is undefined or not ovirt_auth
-  register: ovirt_session
 
 - name: Set fact to hold loop variables from include_tasks
   ansible.builtin.set_fact:

@@ -18,19 +18,19 @@
           - -deprecated.state = DEPRECATED
 
     - name: Identify GCP Network (VPC)
+      register: gcp_vpc_info
       google.cloud.gcp_compute_network_info:
         project: "{{ sap_vm_provision_gcp_project }}"
         filters:
           - name = "{{ sap_vm_provision_gcp_vpc_name }}"
-      register: gcp_vpc_info
 
     - name: Identify GCP Subnetwork (VPC Subnet)
+      register: gcp_vpc_subnet_info
       google.cloud.gcp_compute_subnetwork_info:
         project: "{{ sap_vm_provision_gcp_project }}"
         region: "{{ sap_vm_provision_gcp_region }}"
         filters:
           - name = "{{ sap_vm_provision_gcp_vpc_subnet_name }}"
-      register: gcp_vpc_subnet_info
 
     - name: Set fact to hold loop variables from include_tasks
       ansible.builtin.set_fact:
@@ -73,35 +73,35 @@
         file: common/set_ansible_vars.yml
 
     - name: Gather GCP VM information
+      register: gcp_vm_info
       google.cloud.gcp_compute_instance_info:
         project: "{{ sap_vm_provision_gcp_project }}"
         zone: "{{ sap_vm_provision_gcp_region_zone }}"
         filters:
           - name = {{ inventory_hostname }}
-      register: gcp_vm_info
 
     - name: Gather GCP VPC Subnet information
+      register: gcp_vpc_subnet_info
       google.cloud.gcp_compute_subnetwork_info:
         project: "{{ sap_vm_provision_gcp_project }}"
         region: "{{ sap_vm_provision_gcp_region }}"
         filters:
           - name = {{ sap_vm_provision_gcp_vpc_subnet_name }}
-      register: gcp_vpc_subnet_info
 
     - name: Gather GCP Private DNS information
+      register: gcp_pdns_info
       google.cloud.gcp_dns_managed_zone_info:
         project: "{{ sap_vm_provision_gcp_project }}"
         dns_name: "{{ sap_vm_provision_dns_root_domain }}."
-      register: gcp_pdns_info
 
     # - name: Gather information about GCP Router and table for the VPC Subnet
+    #   register: gcp_router_info
     #   google.cloud.gcp_compute_router_info:
     #     project: "{{ sap_vm_provision_gcp_project }}"
     #     region: "{{ sap_vm_provision_gcp_region }}"
     #     filters:
     #       - network = "{{ gcp_vpc_info.resources[0].selfLink }}"
     #     #  - name = sap-vpc-router
-    #   register: gcp_router_info
 
     # - name: Verify IP Forwarding for GCP VMs
     #   ansible.builtin.fail:
@@ -109,6 +109,7 @@
     #   when: not gcp_vm_info.resources[0].canIpForward
 
     - name: GCP Private DNS Records for hosts
+      register: gcp_pdns_records
       google.cloud.gcp_dns_resource_record_set:
         state: present
         project: "{{ sap_vm_provision_gcp_project }}"
@@ -120,7 +121,6 @@
           - "{{ hostvars[inventory_hostname].ansible_host }}"
         type: A
         ttl: 7200
-      register: gcp_pdns_records
       until: not gcp_pdns_records.failed
       retries: 5
       delay: 5

@@ -23,9 +23,9 @@
 
 # For later check if the provided OS name is actually available
 - name: Check available OS names in OVirt
+  register: register_ovirt_available_os
   ovirt.ovirt.ovirt_vm_os_info:
     auth: "{{ ovirt_session.ansible_facts.ovirt_auth }}"
-  register: register_ovirt_available_os
 
 
 # VM creation block:
@@ -38,6 +38,7 @@
   block:
 
     - name: For Kickstart, provision Virtual Disk boot volume
+      register: register_provisioned_boot_disk
       ovirt.ovirt.ovirt_disk:
         auth: "{{ ovirt_session.ansible_facts.ovirt_auth }}"
         name: "{{ inventory_hostname }}-vol_os"
@@ -50,7 +51,6 @@
         - sap_vm_provision_ovirt_vm_kickstart_definition | length > 0
         - sap_vm_provision_ovirt_vm_template_name is not defined or
           sap_vm_provision_ovirt_vm_template_name | length == 0
-      register: register_provisioned_boot_disk
       until: register_provisioned_boot_disk.disk.status == 'ok'
       retries: 600
 
@@ -272,6 +272,7 @@
 # The volume creation task requires the above task to define the parameter
 # which contains the calculated unique device names.
 - name: Provision Virtual Disk volumes for OVirt VM filesystems
+  register: __sap_vm_provision_task_provision_host_single_volumes
   ovirt.ovirt.ovirt_disk:
     auth: "{{ ovirt_session.ansible_facts.ovirt_auth }}"
     name: "{{ inventory_hostname }}-vol_{{ vol_item.name }}"
@@ -290,7 +291,6 @@
   when:
     - vol_item.fstype is defined
     - vol_item.size > 0
-  register: __sap_vm_provision_task_provision_host_single_volumes
 
 
 - name: Append loop value to register

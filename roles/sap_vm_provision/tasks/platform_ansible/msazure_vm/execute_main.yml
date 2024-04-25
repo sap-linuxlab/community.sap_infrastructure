@@ -17,19 +17,19 @@
     # We cannot assume Resource Group if the SSH Public Key is managed by Administrators
     # Therefore use without any parameter to retrieve list of all SSH Public Keys and filter in Ansible
     - name: Get all SSH Public Keys in MS Azure
-      azure.azcollection.azure_rm_sshpublickey_info:
       register: __sap_vm_provision_msazure_key_pair_name_ssh_host_public_keys
+      azure.azcollection.azure_rm_sshpublickey_info:
 
     - name: Set fact for selected SSH Public Key in MS Azure
       ansible.builtin.set_fact:
         __sap_vm_provision_msazure_key_pair_name_ssh_host_public_key_value: "{{ (__sap_vm_provision_msazure_key_pair_name_ssh_host_public_keys.ssh_keys | selectattr('name', '==', sap_vm_provision_msazure_key_pair_name_ssh_host_public_key))[0].public_key }}"
 
     - name: Get Private DNS Zone Virtual Network Links
+      register: __sap_vm_provision_msazure_private_dns_virtual_network_links
       azure.azcollection.azure_rm_privatednszonelink_info:
         # DNS may exist in separate Resource Group. Use empty string var (or default false if undefined) to evaluate to false boolean, and use Python or logic operator
         resource_group: "{{ (sap_vm_provision_msazure_private_dns_resource_group_name | default(false)) or sap_vm_provision_msazure_resource_group_name }}"
         zone_name: "{{ sap_vm_provision_dns_root_domain }}"
-      register: __sap_vm_provision_msazure_private_dns_virtual_network_links
 
     - name: Set boolean fact for Auto Registration of DNS Records from Private DNS Zone Virtual Network Link
       ansible.builtin.set_fact:

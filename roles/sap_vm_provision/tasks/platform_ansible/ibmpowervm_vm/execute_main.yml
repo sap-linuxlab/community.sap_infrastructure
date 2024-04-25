@@ -14,6 +14,7 @@
 # Method 2 for auth, obtain token and subsequently set each task with environment e.g. OS_TOKEN: "{{ openstack_session.auth_token }}"
 # Use if requiring direct API call or CLI commands
 # - name: Openstack Authentication - Method 2
+#   register: openstack_session
 #   openstack.cloud.auth:
 #     auth:
 #       auth_url: "{{ sap_vm_provision_ibmpowervm_vc_auth_endpoint }}"
@@ -26,7 +27,6 @@
 #     validate_certs: false # Allow Self-Signed Certificate
 #     wait: true
 #   when: openstack_auth is undefined or not openstack_auth
-#   register: openstack_session
 
 - name: Set fact to hold loop variables from include_tasks
   ansible.builtin.set_fact:

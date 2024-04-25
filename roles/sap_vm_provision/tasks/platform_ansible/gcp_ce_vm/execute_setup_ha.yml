@@ -4,6 +4,7 @@
 # Virtual IP Address also uses subnet netmask /32 CIDR, otherwise subnet traffic attempts to route through the Load Balancer Backend Service
 
 # - name: GCP append route for SAP HANA HA (route must be outside of existing VPC Subnet Range/s)
+#   register: gcp_vpc_subnet_rt_route_sap_hana
 #   google.cloud.gcp_compute_route:
 #     state: present
 #     project: "{{ sap_vm_provision_gcp_project }}"
@@ -16,7 +17,6 @@
 #   loop: "{{ (groups['hana_primary'] | default([])) }}"
 #   loop_control:
 #     loop_var: host_node
-#   register: gcp_vpc_subnet_rt_route_sap_hana
 #   when:
 #     - groups["hana_secondary"] is defined and (groups["hana_secondary"] | length>0)
 
@@ -40,6 +40,7 @@
 
 
 # - name: GCP append route for SAP AnyDB HA (route must be outside of existing VPC Subnet Range/s)
+#   register: gcp_vpc_subnet_rt_route_sap_hana
 #   google.cloud.gcp_compute_route:
 #     state: present
 #     project: "{{ sap_vm_provision_gcp_project }}"
@@ -52,7 +53,6 @@
 #   loop: "{{ (groups['anydb_primary'] | default([])) }}"
 #   loop_control:
 #     loop_var: host_node
-#   register: gcp_vpc_subnet_rt_route_sap_hana
 #   when:
 #     - groups["hana_secondary"] is defined and (groups["hana_secondary"] | length>0)
 
@@ -76,6 +76,7 @@
 
 
 # - name: GCP append route for SAP NetWeaver ASCS HA (route must be outside of existing VPC Subnet Range/s)
+#   register: gcp_vpc_subnet_rt_route_sap_netweaver_ascs
 #   google.cloud.gcp_compute_route:
 #     state: present
 #     project: "{{ sap_vm_provision_gcp_project }}"
@@ -88,7 +89,6 @@
 #   loop: "{{ (groups['nwas_ascs'] | default([])) }}"
 #   loop_control:
 #     loop_var: host_node
-#   register: gcp_vpc_subnet_rt_route_sap_netweaver_ascs
 #   when:
 #     - groups["nwas_ers"] is defined and (groups["nwas_ers"] | length>0)
 
@@ -112,6 +112,7 @@
 
 
 # - name: GCP append route for SAP NetWeaver ERS HA
+#   register: gcp_vpc_subnet_rt_route_sap_netweaver_ers
 #   google.cloud.gcp_compute_route:
 #     state: present
 #     project: "{{ sap_vm_provision_gcp_project }}"
@@ -124,7 +125,6 @@
 #   loop: "{{ (groups['nwas_ers'] | default([])) }}"
 #   loop_control:
 #     loop_var: host_node
-#   register: gcp_vpc_subnet_rt_route_sap_netweaver_ers
 #   when:
 #     - groups["nwas_ers"] is defined and (groups["nwas_ers"] | length>0)
 
@@ -150,6 +150,7 @@
 ## For HA of PAS and AAS, if required
 
 # - name: GCP append route for SAP NetWeaver PAS HA
+#   register: gcp_vpc_subnet_rt_route_sap_netweaver_pas
 #   google.cloud.gcp_compute_route:
 #     state: present
 #     project: "{{ sap_vm_provision_gcp_project }}"
@@ -162,7 +163,6 @@
 #   loop: "{{ (groups['nwas_pas'] | default([])) }}"
 #   loop_control:
 #     loop_var: host_node
-#   register: gcp_vpc_subnet_rt_route_sap_netweaver_pas
 #   when:
 #     - groups["nwas_ers"] is defined and (groups["nwas_ers"] | length>0)
 
@@ -186,6 +186,7 @@
 
 
 # - name: GCP append route for SAP NetWeaver AAS HA
+#   register: gcp_vpc_subnet_rt_route_sap_netweaver_aas
 #   google.cloud.gcp_compute_route:
 #     state: present
 #     project: "{{ sap_vm_provision_gcp_project }}"
@@ -198,7 +199,6 @@
 #   loop: "{{ (groups['nwas_aas'] | default([])) }}"
 #   loop_control:
 #     loop_var: host_node
-#   register: gcp_vpc_subnet_rt_route_sap_netweaver_aas
 #   when:
 #     - groups["nwas_ers"] is defined and (groups["nwas_ers"] | length>0)
 
@@ -237,6 +237,7 @@
 # tcpdump -i eth0 net 130.211.0.0/22 and dst port 55550/55551/55552
 
 - name: Create Google Cloud Compute Engine Reserved Static Internal IP Address for the Virtual IP (VIP) of SAP HANA
+  register: gcp_lb_reserved_address
   google.cloud.gcp_compute_address:
     state: present
     project: "{{ sap_vm_provision_gcp_project }}"
@@ -247,7 +248,6 @@
     address: "{{ vip_item | regex_replace('/.*', '') }}"
     #network_tier: PREMIUM # An address with type INTERNAL cannot have a network tier
     purpose: GCE_ENDPOINT # GCE_ENDPOINT is for addresses used by VMs, alias IP ranges, and internal load balancers
-  register: gcp_lb_reserved_address
   when:
     - vip_item | length > 0
     - groups["hana_secondary"] is defined and (groups["hana_secondary"]|length>0)
@@ -258,6 +258,7 @@
     loop_var: vip_item
 
 - name: Create Google Cloud Compute Engine Health Check (Global) service instance for SAP HANA
+  register: gcp_lb_healthcheck_service
   google.cloud.gcp_compute_health_check:
     state: present
     project: "{{ sap_vm_provision_gcp_project }}"
@@ -270,17 +271,16 @@
     timeout_sec: 10
     unhealthy_threshold: 2
     healthy_threshold: 2
-  register: gcp_lb_healthcheck_service
   when:
     - groups["hana_secondary"] is defined and (groups["hana_secondary"]|length>0)
 
 - name: Gather GCP VM information
+  register: gcp_vm_info
   google.cloud.gcp_compute_instance_info:
     project: "{{ sap_vm_provision_gcp_project }}"
     zone: "{{ sap_vm_provision_gcp_region_zone }}"
     filters:
       - name = {{ host_node }}
-  register: gcp_vm_info
   loop: "{{ groups_merged_list }}"
   loop_control:
     loop_var: host_node
@@ -288,6 +288,7 @@
     - groups["hana_secondary"] is defined and (groups["hana_secondary"]|length>0)
 
 - name: Create Google Cloud Compute Engine Instance Group (Self-Managed/Unmanaged) Primary - for SAP HANA
+  register: gcp_lb_instance_group1
   google.cloud.gcp_compute_instance_group:
     state: present
     project: "{{ sap_vm_provision_gcp_project }}"
@@ -298,7 +299,6 @@
     #named_ports:
     #  - name: http # default, not applicable to internal passthrough NLB, only applicable to proxy NLB
     #    port: 80 # default
-  register: gcp_lb_instance_group1
   loop: "{{ (groups['hana_primary'] | default([])) }}"
   loop_control:
     loop_var: host_node
@@ -306,6 +306,7 @@
     - groups["hana_secondary"] is defined and (groups["hana_secondary"]|length>0)
 
 - name: Create Google Cloud Compute Engine Instance Group (Self-Managed/Unmanaged) Secondary (Failover) - for SAP HANA
+  register: gcp_lb_instance_group2
   google.cloud.gcp_compute_instance_group:
     state: present
     project: "{{ sap_vm_provision_gcp_project }}"
@@ -316,7 +317,6 @@
     #named_ports:
     #  - name: http # default, not applicable to internal passthrough NLB, only applicable to proxy NLB
     #    port: 80 # default
-  register: gcp_lb_instance_group2
   loop: "{{ (groups['hana_secondary'] | default([])) }}"
   loop_control:
     loop_var: host_node
@@ -326,6 +326,7 @@
 # Note: Failover Ratio must be 1.0, which enforces failover to Secondary/Failover Instance Group if any VM the Backend Service's Primary Instance Group
 # No option for --global-health-checks ?
 - name: Create Google Cloud Compute Engine Backend Service (Regional) for the Internal passthrough Network Load Balancer used by SAP HANA
+  register: gcp_lb_backend_service_regional
   google.cloud.gcp_compute_region_backend_service:
     state: present
     project: "{{ sap_vm_provision_gcp_project }}"
@@ -347,11 +348,11 @@
       failover_ratio: 1 # 1.0
     session_affinity: NONE
     #timeout_sec: 30 # value ignored for internal passthrough NLB, default 30s to wait for backend before failure - see https://cloud.google.com/load-balancing/docs/backend-service#timeout-setting
-  register: gcp_lb_backend_service_regional
   when:
     - groups["hana_secondary"] is defined and (groups["hana_secondary"]|length>0)
 
 - name: Create Google Cloud Compute Engine Forwarding Rule (aka. Frontend IP and Port) for SAP HANA
+  register: gcp_lb_forwarding_rule
   google.cloud.gcp_compute_forwarding_rule:
     state: present
     project: "{{ sap_vm_provision_gcp_project }}"
@@ -366,7 +367,6 @@
     subnetwork: { "selfLink": "{{ gcp_vpc_subnet_info.resources[0].selfLink }}" }
     load_balancing_scheme: INTERNAL
     network_tier: PREMIUM
-  register: gcp_lb_forwarding_rule
   when:
     - vip_item | length > 0
     - groups["hana_secondary"] is defined and (groups["hana_secondary"]|length>0)
@@ -377,17 +377,18 @@
     loop_var: vip_item
 
 - name: Get information on Google Cloud Compute Engine (Regional) Backend Service
+  register: gcp_info_lb_backend_service_regional
   google.cloud.gcp_compute_region_backend_service_info:
     project: "{{ sap_vm_provision_gcp_project }}"
     region: "{{ sap_vm_provision_gcp_region }}"
     filters:
       - name = "lb-backend-service-hana"
-  register: gcp_info_lb_backend_service_regional
   when:
     - groups["hana_secondary"] is defined and (groups["hana_secondary"]|length>0)
 
 
 - name: Create Google Cloud Compute Engine Reserved Static Internal IP Address for the Virtual IP (VIP) of SAP AnyDB
+  register: gcp_lb_reserved_address
   google.cloud.gcp_compute_address:
     state: present
     project: "{{ sap_vm_provision_gcp_project }}"
@@ -398,7 +399,6 @@
     address: "{{ vip_item | regex_replace('/.*', '') }}"
     #network_tier: PREMIUM # An address with type INTERNAL cannot have a network tier
     purpose: GCE_ENDPOINT # GCE_ENDPOINT is for addresses used by VMs, alias IP ranges, and internal load balancers
-  register: gcp_lb_reserved_address
   when:
     - vip_item | length > 0
     - groups["anydb_secondary"] is defined and (groups["anydb_secondary"]|length>0)
@@ -409,6 +409,7 @@
     loop_var: vip_item
 
 - name: Create Google Cloud Compute Engine Health Check (Global) service instance for SAP AnyDB
+  register: gcp_lb_healthcheck_service
   google.cloud.gcp_compute_health_check:
     state: present
     project: "{{ sap_vm_provision_gcp_project }}"
@@ -421,17 +422,16 @@
     timeout_sec: 10
     unhealthy_threshold: 2
     healthy_threshold: 2
-  register: gcp_lb_healthcheck_service
   when:
     - groups["anydb_secondary"] is defined and (groups["anydb_secondary"]|length>0)
 
 - name: Gather GCP VM information
+  register: gcp_vm_info
   google.cloud.gcp_compute_instance_info:
     project: "{{ sap_vm_provision_gcp_project }}"
     zone: "{{ sap_vm_provision_gcp_region_zone }}"
     filters:
       - name = {{ host_node }}
-  register: gcp_vm_info
   loop: "{{ groups_merged_list }}"
   loop_control:
     loop_var: host_node
@@ -439,6 +439,7 @@
     - groups["anydb_secondary"] is defined and (groups["anydb_secondary"]|length>0)
 
 - name: Create Google Cloud Compute Engine Instance Group (Self-Managed/Unmanaged) Primary - for SAP AnyDB
+  register: gcp_lb_instance_group1
   google.cloud.gcp_compute_instance_group:
     state: present
     project: "{{ sap_vm_provision_gcp_project }}"
@@ -449,7 +450,6 @@
     #named_ports:
     #  - name: http # default, not applicable to internal passthrough NLB, only applicable to proxy NLB
     #    port: 80 # default
-  register: gcp_lb_instance_group1
   loop: "{{ (groups['anydb_primary'] | default([])) }}"
   loop_control:
     loop_var: host_node
@@ -457,6 +457,7 @@
     - groups["anydb_secondary"] is defined and (groups["anydb_secondary"]|length>0)
 
 - name: Create Google Cloud Compute Engine Instance Group (Self-Managed/Unmanaged) Secondary (Failover) - for SAP AnyDB
+  register: gcp_lb_instance_group2
   google.cloud.gcp_compute_instance_group:
     state: present
     project: "{{ sap_vm_provision_gcp_project }}"
@@ -467,7 +468,6 @@
     #named_ports:
     #  - name: http # default, not applicable to internal passthrough NLB, only applicable to proxy NLB
     #    port: 80 # default
-  register: gcp_lb_instance_group2
   loop: "{{ (groups['anydb_secondary'] | default([])) }}"
   loop_control:
     loop_var: host_node
@@ -477,6 +477,7 @@
 # Note: Failover Ratio must be 1.0, which enforces failover to Secondary/Failover Instance Group if any VM the Backend Service's Primary Instance Group
 # No option for --global-health-checks ?
 - name: Create Google Cloud Compute Engine Backend Service (Regional) for the Internal passthrough Network Load Balancer used by SAP AnyDB
+  register: gcp_lb_backend_service_regional
   google.cloud.gcp_compute_region_backend_service:
     state: present
     project: "{{ sap_vm_provision_gcp_project }}"
@@ -498,11 +499,11 @@
       failover_ratio: 1 # 1.0
     session_affinity: NONE
     #timeout_sec: 30 # value ignored for internal passthrough NLB, default 30s to wait for backend before failure - see https://cloud.google.com/load-balancing/docs/backend-service#timeout-setting
-  register: gcp_lb_backend_service_regional
   when:
     - groups["anydb_secondary"] is defined and (groups["anydb_secondary"]|length>0)
 
 - name: Create Google Cloud Compute Engine Forwarding Rule (aka. Frontend IP and Port) for SAP AnyDB
+  register: gcp_lb_forwarding_rule
   google.cloud.gcp_compute_forwarding_rule:
     state: present
     project: "{{ sap_vm_provision_gcp_project }}"
@@ -517,7 +518,6 @@
     subnetwork: { "selfLink": "{{ gcp_vpc_subnet_info.resources[0].selfLink }}" }
     load_balancing_scheme: INTERNAL
     network_tier: PREMIUM
-  register: gcp_lb_forwarding_rule
   when:
     - vip_item | length > 0
     - groups["anydb_secondary"] is defined and (groups["anydb_secondary"]|length>0)
@@ -528,17 +528,18 @@
     loop_var: vip_item
 
 - name: Get information on Google Cloud Compute Engine (Regional) Backend Service
+  register: gcp_info_lb_backend_service_regional
   google.cloud.gcp_compute_region_backend_service_info:
     project: "{{ sap_vm_provision_gcp_project }}"
     region: "{{ sap_vm_provision_gcp_region }}"
     filters:
       - name = "lb-backend-service-anydb"
-  register: gcp_info_lb_backend_service_regional
   when:
     - groups["anydb_secondary"] is defined and (groups["anydb_secondary"]|length>0)
 
 
 - name: Create Google Cloud Compute Engine Reserved Static Internal IP Address for the Virtual IP (VIP) of SAP NetWeaver ASCS
+  register: gcp_lb_reserved_address
   google.cloud.gcp_compute_address:
     state: present
     project: "{{ sap_vm_provision_gcp_project }}"
@@ -549,11 +550,11 @@
     address: "{{ sap_ha_pacemaker_cluster_vip_nwas_abap_ascs_ip_address | regex_replace('/.*', '') }}"
     #network_tier: PREMIUM # An address with type INTERNAL cannot have a network tier
     purpose: GCE_ENDPOINT # GCE_ENDPOINT is for addresses used by VMs, alias IP ranges, and internal load balancers
-  register: gcp_lb_reserved_address
   when:
     - groups["nwas_ers"] is defined and (groups["nwas_ers"]|length>0)
 
 - name: Create Google Cloud Compute Engine Reserved Static Internal IP Address for the Virtual IP (VIP) of SAP NetWeaver ERS
+  register: gcp_lb_reserved_address
   google.cloud.gcp_compute_address:
     state: present
     project: "{{ sap_vm_provision_gcp_project }}"
@@ -564,11 +565,11 @@
     address: "{{ sap_ha_pacemaker_cluster_vip_nwas_abap_ers_ip_address | regex_replace('/.*', '') }}"
     #network_tier: PREMIUM # An address with type INTERNAL cannot have a network tier
     purpose: GCE_ENDPOINT # GCE_ENDPOINT is for addresses used by VMs, alias IP ranges, and internal load balancers
-  register: gcp_lb_reserved_address
   when:
     - groups["nwas_ers"] is defined and (groups["nwas_ers"]|length>0)
 
 - name: Create Google Cloud Compute Engine Health Check (Global) service instance for SAP NetWeaver ASCS
+  register: gcp_lb_healthcheck_service_ascs
   google.cloud.gcp_compute_health_check:
     state: present
     project: "{{ sap_vm_provision_gcp_project }}"
@@ -581,11 +582,11 @@
     timeout_sec: 10
     unhealthy_threshold: 2
     healthy_threshold: 2
-  register: gcp_lb_healthcheck_service_ascs
   when:
     - groups["nwas_ers"] is defined and (groups["nwas_ers"]|length>0)
 
 - name: Create Google Cloud Compute Engine Health Check (Global) service instance for SAP NetWeaver ERS
+  register: gcp_lb_healthcheck_service_ers
   google.cloud.gcp_compute_health_check:
     state: present
     project: "{{ sap_vm_provision_gcp_project }}"
@@ -598,17 +599,16 @@
     timeout_sec: 10
     unhealthy_threshold: 2
     healthy_threshold: 2
-  register: gcp_lb_healthcheck_service_ers
   when:
     - groups["nwas_ers"] is defined and (groups["nwas_ers"]|length>0)
 
 - name: Gather GCP VM information
+  register: gcp_vm_info
   google.cloud.gcp_compute_instance_info:
     project: "{{ sap_vm_provision_gcp_project }}"
     zone: "{{ sap_vm_provision_gcp_region_zone }}"
     filters:
       - name = {{ host_node }}
-  register: gcp_vm_info
   loop: "{{ groups_merged_list }}"
   loop_control:
     loop_var: host_node
@@ -616,6 +616,7 @@
     - groups["nwas_ers"] is defined and (groups["nwas_ers"]|length>0)
 
 - name: Create Google Cloud Compute Engine Instance Group (Self-Managed/Unmanaged) Primary - for SAP NetWeaver ASCS
+  register: gcp_lb_instance_group1
   google.cloud.gcp_compute_instance_group:
     state: present
     project: "{{ sap_vm_provision_gcp_project }}"
@@ -626,7 +627,6 @@
     #named_ports:
     #  - name: http # default, not applicable to internal passthrough NLB, only applicable to proxy NLB
     #    port: 80 # default
-  register: gcp_lb_instance_group1
   loop: "{{ (groups['nwas_ascs'] | default([])) }}"
   loop_control:
     loop_var: host_node
@@ -634,6 +634,7 @@
     - groups["nwas_ers"] is defined and (groups["nwas_ers"]|length>0)
 
 - name: Create Google Cloud Compute Engine Instance Group (Self-Managed/Unmanaged) Secondary (Failover) - for SAP NetWeaver ERS
+  register: gcp_lb_instance_group2
   google.cloud.gcp_compute_instance_group:
     state: present
     project: "{{ sap_vm_provision_gcp_project }}"
@@ -644,7 +645,6 @@
     #named_ports:
     #  - name: http # default, not applicable to internal passthrough NLB, only applicable to proxy NLB
     #    port: 80 # default
-  register: gcp_lb_instance_group2
   loop: "{{ (groups['nwas_ers'] | default([])) }}"
   loop_control:
     loop_var: host_node
@@ -654,6 +654,7 @@
 # Note: Failover Ratio must be 1.0, which enforces failover to Secondary/Failover Instance Group if any VM the Backend Service's Primary Instance Group
 # No option for --global-health-checks ?
 - name: Create Google Cloud Compute Engine Backend Service (Regional) for the Internal passthrough Network Load Balancer used by SAP NetWeaver ASCS
+  register: gcp_lb_backend_service_regional_ascs
   google.cloud.gcp_compute_region_backend_service:
     state: present
     project: "{{ sap_vm_provision_gcp_project }}"
@@ -675,13 +676,13 @@
       failover_ratio: 1 # 1.0
     session_affinity: NONE
     #timeout_sec: 30 # value ignored for internal passthrough NLB, default 30s to wait for backend before failure - see https://cloud.google.com/load-balancing/docs/backend-service#timeout-setting
-  register: gcp_lb_backend_service_regional_ascs
   when:
     - groups["nwas_ers"] is defined and (groups["nwas_ers"]|length>0)
 
 # Note: Failover Ratio must be 1.0, which enforces failover to Secondary/Failover Instance Group if any VM the Backend Service's Primary Instance Group
 # No option for --global-health-checks ?
 - name: Create Google Cloud Compute Engine Backend Service (Regional) for the Internal passthrough Network Load Balancer used by SAP NetWeaver ERS
+  register: gcp_lb_backend_service_regional_ers
   google.cloud.gcp_compute_region_backend_service:
     state: present
     project: "{{ sap_vm_provision_gcp_project }}"
@@ -703,11 +704,11 @@
       failover_ratio: 1 # 1.0
     session_affinity: NONE
     #timeout_sec: 30 # value ignored for internal passthrough NLB, default 30s to wait for backend before failure - see https://cloud.google.com/load-balancing/docs/backend-service#timeout-setting
-  register: gcp_lb_backend_service_regional_ers
   when:
     - groups["nwas_ers"] is defined and (groups["nwas_ers"]|length>0)
 
 - name: Create Google Cloud Compute Engine Forwarding Rule (aka. Frontend IP and Port) for SAP NetWeaver ASCS
+  register: gcp_lb_forwarding_rule
   google.cloud.gcp_compute_forwarding_rule:
     state: present
     project: "{{ sap_vm_provision_gcp_project }}"
@@ -722,11 +723,11 @@
     subnetwork: { "selfLink": "{{ gcp_vpc_subnet_info.resources[0].selfLink }}" }
     load_balancing_scheme: INTERNAL
     network_tier: PREMIUM
-  register: gcp_lb_forwarding_rule
   when:
     - groups["nwas_ers"] is defined and (groups["nwas_ers"]|length>0)
 
 - name: Create Google Cloud Compute Engine Forwarding Rule (aka. Frontend IP and Port) for SAP NetWeaver ERS
+  register: gcp_lb_forwarding_rule
   google.cloud.gcp_compute_forwarding_rule:
     state: present
     project: "{{ sap_vm_provision_gcp_project }}"
@@ -741,27 +742,26 @@
     subnetwork: { "selfLink": "{{ gcp_vpc_subnet_info.resources[0].selfLink }}" }
     load_balancing_scheme: INTERNAL
     network_tier: PREMIUM
-  register: gcp_lb_forwarding_rule
   when:
     - groups["nwas_ers"] is defined and (groups["nwas_ers"]|length>0)
 
 
 - name: Get information on Google Cloud Compute Engine (Regional) Backend Service for SAP NetWeaver ASCS
+  register: gcp_info_lb_backend_service_regional
   google.cloud.gcp_compute_region_backend_service_info:
     project: "{{ sap_vm_provision_gcp_project }}"
     region: "{{ sap_vm_provision_gcp_region }}"
     filters:
       - name = "lb-backend-service-nwas-ascs"
-  register: gcp_info_lb_backend_service_regional
   when:
     - groups["nwas_ers"] is defined and (groups["nwas_ers"]|length>0)
 
 - name: Get information on Google Cloud Compute Engine (Regional) Backend Service for SAP NetWeaver ERS
+  register: gcp_info_lb_backend_service_regional
   google.cloud.gcp_compute_region_backend_service_info:
     project: "{{ sap_vm_provision_gcp_project }}"
     region: "{{ sap_vm_provision_gcp_region }}"
     filters:
       - name = "lb-backend-service-nwas-ers"
-  register: gcp_info_lb_backend_service_regional
   when:
     - groups["nwas_ers"] is defined and (groups["nwas_ers"]|length>0)
