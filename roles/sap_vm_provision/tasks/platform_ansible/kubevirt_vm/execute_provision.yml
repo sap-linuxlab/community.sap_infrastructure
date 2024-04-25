@@ -146,6 +146,8 @@
 
 
 - name: Provision KubeVirt Virtual Machine
+  no_log: "{{ __sap_vm_provision_no_log }}"
+  register: __sap_vm_provision_task_provision_host_single
   kubevirt.core.kubevirt_vm:
     api_version: "{{ api_version | default(omit) }}"
     validate_certs: "{{ validate_certs | default(omit) }}"
@@ -233,6 +235,7 @@
 
 
 - name: Check VM status
+  no_log: "{{ __sap_vm_provision_no_log }}"
   register: __sap_vm_provision_task_provision_host_single_info
   kubevirt.core.kubevirt_vm_info:
     name: "{{ inventory_hostname }}"
