@@ -145,11 +145,11 @@
         - __sap_vm_provision_task_ibmcloud_pdns
         - __sap_vm_provision_task_ibmcloud_os_image_list
         - __sap_vm_provision_task_provision_host_all_run
-        - __sap_vm_provision_task_provision_host_all_add
         - __sap_vm_provision_task_provision_host_single
         - __sap_vm_provision_task_provision_host_single_volumes
         - __sap_vm_provision_task_provision_host_single_volume_attachments
         - __sap_vm_provision_task_provision_host_single_info
+        - __sap_vm_provision_task_provision_host_all_add
         - __sap_vm_provision_task_ibmcloud_pdns_record
       loop_control:
         loop_var: loop_item
