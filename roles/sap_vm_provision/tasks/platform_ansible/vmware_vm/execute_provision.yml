@@ -20,44 +20,86 @@
     - not inventory_hostname in lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan].keys()
 
 - name: Identify VM Folder
+  no_log: "{{ __sap_vm_provision_no_log }}"
   register: register_vmware_vm_folder
   vmware.vmware_rest.vcenter_folder_info:
     names: "{{ sap_vm_provision_vmware_vm_folder_name }}"
     type: VIRTUAL_MACHINE
+    # Hypervisor Control Plane credentials
+    vcenter_hostname: "{{ sap_vm_provision_vmware_vcenter_hostname | default(lookup('env', 'VMWARE_HOST')) | default(omit) }}"
+    vcenter_validate_certs: "{{ (sap_vm_provision_vmware_vcenter_validate_certs_bool | default(lookup('env', 'VMWARE_VALIDATE_CERTS'))) | bool | default(false) }}"
+    vcenter_username: "{{ sap_vm_provision_vmware_vcenter_user | default(lookup('env', 'VMWARE_USER')) | default(omit) }}"
+    vcenter_password: "{{ sap_vm_provision_vmware_vcenter_password | default(lookup('env', 'VMWARE_PASSWORD')) | default(omit) }}"
 
 - name: Identify Datacenter Cluster
+  no_log: "{{ __sap_vm_provision_no_log }}"
   register: register_vmware_vm_cluster
   vmware.vmware_rest.vcenter_cluster_info:
     names: "{{ sap_vm_provision_vmware_vm_cluster_name }}"
+    # Hypervisor Control Plane credentials
+    vcenter_hostname: "{{ sap_vm_provision_vmware_vcenter_hostname | default(lookup('env', 'VMWARE_HOST')) | default(omit) }}"
+    vcenter_validate_certs: "{{ (sap_vm_provision_vmware_vcenter_validate_certs_bool | default(lookup('env', 'VMWARE_VALIDATE_CERTS'))) | bool | default(false) }}"
+    vcenter_username: "{{ sap_vm_provision_vmware_vcenter_user | default(lookup('env', 'VMWARE_USER')) | default(omit) }}"
+    vcenter_password: "{{ sap_vm_provision_vmware_vcenter_password | default(lookup('env', 'VMWARE_PASSWORD')) | default(omit) }}"
 
 - name: Identify Host in Datacenter Cluster
+  no_log: "{{ __sap_vm_provision_no_log }}"
   register: register_vmware_vm_cluster_host
   vmware.vmware_rest.vcenter_host_info:
     names: "{{ sap_vm_provision_vmware_vm_cluster_host_name }}"
+    # Hypervisor Control Plane credentials
+    vcenter_hostname: "{{ sap_vm_provision_vmware_vcenter_hostname | default(lookup('env', 'VMWARE_HOST')) | default(omit) }}"
+    vcenter_validate_certs: "{{ (sap_vm_provision_vmware_vcenter_validate_certs_bool | default(lookup('env', 'VMWARE_VALIDATE_CERTS'))) | bool | default(false) }}"
+    vcenter_username: "{{ sap_vm_provision_vmware_vcenter_user | default(lookup('env', 'VMWARE_USER')) | default(omit) }}"
+    vcenter_password: "{{ sap_vm_provision_vmware_vcenter_password | default(lookup('env', 'VMWARE_PASSWORD')) | default(omit) }}"
 
 - name: Identify Datastore
+  no_log: "{{ __sap_vm_provision_no_log }}"
   register: register_vmware_vm_cluster_datastore
   vmware.vmware_rest.vcenter_datastore_info:
     names: "{{ sap_vm_provision_vmware_vm_cluster_datastore_name }}"
+    # Hypervisor Control Plane credentials
+    vcenter_hostname: "{{ sap_vm_provision_vmware_vcenter_hostname | default(lookup('env', 'VMWARE_HOST')) | default(omit) }}"
+    vcenter_validate_certs: "{{ (sap_vm_provision_vmware_vcenter_validate_certs_bool | default(lookup('env', 'VMWARE_VALIDATE_CERTS'))) | bool | default(false) }}"
+    vcenter_username: "{{ sap_vm_provision_vmware_vcenter_user | default(lookup('env', 'VMWARE_USER')) | default(omit) }}"
+    vcenter_password: "{{ sap_vm_provision_vmware_vcenter_password | default(lookup('env', 'VMWARE_PASSWORD')) | default(omit) }}"
 
 - name: Identify Content Library (to store VM Template)
+  no_log: "{{ __sap_vm_provision_no_log }}"
   register: register_vmware_vm_content_library
   vmware.vmware_rest.content_locallibrary:
     name: "{{ sap_vm_provision_vmware_vm_content_library_name }}"
+    # Hypervisor Control Plane credentials
+    vcenter_hostname: "{{ sap_vm_provision_vmware_vcenter_hostname | default(lookup('env', 'VMWARE_HOST')) | default(omit) }}"
+    vcenter_validate_certs: "{{ (sap_vm_provision_vmware_vcenter_validate_certs_bool | default(lookup('env', 'VMWARE_VALIDATE_CERTS'))) | bool | default(false) }}"
+    vcenter_username: "{{ sap_vm_provision_vmware_vcenter_user | default(lookup('env', 'VMWARE_USER')) | default(omit) }}"
+    vcenter_password: "{{ sap_vm_provision_vmware_vcenter_password | default(lookup('env', 'VMWARE_PASSWORD')) | default(omit) }}"
 
 - name: List all items in Content Library
+  no_log: "{{ __sap_vm_provision_no_log }}"
   register: register_vmware_vm_content_library_items
   vmware.vmware_rest.content_library_item_info:
     library_id: "{{ register_vmware_vm_content_library.id }}"
+    # Hypervisor Control Plane credentials
+    vcenter_hostname: "{{ sap_vm_provision_vmware_vcenter_hostname | default(lookup('env', 'VMWARE_HOST')) | default(omit) }}"
+    vcenter_validate_certs: "{{ (sap_vm_provision_vmware_vcenter_validate_certs_bool | default(lookup('env', 'VMWARE_VALIDATE_CERTS'))) | bool | default(false) }}"
+    vcenter_username: "{{ sap_vm_provision_vmware_vcenter_user | default(lookup('env', 'VMWARE_USER')) | default(omit) }}"
+    vcenter_password: "{{ sap_vm_provision_vmware_vcenter_password | default(lookup('env', 'VMWARE_PASSWORD')) | default(omit) }}"
 
 - name: Identify VMware Template ID
   ansible.builtin.set_fact:
     vmware_vm_template_id: "{{ (register_vmware_vm_content_library_items.value | selectattr('type', '==', 'vm-template') | selectattr('name', '==', sap_vm_provision_vmware_vm_template_name) | first).id }}"
 
 - name: Check if VM exists
+  no_log: "{{ __sap_vm_provision_no_log }}"
   register: __sap_vm_provision_task_provision_host_single_check_exists
   vmware.vmware_rest.vcenter_vm_info:
     names: "{{ inventory_hostname }}"
+    # Hypervisor Control Plane credentials
+    vcenter_hostname: "{{ sap_vm_provision_vmware_vcenter_hostname | default(lookup('env', 'VMWARE_HOST')) | default(omit) }}"
+    vcenter_validate_certs: "{{ (sap_vm_provision_vmware_vcenter_validate_certs_bool | default(lookup('env', 'VMWARE_VALIDATE_CERTS'))) | bool | default(false) }}"
+    vcenter_username: "{{ sap_vm_provision_vmware_vcenter_user | default(lookup('env', 'VMWARE_USER')) | default(omit) }}"
+    vcenter_password: "{{ sap_vm_provision_vmware_vcenter_password | default(lookup('env', 'VMWARE_PASSWORD')) | default(omit) }}"
 
 
 - name: Set VM ID
@@ -66,10 +108,16 @@
     register_vmware_vm_cluster_host_id: "{{ __sap_vm_provision_task_provision_host_single_check_exists.value[0].vm }}" # VM ID
 
 - name: Check VM status
+  no_log: "{{ __sap_vm_provision_no_log }}"
   register: __sap_vm_provision_task_provision_host_single_info
   when: not __sap_vm_provision_task_provision_host_single_check_exists.value | length == 0
   vmware.vmware_rest.vcenter_vm:
     vm: "{{ register_vmware_vm_cluster_host_id }}" # VM ID
+    # Hypervisor Control Plane credentials
+    vcenter_hostname: "{{ sap_vm_provision_vmware_vcenter_hostname | default(lookup('env', 'VMWARE_HOST')) | default(omit) }}"
+    vcenter_validate_certs: "{{ (sap_vm_provision_vmware_vcenter_validate_certs_bool | default(lookup('env', 'VMWARE_VALIDATE_CERTS'))) | bool | default(false) }}"
+    vcenter_username: "{{ sap_vm_provision_vmware_vcenter_user | default(lookup('env', 'VMWARE_USER')) | default(omit) }}"
+    vcenter_password: "{{ sap_vm_provision_vmware_vcenter_password | default(lookup('env', 'VMWARE_PASSWORD')) | default(omit) }}"
 
 
 # VM creation block:
@@ -81,6 +129,7 @@
     # Deploy a Virtual Machine from a VM Template in a Content Library
     # Doc: https://docs.vmware.com/en/VMware-vSphere/7.0/com.vmware.vsphere.vm_admin.doc/GUID-6EA309BC-9113-449C-B668-ACBB363485C3.html
     - name: Provision VMware Virtual Machine based upon the VM Template
+      no_log: "{{ __sap_vm_provision_no_log }}"
       register: __sap_vm_provision_task_provision_host_single
       vmware.vmware_rest.vcenter_vmtemplate_libraryitems:
 
@@ -117,6 +166,12 @@
           datastore: "{{ (register_vmware_vm_cluster_datastore.value | first).datastore }}"
           # storage_policy:
 
+        ## Hypervisor Control Plane credentials
+        vcenter_hostname: "{{ sap_vm_provision_vmware_vcenter_hostname | default(lookup('env', 'VMWARE_HOST')) | default(omit) }}"
+        vcenter_validate_certs: "{{ (sap_vm_provision_vmware_vcenter_validate_certs_bool | default(lookup('env', 'VMWARE_VALIDATE_CERTS'))) | bool | default(false) }}"
+        vcenter_username: "{{ sap_vm_provision_vmware_vcenter_user | default(lookup('env', 'VMWARE_USER')) | default(omit) }}"
+        vcenter_password: "{{ sap_vm_provision_vmware_vcenter_password | default(lookup('env', 'VMWARE_PASSWORD')) | default(omit) }}"
+
       # # Report VM back only after it is done creating the clone image.
       # until: __sap_vm_provision_task_provision_host_single.vm.status != "image_locked"
       # retries: 120
@@ -132,9 +187,15 @@
 
 
 - name: Check VM status
+  no_log: "{{ __sap_vm_provision_no_log }}"
   register: __sap_vm_provision_task_provision_host_single_info
   vmware.vmware_rest.vcenter_vm:
     vm: "{{ register_vmware_vm_cluster_host_id }}"
+    # Hypervisor Control Plane credentials
+    vcenter_hostname: "{{ sap_vm_provision_vmware_vcenter_hostname | default(lookup('env', 'VMWARE_HOST')) | default(omit) }}"
+    vcenter_validate_certs: "{{ (sap_vm_provision_vmware_vcenter_validate_certs_bool | default(lookup('env', 'VMWARE_VALIDATE_CERTS'))) | bool | default(false) }}"
+    vcenter_username: "{{ sap_vm_provision_vmware_vcenter_user | default(lookup('env', 'VMWARE_USER')) | default(omit) }}"
+    vcenter_password: "{{ sap_vm_provision_vmware_vcenter_password | default(lookup('env', 'VMWARE_PASSWORD')) | default(omit) }}"
 
 
 # Example https://cloudinit.readthedocs.io/en/23.4.1/reference/datasources/vmware.html#walkthrough-of-guestinfo-keys-transport
@@ -210,6 +271,7 @@
 # >> metadata as JSON/YAML, userdata as no compression or base64 encoding
 # Error 400 com.vmware.vapi.std.errors.not_allowed_in_current_state : if the virtual machine vm is not in a powered off state.
 - name: Apply customization specification to the VM in Powered Off state
+  no_log: "{{ __sap_vm_provision_no_log }}"
   when: __sap_vm_provision_task_provision_host_single_info.value.power_state is defined and __sap_vm_provision_task_provision_host_single_info.value.power_state != "POWERED_ON"
   vmware.vmware_rest.vcenter_vm_guest_customization:
     vm: '{{ register_vmware_vm_cluster_host_id }}'
@@ -222,31 +284,54 @@
       # linux_config:
     interfaces: []
     global_DNS_settings: {}
+    # Hypervisor Control Plane credentials
+    vcenter_hostname: "{{ sap_vm_provision_vmware_vcenter_hostname | default(lookup('env', 'VMWARE_HOST')) | default(omit) }}"
+    vcenter_validate_certs: "{{ (sap_vm_provision_vmware_vcenter_validate_certs_bool | default(lookup('env', 'VMWARE_VALIDATE_CERTS'))) | bool | default(false) }}"
+    vcenter_username: "{{ sap_vm_provision_vmware_vcenter_user | default(lookup('env', 'VMWARE_USER')) | default(omit) }}"
+    vcenter_password: "{{ sap_vm_provision_vmware_vcenter_password | default(lookup('env', 'VMWARE_PASSWORD')) | default(omit) }}"
 
 
 - name: Ensure VM is Powered ON
+  no_log: "{{ __sap_vm_provision_no_log }}"
   register: register_vm_power_info
   vmware.vmware_rest.vcenter_vm_power:
     state: start
     vm: "{{ register_vmware_vm_cluster_host_id }}"
+    # Hypervisor Control Plane credentials
+    vcenter_hostname: "{{ sap_vm_provision_vmware_vcenter_hostname | default(lookup('env', 'VMWARE_HOST')) | default(omit) }}"
+    vcenter_validate_certs: "{{ (sap_vm_provision_vmware_vcenter_validate_certs_bool | default(lookup('env', 'VMWARE_VALIDATE_CERTS'))) | bool | default(false) }}"
+    vcenter_username: "{{ sap_vm_provision_vmware_vcenter_user | default(lookup('env', 'VMWARE_USER')) | default(omit) }}"
+    vcenter_password: "{{ sap_vm_provision_vmware_vcenter_password | default(lookup('env', 'VMWARE_PASSWORD')) | default(omit) }}"
   # Wait until VM is powered on
   until: (register_vm_power_info.value.error_type is defined and register_vm_power_info.value.error_type == "ALREADY_IN_DESIRED_STATE")
   retries: 15
   delay: 60
 
 - name: Show VM Information
+  no_log: "{{ __sap_vm_provision_no_log }}"
   register: register_vm_info
   vmware.vmware_rest.vcenter_vm_info:
     vm: '{{ register_vmware_vm_cluster_host_id }}'
+    # Hypervisor Control Plane credentials
+    vcenter_hostname: "{{ sap_vm_provision_vmware_vcenter_hostname | default(lookup('env', 'VMWARE_HOST')) | default(omit) }}"
+    vcenter_validate_certs: "{{ (sap_vm_provision_vmware_vcenter_validate_certs_bool | default(lookup('env', 'VMWARE_VALIDATE_CERTS'))) | bool | default(false) }}"
+    vcenter_username: "{{ sap_vm_provision_vmware_vcenter_user | default(lookup('env', 'VMWARE_USER')) | default(omit) }}"
+    vcenter_password: "{{ sap_vm_provision_vmware_vcenter_password | default(lookup('env', 'VMWARE_PASSWORD')) | default(omit) }}"
   # Wait until VM is powered on
   until: register_vm_info.value.power_state == "POWERED_ON"
   retries: 45
   delay: 20
 
 - name: Get guest networking information (wait until DHCP assigns IP Address for host)
+  no_log: "{{ __sap_vm_provision_no_log }}"
   register: register_vm_nic_info
   vmware.vmware_rest.vcenter_vm_guest_networking_interfaces_info:
     vm: '{{ register_vmware_vm_cluster_host_id }}'
+    # Hypervisor Control Plane credentials
+    vcenter_hostname: "{{ sap_vm_provision_vmware_vcenter_hostname | default(lookup('env', 'VMWARE_HOST')) | default(omit) }}"
+    vcenter_validate_certs: "{{ (sap_vm_provision_vmware_vcenter_validate_certs_bool | default(lookup('env', 'VMWARE_VALIDATE_CERTS'))) | bool | default(false) }}"
+    vcenter_username: "{{ sap_vm_provision_vmware_vcenter_user | default(lookup('env', 'VMWARE_USER')) | default(omit) }}"
+    vcenter_password: "{{ sap_vm_provision_vmware_vcenter_password | default(lookup('env', 'VMWARE_PASSWORD')) | default(omit) }}"
   # Wait until VM Tools is running
   until: (register_vm_nic_info.value.error_type | default("")) != "SERVICE_UNAVAILABLE" and (register_vm_nic_info.value[0].ip.ip_addresses | length) > 0
   retries: 45
@@ -355,6 +440,7 @@
 # The volume creation task requires the above task to define the parameter
 # which contains the calculated unique device names.
 - name: Provision Virtual Disk volumes and attach to VM
+  no_log: "{{ __sap_vm_provision_no_log }}"
   register: __sap_vm_provision_task_provision_host_single_volumes
   vmware.vmware_rest.vcenter_vm_hardware_disk:
     vm: "{{ register_vmware_vm_cluster_host_id }}"
@@ -364,6 +450,11 @@
     new_vmdk:
       name: "{{ inventory_hostname }}_{{ vol_item.name }}" # VMDK filename
       capacity: "{{ vol_item.size | human_to_bytes(default_unit='G') }}"
+    # Hypervisor Control Plane credentials
+    vcenter_hostname: "{{ sap_vm_provision_vmware_vcenter_hostname | default(lookup('env', 'VMWARE_HOST')) | default(omit) }}"
+    vcenter_validate_certs: "{{ (sap_vm_provision_vmware_vcenter_validate_certs_bool | default(lookup('env', 'VMWARE_VALIDATE_CERTS'))) | bool | default(false) }}"
+    vcenter_username: "{{ sap_vm_provision_vmware_vcenter_user | default(lookup('env', 'VMWARE_USER')) | default(omit) }}"
+    vcenter_password: "{{ sap_vm_provision_vmware_vcenter_password | default(lookup('env', 'VMWARE_PASSWORD')) | default(omit) }}"
   loop: "{{ filesystem_volume_map }}"
   loop_control:
     loop_var: vol_item
