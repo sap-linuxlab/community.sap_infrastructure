@@ -177,11 +177,11 @@
           {{ lookup('ansible.builtin.file', sap_vm_provision_ssh_host_public_key_file_path ) }}
 
     - name: Permit root login
+      register: __sap_vm_provision_task_os_sshd_config
       ansible.builtin.replace:
         path: /etc/ssh/sshd_config
         regexp: '(^PermitRootLogin no)'
         replace: 'PermitRootLogin yes'
-      register: __sap_vm_provision_task_os_sshd_config
 
     - name: Reload sshd service
       ansible.builtin.service:
