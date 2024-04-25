@@ -15,7 +15,8 @@
     - not inventory_hostname in lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan].keys()
 
 - name: Provision AWS EC2 Virtual Server instance
-  register: __sap_vm_provision_task_provisioned_host_single
+  register: __sap_vm_provision_task_provision_host_single
+  no_log: "{{ __sap_vm_provision_no_log }}"
   amazon.aws.ec2_instance:
     state: started
     name: "{{ inventory_hostname }}"
@@ -35,21 +36,20 @@
       source_dest_check: "{{ not lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan][scaleout_origin_host_spec | default(inventory_hostname)].disable_ip_anti_spoofing }}" # Disable the Anti IP Spoofing by setting Source/Destination Check to false
     access_key: "{{ sap_vm_provision_aws_access_key }}"
     secret_key: "{{ sap_vm_provision_aws_secret_access_key }}"
-  no_log: "{{ __sap_vm_provision_no_log }}"
 
 - name: Set fact for storage volume letters calculations (max 25 volumes)
   ansible.builtin.set_fact:
     storage_vol_letters: "bcdefghijklmnopqrstuvwxyz"
 
 - name: Read AWS EC2 instance information
-  amazon.aws.ec2_instance_info:
+  register: __sap_vm_provision_task_provision_host_single_info
+  no_log: "{{ __sap_vm_provision_no_log }}"
+  amazon.aws.ec2___sap_vm_provision_task_provision_host_single_info:
     filters:
       "tag:Name": "{{ inventory_hostname }}"
       "instance-state-name": ["running"]
     access_key: "{{ sap_vm_provision_aws_access_key }}"
     secret_key: "{{ sap_vm_provision_aws_secret_access_key }}"
-  register: __sap_vm_provision_task_instance_info
-  no_log: "{{ __sap_vm_provision_no_log }}"
 
 - name: Set fact for available storage volume device names
   ansible.builtin.set_fact:
@@ -57,7 +57,7 @@
       {% set letters = 'bcdefghijklmnopqrstuvwxyz' %}
       {% set volumes = [] %}
       {%- for letter in letters -%}
-        {% for device in __sap_vm_provision_task_instance_info.instances[0].block_device_mappings -%}
+        {% for device in __sap_vm_provision_task_provision_host_single_info.instances[0].block_device_mappings -%}
           {% if '/dev/sd' + letter not in device.device_name -%}
             {% set dev = volumes.append('/dev/sd' + letter) %}
           {%- endif %}
@@ -99,9 +99,11 @@
 # The volume creation task requires the above task to define the parameter
 # which contains the calculated unique device names.
 - name: Provision AWS EBS volumes for AWS EC2 Virtual Server instance filesystems
+  register: __sap_vm_provision_task_provision_host_single_volumes
+  no_log: "{{ __sap_vm_provision_no_log }}"
   amazon.aws.ec2_vol:
     name: "{{ inventory_hostname }}-vol_{{ vol_item.name }}"
-    instance: "{{ __sap_vm_provision_task_provisioned_host_single.instance_ids[0] }}"
+    instance: "{{ __sap_vm_provision_task_provision_host_single.instance_ids[0] }}"
     volume_type: "{{ vol_item.type }}"
     volume_size: "{{ vol_item.size }}"
     device_name: "{{ vol_item.device }}"
@@ -116,30 +118,28 @@
   when:
     - vol_item.fstype is defined
     - vol_item.size > 0
-  register: __sap_vm_provision_task_volume_provisioning
-  no_log: "{{ __sap_vm_provision_no_log }}"
 
 - name: Read AWS EC2 instance information
-  amazon.aws.ec2_instance_info:
+  register: __sap_vm_provision_task_provision_host_single_info
+  no_log: "{{ __sap_vm_provision_no_log }}"
+  amazon.aws.ec2___sap_vm_provision_task_provision_host_single_info:
     filters:
       "tag:Name": "{{ inventory_hostname }}"
     access_key: "{{ sap_vm_provision_aws_access_key }}"
     secret_key: "{{ sap_vm_provision_aws_secret_access_key }}"
-  register: __sap_vm_provision_task_instance_info
-  no_log: "{{ __sap_vm_provision_no_log }}"
 
 - name: Add host facts
+  no_log: "{{ __sap_vm_provision_no_log }}"
   ansible.builtin.set_fact:
     filesystem_volume_map: "{{ filesystem_volume_map }}"
-    __sap_vm_provision_task_volume_provisioning: "{{ __sap_vm_provision_task_volume_provisioning }}"
-    instance_info: "{{ __sap_vm_provision_task_instance_info }}"
+    __sap_vm_provision_task_provision_host_single_volumes: "{{ __sap_vm_provision_task_provision_host_single_volumes }}"
+    __sap_vm_provision_task_provision_host_single_info: "{{ __sap_vm_provision_task_provision_host_single_info }}"
   delegate_to: "{{ inventory_hostname }}"
   delegate_facts: true
-  no_log: "{{ __sap_vm_provision_no_log }}"
 
 - name: Create fact for delegate host IP
   ansible.builtin.set_fact:
-    provisioned_private_ip: "{{ __sap_vm_provision_task_provisioned_host_single.instances[0].private_ip_address }}"
+    provisioned_private_ip: "{{ __sap_vm_provision_task_provision_host_single.instances[0].private_ip_address }}"
 
 
 - name: Copy facts to delegate host
@@ -151,7 +151,7 @@
     delegate_sap_vm_provision_bastion_ssh_port: "{{ sap_vm_provision_bastion_ssh_port }}"
     delegate_sap_vm_provision_ssh_bastion_private_key_file_path: "{{ sap_vm_provision_ssh_bastion_private_key_file_path }}"
     delegate_sap_vm_provision_ssh_host_private_key_file_path: "{{ sap_vm_provision_ssh_host_private_key_file_path }}"
-    delegate_private_ip: "{{ __sap_vm_provision_task_provisioned_host_single.instances[0].private_ip_address }}"
+    delegate_private_ip: "{{ __sap_vm_provision_task_provision_host_single.instances[0].private_ip_address }}"
     delegate_hostname: "{{ inventory_hostname }}"
     delegate_sap_vm_provision_dns_root_domain_name: "{{ sap_vm_provision_dns_root_domain }}"
 
@@ -175,11 +175,11 @@
         replace: 'ssh-rsa'
 
     - name: Permit root login
+      register: sshd_config
       ansible.builtin.replace:
         path: /etc/ssh/sshd_config
         regexp: '(^PermitRootLogin no)'
         replace: 'PermitRootLogin yes'
-      register: sshd_config
 
     - name: Reload sshd service
       ansible.builtin.service:
@@ -193,8 +193,8 @@
 
 - name: Append loop value to register
   ansible.builtin.set_fact:
-    __sap_vm_provision_task_provisioned_host_single: "{{ __sap_vm_provision_task_provisioned_host_single | combine( { 'host_node' : inventory_hostname } , { 'sap_host_type' : lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan][scaleout_origin_host_spec | default(inventory_hostname)].sap_host_type } , { 'sap_system_type' : (lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan][scaleout_origin_host_spec | default(inventory_hostname)].sap_system_type | default('')) } ) }}"
+    __sap_vm_provision_task_provision_host_single: "{{ __sap_vm_provision_task_provision_host_single | combine( { 'host_node' : inventory_hostname } , { 'sap_host_type' : lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan][scaleout_origin_host_spec | default(inventory_hostname)].sap_host_type } , { 'sap_system_type' : (lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan][scaleout_origin_host_spec | default(inventory_hostname)].sap_system_type | default('')) } ) }}"
 
 - name: Append output to merged register
   ansible.builtin.set_fact:
-    register_provisioned_host_all: "{{ register_provisioned_host_all + [__sap_vm_provision_task_provisioned_host_single] }}"
+    register_provisioned_host_all: "{{ register_provisioned_host_all + [__sap_vm_provision_task_provision_host_single] }}"

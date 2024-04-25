@@ -6,10 +6,13 @@
     sap_vm_provision_host_specification_plan: "{{ sap_vm_provision_host_specification_plan }}"
     sap_vm_provision_nfs_mount_point: "{{ sap_vm_provision_nfs_mount_point | default('') }}"
     sap_vm_provision_nfs_mount_point_separate_sap_transport_dir: "{{ sap_vm_provision_nfs_mount_point_separate_sap_transport_dir | default('') }}"
-    sap_id_user: "{{ sap_id_user | default('') }}"
-    sap_id_user_password: "{{ sap_id_user_password | default('') }}"
     sap_software_download_directory: "{{ sap_software_download_directory | default('/software') }}"
     sap_install_media_detect_source_directory: "{{ sap_software_download_directory | default('/software') }}"
+
+- name: Set facts for all hosts - use facts from localhost - Generic - SAP ID
+  ansible.builtin.set_fact:
+    sap_id_user: "{{ sap_id_user | default('') }}"
+    sap_id_user_password: "{{ sap_id_user_password | default('') }}"
   no_log: "{{ __sap_vm_provision_no_log }}"
 
 # - name: Set facts for all hosts - use facts from localhost - Ansible only
@@ -60,6 +63,7 @@
 #     - sap_ha_pacemaker_cluster_gcp_region_zone is defined
 #     - sap_vm_provision_iac_type == "ansible"
 #     - sap_vm_provision_iac_platform == "gcp_ce_vm"
+#   no_log: "{{ __sap_vm_provision_no_log }}"
 
 - name: Set facts for all hosts - use facts from localhost - HA/DR - IBM Cloud, IBM Power VS
   ansible.builtin.set_fact:
@@ -69,6 +73,7 @@
   when:
     - sap_ha_pacemaker_cluster_ibmcloud_api_key is defined
     - sap_vm_provision_iac_platform == "ibmcloud_powervs"
+  no_log: "{{ __sap_vm_provision_no_log }}"
 
 - name: Set facts for all hosts - use facts from localhost - HA/DR - IBM Cloud
   ansible.builtin.set_fact:
@@ -77,13 +82,15 @@
   when:
     - sap_ha_pacemaker_cluster_ibmcloud_region is defined
     - sap_vm_provision_iac_platform == "ibmcloud_vs"
+  no_log: "{{ __sap_vm_provision_no_log }}"
 
-  #  - name: Set facts for all hosts - use facts from localhost - HA/DR - MS Azure
-  #    ansible.builtin.set_fact:
-  #    when:
-  #     - sap_ha_pacemaker_cluster_msazure_resource_group is defined
-  #     - sap_vm_provision_iac_type == "ansible"
-  #     - sap_vm_provision_iac_platform == "msazure_vm"
+# - name: Set facts for all hosts - use facts from localhost - HA/DR - MS Azure
+#   ansible.builtin.set_fact:
+#   when:
+#     - sap_ha_pacemaker_cluster_msazure_resource_group is defined
+#     - sap_vm_provision_iac_type == "ansible"
+#     - sap_vm_provision_iac_platform == "msazure_vm"
+#   no_log: "{{ __sap_vm_provision_no_log }}"
 
 # - name: Set facts for all hosts - use facts from localhost - HA/DR - IBM PowerVM
 #   ansible.builtin.set_fact:
@@ -91,6 +98,7 @@
 #     - sap_ha_pacemaker_cluster_ibmpower_vm_hmc_host is defined
 #     - sap_vm_provision_iac_type == "ansible"
 #     - sap_vm_provision_iac_platform == "ibmpowervm_vm"
+#   no_log: "{{ __sap_vm_provision_no_log }}"
 
 # - name: Set facts for all hosts - use facts from localhost - HA/DR - KubeVirt
 #   ansible.builtin.set_fact:
@@ -98,6 +106,7 @@
 #     - sap_ha_pacemaker_cluster___ is defined
 #     - sap_vm_provision_iac_type == "ansible"
 #     - sap_vm_provision_iac_platform == "kubevirt_vm"
+#   no_log: "{{ __sap_vm_provision_no_log }}"
 
 # - name: Set facts for all hosts - use facts from localhost - HA/DR - OVirt
 #   ansible.builtin.set_fact:
@@ -105,6 +114,7 @@
 #     - sap_ha_pacemaker_cluster_aws_region is defined
 #     - sap_vm_provision_iac_type == "ansible"
 #     - sap_vm_provision_iac_platform == "ovirt_vm"
+#   no_log: "{{ __sap_vm_provision_no_log }}"
 
 # - name: Set facts for all hosts - use facts from localhost - HA/DR - VMware
 #   ansible.builtin.set_fact:
@@ -112,6 +122,7 @@
 #     - sap_ha_pacemaker_cluster_aws_region is defined
 #     - sap_vm_provision_iac_type == "ansible"
 #     - sap_vm_provision_iac_platform == "vmware_vm"
+#   no_log: "{{ __sap_vm_provision_no_log }}"
 
 - name: Set facts for all hosts - IBM Power (ppc64le) only
   ansible.builtin.set_fact:
