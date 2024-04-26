@@ -155,7 +155,7 @@
 
 - name: Create fact for delegate host IP
   ansible.builtin.set_fact:
-    provisioned_private_ip: "{{ __sap_vm_provision_task_provision_host_single.resource.addresses[0].ip }}"
+    provisioned_private_ip: "{{ __sap_vm_provision_task_provision_host_single.resource.networks[0].ip }}"
 
 
 - name: Copy facts to delegate host
@@ -167,7 +167,7 @@
     delegate_sap_vm_provision_bastion_ssh_port: "{{ sap_vm_provision_bastion_ssh_port }}"
     delegate_sap_vm_provision_ssh_bastion_private_key_file_path: "{{ sap_vm_provision_ssh_bastion_private_key_file_path }}"
     delegate_sap_vm_provision_ssh_host_private_key_file_path: "{{ sap_vm_provision_ssh_host_private_key_file_path }}"
-    delegate_private_ip: "{{ __sap_vm_provision_task_provision_host_single.resource.addresses[0].ip }}"
+    delegate_private_ip: "{{ __sap_vm_provision_task_provision_host_single.resource.networks[0].ip }}"
     delegate_hostname: "{{ inventory_hostname }}"
     delegate_sap_vm_provision_dns_root_domain_name: "{{ sap_vm_provision_dns_root_domain }}"
 
@@ -209,7 +209,7 @@
         name: sshd
         state: reloaded
       when:
-        - sshd_config.changed
+        - __sap_vm_provision_task_os_sshd_config.changed
 
 ### end of block
 

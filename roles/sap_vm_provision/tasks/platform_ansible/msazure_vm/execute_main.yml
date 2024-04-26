@@ -5,7 +5,7 @@
   # Using environment, no_log is ineffective and log will show 'EXEC /bin/sh -c 'ENV_VAR=value python3 /AnsiballZ_ansible_module_name.py && sleep 0'
   # Therefore do not use environment for secrets, use only for non-sensitive values as this will reduce Ansible Task parameters.
   environment:
-    ANSIBLE_AZURE_AUTH_SOURCE: "env"
+    ANSIBLE_AZURE_AUTH_SOURCE: "auto" # Set to auto to use module parameters
     # AZURE_SUBSCRIPTION_ID: "{{ sap_vm_provision_msazure_subscription_id }}"
     # AZURE_TENANT: "{{ sap_vm_provision_msazure_tenant_id }}"
     # AZURE_CLIENT_ID: "{{ sap_vm_provision_msazure_app_client_id }}"
@@ -56,7 +56,7 @@
         file: "{{ 'platform_' + sap_vm_provision_iac_type }}/{{ sap_vm_provision_iac_platform }}/execute_provision.yml"
         apply:
           environment:
-            ANSIBLE_AZURE_AUTH_SOURCE: "env"
+            ANSIBLE_AZURE_AUTH_SOURCE: "auto" # Set to auto to use module parameters
         #     AZURE_SUBSCRIPTION_ID: "{{ sap_vm_provision_msazure_subscription_id }}"
         #     AZURE_TENANT: "{{ sap_vm_provision_msazure_tenant_id }}"
         #     AZURE_CLIENT_ID: "{{ sap_vm_provision_msazure_app_client_id }}"
@@ -221,7 +221,7 @@
   # Using environment, no_log is ineffective and log will show 'EXEC /bin/sh -c 'ENV_VAR=value python3 /AnsiballZ_ansible_module_name.py && sleep 0'
   # Therefore do not use environment for secrets, use only for non-sensitive values as this will reduce Ansible Task parameters.
   environment:
-    ANSIBLE_AZURE_AUTH_SOURCE: "env"
+    ANSIBLE_AZURE_AUTH_SOURCE: "auto" # Set to auto to use module parameters
     # AZURE_SUBSCRIPTION_ID: "{{ sap_vm_provision_msazure_subscription_id }}"
     # AZURE_TENANT: "{{ sap_vm_provision_msazure_tenant_id }}"
     # AZURE_CLIENT_ID: "{{ sap_vm_provision_msazure_app_client_id }}"
@@ -236,7 +236,7 @@
         file: "{{ 'platform_' + sap_vm_provision_iac_type }}/{{ sap_vm_provision_iac_platform }}/execute_setup_ha.yml"
         apply:
           environment:
-            ANSIBLE_AZURE_AUTH_SOURCE: "env"
+            ANSIBLE_AZURE_AUTH_SOURCE: "auto" # Set to auto to use module parameters
             # AZURE_SUBSCRIPTION_ID: "{{ sap_vm_provision_msazure_subscription_id }}"
             # AZURE_TENANT: "{{ sap_vm_provision_msazure_tenant_id }}"
             # AZURE_CLIENT_ID: "{{ sap_vm_provision_msazure_app_client_id }}"

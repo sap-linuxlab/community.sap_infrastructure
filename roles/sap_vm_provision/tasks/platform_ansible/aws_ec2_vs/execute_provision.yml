@@ -186,7 +186,7 @@
         name: sshd
         state: reloaded
       when:
-        - sshd_config.changed
+        - __sap_vm_provision_task_os_sshd_config.changed
 
 ### end of block
 
