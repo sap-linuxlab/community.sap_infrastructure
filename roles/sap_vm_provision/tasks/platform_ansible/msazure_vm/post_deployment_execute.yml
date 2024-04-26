@@ -3,12 +3,14 @@
 - name: Ansible Task block for amending Load Balancer ports for High Availability - after provisioning MS Azure VM
   delegate_to: localhost
   run_once: true
+  # Using environment, no_log is ineffective and log will show 'EXEC /bin/sh -c 'ENV_VAR=value python3 /AnsiballZ_ansible_module_name.py && sleep 0'
+  # Therefore do not use environment for secrets, use only for non-sensitive values as this will reduce Ansible Task parameters.
   environment:
-    ANSIBLE_AZURE_AUTH_SOURCE: "env"
-    AZURE_SUBSCRIPTION_ID: "{{ sap_vm_provision_msazure_subscription_id }}"
-    AZURE_TENANT: "{{ sap_vm_provision_msazure_tenant_id }}"
-    AZURE_CLIENT_ID: "{{ sap_vm_provision_msazure_app_client_id }}"
-    AZURE_SECRET: "{{ sap_vm_provision_msazure_app_client_secret }}"
+    ANSIBLE_AZURE_AUTH_SOURCE: "auto" # Set to auto to use module parameters
+    # AZURE_SUBSCRIPTION_ID: "{{ sap_vm_provision_msazure_subscription_id }}"
+    # AZURE_TENANT: "{{ sap_vm_provision_msazure_tenant_id }}"
+    # AZURE_CLIENT_ID: "{{ sap_vm_provision_msazure_app_client_id }}"
+    # AZURE_SECRET: "{{ sap_vm_provision_msazure_app_client_secret }}"
   when:
     - sap_ha_pacemaker_cluster_msazure_resource_group is defined
     - (groups["hana_secondary"] is defined and (groups["hana_secondary"] | length>0)) or (groups["nwas_ers"] is defined and (groups["nwas_ers"] | length>0)) or (groups["anydb_secondary"] is defined and (groups["anydb_secondary"] | length>0))
@@ -50,7 +52,7 @@
       azure.azcollection.azure_rm_subnet_info:
         resource_group: "{{ sap_vm_provision_msazure_resource_group_name }}"
         virtual_network_name: "{{ sap_vm_provision_msazure_vnet_name }}"
-        name: "{{ sap_vm_provision___sap_vm_provision_msazure_vnet_subnet_name }}"
+        name: "{{ sap_vm_provision_msazure_vnet_subnet_name }}"
         # Azure credentials
         subscription_id: "{{ sap_vm_provision_msazure_subscription_id }}"
         tenant: "{{ sap_vm_provision_msazure_tenant_id }}"

@@ -34,7 +34,7 @@
     location: "{{ sap_vm_provision_msazure_location_region }}"
     name: "{{ inventory_hostname }}-nic"
     virtual_network: "{{ sap_vm_provision_msazure_vnet_name }}"
-    subnet_name: "{{ sap_vm_provision___sap_vm_provision_msazure_vnet_subnet_name }}"
+    subnet_name: "{{ sap_vm_provision_msazure_vnet_subnet_name }}"
     create_with_security_group: false
     ip_configurations:
       - name: "{{ inventory_hostname }}-nic-ipconfig"
@@ -285,7 +285,7 @@
         name: sshd
         state: reloaded
       when:
-        - sshd_config.changed
+        - __sap_vm_provision_task_os_sshd_config.changed
 
 ### end of block
 

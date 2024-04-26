@@ -107,6 +107,7 @@
         IC_REGION: "{{ sap_vm_provision_ibmcloud_powervs_region }}"
       ibm.cloudcollection.ibm_pi_catalog_images_info:
         pi_cloud_instance_id: "{{ __sap_vm_provision_task_ibmcloud_pi_workspace_service_instance.resource.guid }}" # must be GUID, not CRN
+        sap: true # Return all OS Images for SAP
         ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
 
     # DNS may exist in separate Resource Group
@@ -130,7 +131,7 @@
 
     - name: Set fact for latest IBM Power Infrastructure OS Catalog Stock Image
       ansible.builtin.set_fact:
-        register_ibmcloud_pi_os_image_selected: "{{ __sap_vm_provision_task_ibmcloud_pi_os_image_list.resource.images | selectattr('name', 'search', lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_os_image_dictionary')[sap_vm_provision_ibmcloud_powervs_host_os_image]) | sort(reverse=True,case_sensitive=False,attribute='name') | first }}"
+        register_ibmcloud_pi_os_image_selected: "{{ __sap_vm_provision_task_ibmcloud_pi_os_image_list.resource.images | rejectattr('name', 'search', '.*BYOL.*') | selectattr('name', 'search', lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_os_image_dictionary')[sap_vm_provision_ibmcloud_powervs_host_os_image]) | sort(reverse=True,case_sensitive=False,attribute='name') | first }}"
 
     - name: Create Boot Image from IBM Power Infrastructure OS Catalog Stock Image
       no_log: "{{ __sap_vm_provision_no_log }}"
@@ -176,7 +177,7 @@
       ansible.builtin.add_host:
         name: "{{ add_item[0].host_node }}"
         groups: "{{ add_item[0].sap_system_type + '_' if (add_item[0].sap_system_type != '') }}{{ add_item[0].sap_host_type }}"
-        ansible_host: "{{ add_item[0].resource.addresses[0].ip }}"
+        ansible_host: "{{ add_item[0].resource.networks[0].ip }}"
         ansible_user: "root"
         ansible_ssh_private_key_file: "{{ sap_vm_provision_ssh_host_private_key_file_path }}"
         ansible_ssh_common_args: -o ConnectTimeout=180 -o ControlMaster=auto -o ControlPersist=3600s -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ForwardX11=no -o ProxyCommand='ssh -W %h:%p {{ sap_vm_provision_bastion_user }}@{{ sap_vm_provision_bastion_public_ip }} -p {{ sap_vm_provision_bastion_ssh_port }} -i {{ sap_vm_provision_ssh_bastion_private_key_file_path }} -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null'
