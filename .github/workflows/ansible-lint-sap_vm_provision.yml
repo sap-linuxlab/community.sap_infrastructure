@@ -41,6 +41,9 @@ jobs:
           pip3 install ansible-lint==6.22.1
           pip3 install jmespath==1.0.1
 
+      - name: Install dependencies for Ansible
+        run: ansible-galaxy collection install -r /home/runner/work/community.sap_infrastructure/community.sap_infrastructure/requirements.yml
+
       - name: Run ansible-lint
         working-directory: /home/runner/work/community.sap_infrastructure/community.sap_infrastructure/roles/sap_vm_provision
         run: ansible-lint
