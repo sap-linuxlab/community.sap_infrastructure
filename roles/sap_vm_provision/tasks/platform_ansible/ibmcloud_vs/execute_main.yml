@@ -1,75 +1,92 @@
 ---
 
 - name: Ansible Task block for looped provisioning of IBM Cloud Virtual Servers
+  any_errors_fatal: true
+  # Using environment, no_log is ineffective and log will show 'EXEC /bin/sh -c 'ENV_VAR=value python3 /AnsiballZ_ansible_module_name.py && sleep 0'
+  # Therefore do not use environment for secrets, use only for non-sensitive values as this will reduce Ansible Task parameters.
   environment:
-    IC_API_KEY: "{{ sap_vm_provision_ibmcloud_api_key }}"
+    # IC_API_KEY: "{{ sap_vm_provision_ibmcloud_api_key }}"
     IC_REGION: "{{ sap_vm_provision_ibmcloud_region }}"
   block:
 
     - name: Identify Resource Group info
-      register: register_ibmcloud_resource_group
+      no_log: "{{ __sap_vm_provision_no_log }}"
+      register: __sap_vm_provision_task_ibmcloud_resource_group
       ibm.cloudcollection.ibm_resource_group_info:
         name: "{{ sap_vm_provision_ibmcloud_resource_group_name }}"
+        ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
 
     # DNS may exist in separate Resource Group
     # Use empty string var (or default false if undefined) to evaluate to false boolean
     - name: Identify Resource Group info for Private DNS
-      register: register_ibmcloud_resource_group_dns
+      no_log: "{{ __sap_vm_provision_no_log }}"
+      register: __sap_vm_provision_task_ibmcloud_resource_group_dns
       ibm.cloudcollection.ibm_resource_group_info:
         name: "{{ sap_vm_provision_ibmcloud_private_dns_resource_group_name }}"
+        ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
       when: (sap_vm_provision_ibmcloud_private_dns_resource_group_name | default(false))
 
     - name: Identify pre-loaded SSH Public Key info
-      register: register_ibmcloud_ssh_public_key
+      no_log: "{{ __sap_vm_provision_no_log }}"
+      register: __sap_vm_provision_task_ibmcloud_ssh_public_key
       ibm.cloudcollection.ibm_is_ssh_key_info:
         name: "{{ sap_vm_provision_ibmcloud_key_pair_name_ssh_host_public_key }}"
+        ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
 
     - name: Identify VPC Subnet info
-      register: register_ibmcloud_vpc_subnet
+      no_log: "{{ __sap_vm_provision_no_log }}"
+      register: __sap_vm_provision_task_ibmcloud_vpc_subnet
       ibm.cloudcollection.ibm_is_subnet_info:
         name: "{{ sap_vm_provision_ibmcloud_vpc_subnet_name }}"
+        ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
 
     - name: Identify VPC Security Group info
-      register: register_ibmcloud_vpc_sg
+      no_log: "{{ __sap_vm_provision_no_log }}"
+      register: __sap_vm_provision_task_ibmcloud_vpc_sg
       ibm.cloudcollection.ibm_is_security_group_info:
         name: "{{ item }}"
+        ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
       loop: "{{ sap_vm_provision_ibmcloud_vpc_sg_names | split(',') }}"
 
-    # DNS may exist in separate Resource Group
-    # If previous identification task is skipped, use resource group else use the resource group defined for the Private DNS
     - name: Identify Private DNS instance
-      register: register_ibmcloud_pdns_service_instance
+      no_log: "{{ __sap_vm_provision_no_log }}"
+      register: __sap_vm_provision_task_ibmcloud_pdns_service_instance
       ibm.cloudcollection.ibm_resource_instance_info:
-        resource_group_id: "{{ register_ibmcloud_resource_group.resource.id if register_ibmcloud_resource_group_dns is skipped else register_ibmcloud_resource_group_dns.resource.id }}"
+        resource_group_id: "{{ __sap_vm_provision_task_ibmcloud_resource_group.resource.id }}"
         location: global
         service: dns-svcs
         name: "{{ sap_vm_provision_ibmcloud_private_dns_instance_name }}"
+        ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
 
     - name: Identify Private DNS Zone info
-      register: register_ibmcloud_pdns
+      no_log: "{{ __sap_vm_provision_no_log }}"
+      register: __sap_vm_provision_task_ibmcloud_pdns
       ibm.cloudcollection.ibm_dns_zones_info:
-        instance_id: "{{ register_ibmcloud_pdns_service_instance.resource.guid }}"
+        instance_id: "{{ __sap_vm_provision_task_ibmcloud_pdns_service_instance.resource.guid }}"
+        ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
 
     - name: Identify OS Image list
-      register: register_ibmcloud_os_image_list
+      no_log: "{{ __sap_vm_provision_no_log }}"
+      register: __sap_vm_provision_task_ibmcloud_os_image_list
       ibm.cloudcollection.ibm_is_images_info:
         status: available
+        ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
 
     - name: Set fact to hold loop variables from include_tasks
       ansible.builtin.set_fact:
         register_provisioned_host_all: []
 
     - name: Provision hosts to IBM Cloud
-      register: register_provisioned_hosts
+      register: __sap_vm_provision_task_provision_host_all_run
       ansible.builtin.include_tasks:
         file: "{{ 'platform_' + sap_vm_provision_iac_type }}/{{ sap_vm_provision_iac_platform }}/execute_provision.yml"
         apply:
           environment:
-            IC_API_KEY: "{{ sap_vm_provision_ibmcloud_api_key }}"
+            # IC_API_KEY: "{{ sap_vm_provision_ibmcloud_api_key }}"
             IC_REGION: "{{ sap_vm_provision_ibmcloud_region }}"
 
     - name: Add hosts provisioned to the Ansible Inventory
-      register: register_add_hosts
+      register: __sap_vm_provision_task_provision_host_all_add
       ansible.builtin.add_host:
         name: "{{ add_item[0].host_node }}"
         groups: "{{ add_item[0].sap_system_type + '_' if (add_item[0].sap_system_type != '') }}{{ add_item[0].sap_host_type }}"
@@ -91,23 +108,58 @@
         groups_merged_list: "{{ [ [ groups['hana_primary'] | default([]) ] , [ groups['hana_secondary'] | default([]) ] , [ groups['nwas_ascs'] | default([]) ] , [ groups['nwas_ers'] | default([]) ] , [ groups['nwas_pas'] | default([]) ] , [ groups['nwas_aas'] | default([]) ] ] | flatten | select() }}"
 
     - name: Set Ansible Vars
-      register: register_set_ansible_vars
+      register: __sap_vm_provision_task_ansible_vars_set
       ansible.builtin.include_tasks:
         file: common/set_ansible_vars.yml
 
     - name: IBM Cloud Private DNS Record for hosts
-      register: register_ibmcloud_pdns_record
+      no_log: "{{ __sap_vm_provision_no_log }}"
+      register: __sap_vm_provision_task_ibmcloud_pdns_record
       ibm.cloudcollection.ibm_dns_resource_record:
-        instance_id: "{{ register_ibmcloud_pdns_service_instance.resource.guid }}"
-        zone_id: "{{ (register_ibmcloud_pdns.resource.dns_zones | selectattr('name', '==', sap_vm_provision_dns_root_domain) | first).zone_id }}"
+        instance_id: "{{ __sap_vm_provision_task_ibmcloud_pdns_service_instance.resource.guid }}"
+        zone_id: "{{ (__sap_vm_provision_task_ibmcloud_pdns.resource.dns_zones | selectattr('name', '==', sap_vm_provision_dns_root_domain) | first).zone_id }}"
         name: "{{ inventory_hostname }}.{{ hostvars[inventory_hostname].sap_vm_provision_dns_root_domain }}" # Host FQDN
         rdata: "{{ hostvars[inventory_hostname].ansible_host }}" # IP Address
         type: A
         ttl: 7200
-      failed_when: not register_ibmcloud_pdns_record.rc == 0 and not 'The record already exists' in register_ibmcloud_pdns_record.stderr
+        ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
+      failed_when: not __sap_vm_provision_task_ibmcloud_pdns_record.rc == 0 and not 'The record already exists' in __sap_vm_provision_task_ibmcloud_pdns_record.stderr
 
   #  - ansible.builtin.debug:
-  #      var: register_add_hosts.results
+  #      var: __sap_vm_provision_task_provision_host_all_add.results
+
+  rescue:
+    # This requires no_log set on each Ansible Task, and not set on the Ansible Task Block
+    # This requires an Ansible Task Block containing the Ansible Tasks for calling
+    # Infrastructure Platform APIs (via Ansible Modules)
+    - name: Show errors in task outputs
+      ansible.builtin.fail:
+        msg: "{{ lookup('ansible.builtin.vars', loop_item) }}"
+      loop:
+        - __sap_vm_provision_task_ibmcloud_resource_group
+        - __sap_vm_provision_task_ibmcloud_resource_group_dns
+        - __sap_vm_provision_task_ibmcloud_ssh_public_key
+        - __sap_vm_provision_task_ibmcloud_vpc_subnet
+        - __sap_vm_provision_task_ibmcloud_vpc_sg
+        - __sap_vm_provision_task_ibmcloud_pdns_service_instance
+        - __sap_vm_provision_task_ibmcloud_pdns
+        - __sap_vm_provision_task_ibmcloud_os_image_list
+        - __sap_vm_provision_task_provision_host_all_run
+        - __sap_vm_provision_task_provision_host_single
+        - __sap_vm_provision_task_provision_host_single_volumes
+        - __sap_vm_provision_task_provision_host_single_volume_attachments
+        - __sap_vm_provision_task_provision_host_single_info
+        - __sap_vm_provision_task_provision_host_all_add
+        - __sap_vm_provision_task_ibmcloud_pdns_record
+      loop_control:
+        loop_var: loop_item
+        index_var: loop_item_index
+        label: "{{ 'Variable No. ' + (loop_item_index | string) }}"
+      when:
+        - lookup('ansible.builtin.vars', loop_item, default='') | length > 0
+        - not lookup('ansible.builtin.vars', loop_item, default='') is skipped
+        - lookup('ansible.builtin.vars', loop_item, default='') is failed
+
 
 - name: Ansible Task block to execute on target inventory hosts
   delegate_to: "{{ inventory_hostname }}"
@@ -126,19 +178,19 @@
         name: "{{ inventory_hostname_short }}"
 
     - name: Set /etc/hosts
-      register: register_etc_hosts_file
+      register: __sap_vm_provision_task_os_etc_hosts
       ansible.builtin.include_tasks:
         file: common/set_etc_hosts.yml
 
     - name: Set /etc/hosts for Scale-Out
-      register: register_etc_hosts_file_scaleout
+      register: __sap_vm_provision_task_os_etc_hosts_scaleout
       ansible.builtin.include_tasks:
         file: common/set_etc_hosts_scaleout.yml
       when:
         - (groups["hana_primary"] is defined and (groups["hana_primary"] | length>0)) and (sap_hana_scaleout_active_coordinator is defined or sap_hana_scaleout_active_worker is defined or sap_hana_scaleout_standby is defined)
 
     - name: Set vars for sap_storage_setup Ansible Role
-      register: register_ansible_vars_storage
+      register: __sap_vm_provision_task_ansible_vars_storage
       ansible.builtin.include_tasks:
         file: common/set_ansible_vars_storage.yml
 
@@ -153,10 +205,13 @@
 
 - name: Ansible Task block for looped provisioning of High Availability resources for IBM Cloud VS instances
   delegate_to: localhost
+  any_errors_fatal: true
   run_once: true
+  # Using environment, no_log is ineffective and log will show 'EXEC /bin/sh -c 'ENV_VAR=value python3 /AnsiballZ_ansible_module_name.py && sleep 0'
+  # Therefore do not use environment for secrets, use only for non-sensitive values as this will reduce Ansible Task parameters.
   environment:
-    IC_API_KEY: "{{ sap_vm_provision_ibmcloud_api_key }}" # For legacy Ansible Collection
-    IBMCLOUD_API_KEY: "{{ sap_vm_provision_ibmcloud_api_key }}" # For IBM Cloud CLI quiet login
+    # IC_API_KEY: "{{ sap_vm_provision_ibmcloud_api_key }}" # For legacy Ansible Collection
+    # IBMCLOUD_API_KEY: "{{ sap_vm_provision_ibmcloud_api_key }}" # For IBM Cloud CLI quiet login
     IC_REGION: "{{ sap_vm_provision_ibmcloud_region }}"
   when:
     - sap_ha_pacemaker_cluster_ibmcloud_region is defined
@@ -168,9 +223,96 @@
         file: "{{ 'platform_' + sap_vm_provision_iac_type }}/{{ sap_vm_provision_iac_platform }}/execute_setup_ha.yml"
         apply:
           environment:
-            IC_API_KEY: "{{ sap_vm_provision_ibmcloud_api_key }}" # For legacy Ansible Collection
-            IBMCLOUD_API_KEY: "{{ sap_vm_provision_ibmcloud_api_key }}" # For IBM Cloud CLI quiet login
+            # IC_API_KEY: "{{ sap_vm_provision_ibmcloud_api_key }}" # For legacy Ansible Collection
+            # IBMCLOUD_API_KEY: "{{ sap_vm_provision_ibmcloud_api_key }}" # For IBM Cloud CLI quiet login
             IC_REGION: "{{ sap_vm_provision_ibmcloud_region }}"
+
+  rescue:
+    # This requires no_log set on each Ansible Task, and not set on the Ansible Task Block
+    # This requires an Ansible Task Block containing the Ansible Tasks for calling
+    # Infrastructure Platform APIs (via Ansible Modules)
+    - name: Show errors in task outputs
+      ansible.builtin.fail:
+        msg: "{{ lookup('ansible.builtin.vars', loop_item) }}"
+      loop:
+        - __sap_vm_provision_task_ibmcloud_iam_auth_policy
+        - __sap_vm_provision_task_ibmcloud_lb_provision_parallel
+        - __sap_vm_provision_task_ibmcloud_lb_provision_parallel_async_status
+        - __sap_vm_provision_task_ibmcloud_lb_update_dns
+        - __sap_vm_provision_task_ibmcloud_vs_all_info
+        - __sap_vm_provision_task_ibmcloud_lb_all_info_shell
+        - __sap_vm_provision_task_ibmcloud_lb_pool_hana1
+        - __sap_vm_provision_task_ibmcloud_lb_pool_hana2
+        - __sap_vm_provision_task_ibmcloud_lb_pool_hana3
+        - __sap_vm_provision_task_ibmcloud_lb_pool_hana4
+        - __sap_vm_provision_task_ibmcloud_lb_pool_nwas_ascs1
+        - __sap_vm_provision_task_ibmcloud_lb_pool_nwas_ascs2
+        - __sap_vm_provision_task_ibmcloud_lb_pool_nwas_ascs3
+        - __sap_vm_provision_task_ibmcloud_lb_pool_nwas_ascs4
+        - __sap_vm_provision_task_ibmcloud_lb_pool_nwas_ascs5
+        - __sap_vm_provision_task_ibmcloud_lb_pool_nwas_ers1
+        - __sap_vm_provision_task_ibmcloud_lb_pool_nwas_ers2
+        - __sap_vm_provision_task_ibmcloud_lb_pool_nwas_ers3
+        - __sap_vm_provision_task_ibmcloud_lb_pool_nwas_ers4
+        - __sap_vm_provision_task_ibmcloud_lb_pool_nwas_ers5
+        - __sap_vm_provision_task_ibmcloud_lb_pools
+        - __sap_vm_provision_task_ibmcloud_lb_pool_members_hana1
+        - __sap_vm_provision_task_ibmcloud_lb_pool_members_hana2
+        - __sap_vm_provision_task_ibmcloud_lb_pool_members_hana3
+        - __sap_vm_provision_task_ibmcloud_lb_pool_members_hana4
+        - __sap_vm_provision_task_ibmcloud_lb_pool_members_hana5
+        - __sap_vm_provision_task_ibmcloud_lb_pool_members_hana6
+        - __sap_vm_provision_task_ibmcloud_lb_pool_members_hana7
+        - __sap_vm_provision_task_ibmcloud_lb_pool_members_hana8
+        - __sap_vm_provision_task_ibmcloud_lb_pool_members_anydb1
+        - __sap_vm_provision_task_ibmcloud_lb_pool_members_anydb2
+        - __sap_vm_provision_task_ibmcloud_lb_pool_members_nwas_ascs1
+        - __sap_vm_provision_task_ibmcloud_lb_pool_members_nwas_ascs2
+        - __sap_vm_provision_task_ibmcloud_lb_pool_members_nwas_ascs3
+        - __sap_vm_provision_task_ibmcloud_lb_pool_members_nwas_ascs4
+        - __sap_vm_provision_task_ibmcloud_lb_pool_members_nwas_ascs5
+        - __sap_vm_provision_task_ibmcloud_lb_pool_members_nwas_ascs6
+        - __sap_vm_provision_task_ibmcloud_lb_pool_members_nwas_ascs7
+        - __sap_vm_provision_task_ibmcloud_lb_pool_members_nwas_ascs8
+        - __sap_vm_provision_task_ibmcloud_lb_pool_members_nwas_ascs9
+        - __sap_vm_provision_task_ibmcloud_lb_pool_members_nwas_ascs10
+        - __sap_vm_provision_task_ibmcloud_lb_pool_members_nwas_ers1
+        - __sap_vm_provision_task_ibmcloud_lb_pool_members_nwas_ers2
+        - __sap_vm_provision_task_ibmcloud_lb_pool_members_nwas_ers3
+        - __sap_vm_provision_task_ibmcloud_lb_pool_members_nwas_ers4
+        - __sap_vm_provision_task_ibmcloud_lb_pool_members_nwas_ers5
+        - __sap_vm_provision_task_ibmcloud_lb_pool_members_nwas_ers6
+        - __sap_vm_provision_task_ibmcloud_lb_pool_members_nwas_ers7
+        - __sap_vm_provision_task_ibmcloud_lb_pool_members_nwas_ers8
+        - __sap_vm_provision_task_ibmcloud_lb_pool_members_nwas_ers9
+        - __sap_vm_provision_task_ibmcloud_lb_pool_members_nwas_ers10
+        - __sap_vm_provision_task_ibmcloud_lb_frontend_listener_hana1
+        - __sap_vm_provision_task_ibmcloud_lb_frontend_listener_hana2
+        - __sap_vm_provision_task_ibmcloud_lb_frontend_listener_hana3
+        - __sap_vm_provision_task_ibmcloud_lb_frontend_listener_hana4
+        - __sap_vm_provision_task_ibmcloud_lb_frontend_listener_anydb1
+        - __sap_vm_provision_task_ibmcloud_lb_frontend_listener_ascs1
+        - __sap_vm_provision_task_ibmcloud_lb_frontend_listener_ascs2
+        - __sap_vm_provision_task_ibmcloud_lb_frontend_listener_ascs3
+        - __sap_vm_provision_task_ibmcloud_lb_frontend_listener_ascs4
+        - __sap_vm_provision_task_ibmcloud_lb_frontend_listener_ascs5
+        - __sap_vm_provision_task_ibmcloud_lb_frontend_listener_ers1
+        - __sap_vm_provision_task_ibmcloud_lb_frontend_listener_ers2
+        - __sap_vm_provision_task_ibmcloud_lb_frontend_listener_ers3
+        - __sap_vm_provision_task_ibmcloud_lb_frontend_listener_ers4
+        - __sap_vm_provision_task_ibmcloud_lb_frontend_listener_ers5
+        - __sap_vm_provision_task_ibmcloud_pdns_record_ha_hana
+        - __sap_vm_provision_task_ibmcloud_pdns_record_ha_anydb
+        - __sap_vm_provision_task_ibmcloud_pdns_record_ha_nwas_ascs
+        - __sap_vm_provision_task_ibmcloud_pdns_record_ha_nwas_ers
+      loop_control:
+        loop_var: loop_item
+        index_var: loop_item_index
+        label: "{{ 'Variable No. ' + (loop_item_index | string) }}"
+      when:
+        - lookup('ansible.builtin.vars', loop_item, default='') | length > 0
+        - not lookup('ansible.builtin.vars', loop_item, default='') is skipped
+        - lookup('ansible.builtin.vars', loop_item, default='') is failed
 
 
 - name: Ansible Task block to execute on target inventory hosts for HA
@@ -181,6 +323,6 @@
   block:
 
     - name: Set /etc/hosts for HA
-      register: register_etc_hosts_file_ha
+      register: __sap_vm_provision_task_os_etc_hosts_ha
       ansible.builtin.include_tasks:
         file: common/set_etc_hosts_ha.yml

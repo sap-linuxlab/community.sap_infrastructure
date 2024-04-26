@@ -15,26 +15,27 @@
     - not inventory_hostname in lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan].keys()
 
 - name: Provision IBM Cloud Virtual Server instance
-  register: register_provisioned_host_single
+  no_log: "{{ __sap_vm_provision_no_log }}"
+  register: __sap_vm_provision_task_provision_host_single
   ibm.cloudcollection.ibm_is_instance:
     state: available
     name: "{{ inventory_hostname }}"
-    image: "{{ (register_ibmcloud_os_image_list.resource.images | select('search', lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_os_image_dictionary')[sap_vm_provision_ibmcloud_vs_host_os_image]) | sort(reverse=True,case_sensitive=False,attribute='name') | first).id }}"
+    image: "{{ (__sap_vm_provision_task_ibmcloud_os_image_list.resource.images | select('search', lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_os_image_dictionary')[sap_vm_provision_ibmcloud_vs_host_os_image]) | sort(reverse=True,case_sensitive=False,attribute='name') | first).id }}"
     profile: "{{ lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan][scaleout_origin_host_spec | default(inventory_hostname)].virtual_machine_profile }}"
     keys:
-      - "{{ register_ibmcloud_ssh_public_key.resource.id }}"
+      - "{{ __sap_vm_provision_task_ibmcloud_ssh_public_key.resource.id }}"
 
-    resource_group: "{{ register_ibmcloud_resource_group.resource.id }}"
+    resource_group: "{{ __sap_vm_provision_task_ibmcloud_resource_group.resource.id }}"
     zone: "{{ sap_vm_provision_ibmcloud_availability_zone }}"
-    vpc: "{{ register_ibmcloud_vpc_subnet.resource.vpc }}"
+    vpc: "{{ __sap_vm_provision_task_ibmcloud_vpc_subnet.resource.vpc }}"
 
     # The Subnet assigned to the primary Virtual Network Interface (vNIC) cannot be changed
     # The Name and Security Group assigned to the Primary Network Interface (vNIC) are editable
     primary_network_interface:
       - name: "{{ inventory_hostname }}-vnic0"
-        subnet: "{{ register_ibmcloud_vpc_subnet.resource.id }}"
+        subnet: "{{ __sap_vm_provision_task_ibmcloud_vpc_subnet.resource.id }}"
         allow_ip_spoofing: "{{ lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan][scaleout_origin_host_spec | default(inventory_hostname)].disable_ip_anti_spoofing }}" # When disable the Anti IP Spoofing = true, then Allow IP Spoofing = true
-        security_groups: "{{ register_ibmcloud_vpc_sg.results | map(attribute='resource.id') }}"
+        security_groups: "{{ __sap_vm_provision_task_ibmcloud_vpc_sg.results | map(attribute='resource.id') }}"
     #network_interfaces:
 
     auto_delete_volume: true
@@ -45,6 +46,8 @@
       - enabled: true
         protocol: https
         response_hop_limit: 5
+
+    ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
 
 
 # Create flat list with names for each volume to be created.
@@ -72,12 +75,15 @@
       {{ disks_map }}
 
 - name: Provision IBM Cloud Block Storage volumes for IBM Cloud VS instance filesystems
+  no_log: "{{ __sap_vm_provision_no_log }}"
+  register: __sap_vm_provision_task_provision_host_single_volumes
   ibm.cloudcollection.ibm_is_volume:
-    resource_group: "{{ register_ibmcloud_resource_group.resource.id }}"
+    resource_group: "{{ __sap_vm_provision_task_ibmcloud_resource_group.resource.id }}"
     zone: "{{ sap_vm_provision_ibmcloud_availability_zone }}"
     name: "{{ inventory_hostname + '-vol-' + vol_item.name | replace('_', '-')}}"
     profile: "{{ vol_item.type }}"
     capacity: "{{ vol_item.size }}"
+    ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
   loop: "{{ storage_disks_map }}"
   loop_control:
     loop_var: vol_item
@@ -85,16 +91,18 @@
     label: "{{ vol_item.definition_key }}: {{ vol_item.name }} (size: {{ vol_item.size }})"
   when:
     - vol_item.size > 0
-  register: volume_provisioning
 
 - name: Attach IBM Cloud Block Storage volumes as filesystem for IBM Cloud VS instance
+  no_log: "{{ __sap_vm_provision_no_log }}"
+  register: __sap_vm_provision_task_provision_host_single_volume_attachments
   ibm.cloudcollection.ibm_is_instance_volume_attachment:
     name: "{{ vol_item.resource.name }}-attach"
     volume: "{{ vol_item.resource.id }}"
-    instance: "{{ register_provisioned_host_single.resource.id }}"
+    instance: "{{ __sap_vm_provision_task_provision_host_single.resource.id }}"
     delete_volume_on_attachment_delete: true
     delete_volume_on_instance_delete: true
-  loop: "{{ volume_provisioning.results }}"
+    ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
+  loop: "{{ __sap_vm_provision_task_provision_host_single_volumes.results }}"
   loop_control:
     loop_var: vol_item
     index_var: vol_item_index
@@ -102,21 +110,23 @@
 
 
 - name: Read IBM Cloud VS information
+  no_log: "{{ __sap_vm_provision_no_log }}"
+  register: __sap_vm_provision_task_provision_host_single_info
   ibm.cloudcollection.ibm_is_instance:
-    name: "{{ register_provisioned_host_single.resource.name }}"
-  register: instance_info
+    name: "{{ __sap_vm_provision_task_provision_host_single.resource.name }}"
+    ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
 
 - name: Add host facts
   ansible.builtin.set_fact:
-    volume_provisioning: "{{ volume_provisioning }}"
-    instance_info: "{{ instance_info }}"
+    __sap_vm_provision_task_provision_host_single_volumes: "{{ __sap_vm_provision_task_provision_host_single_volumes }}"
+    __sap_vm_provision_task_provision_host_single_info: "{{ __sap_vm_provision_task_provision_host_single_info }}"
   delegate_to: "{{ inventory_hostname }}"
   delegate_facts: true
 
 
 - name: Create fact for delegate host IP
   ansible.builtin.set_fact:
-    provisioned_private_ip: "{{ register_provisioned_host_single.resource.primary_network_interface[0].primary_ipv4_address }}"
+    provisioned_private_ip: "{{ __sap_vm_provision_task_provision_host_single.resource.primary_network_interface[0].primary_ipv4_address }}"
 
 
 - name: Copy facts to delegate host
@@ -128,7 +138,7 @@
     delegate_sap_vm_provision_bastion_ssh_port: "{{ sap_vm_provision_bastion_ssh_port }}"
     delegate_sap_vm_provision_ssh_bastion_private_key_file_path: "{{ sap_vm_provision_ssh_bastion_private_key_file_path }}"
     delegate_sap_vm_provision_ssh_host_private_key_file_path: "{{ sap_vm_provision_ssh_host_private_key_file_path }}"
-    delegate_private_ip: "{{ register_provisioned_host_single.resource.primary_network_interface[0].primary_ipv4_address }}"
+    delegate_private_ip: "{{ __sap_vm_provision_task_provision_host_single.resource.primary_network_interface[0].primary_ipv4_address }}"
     delegate_hostname: "{{ inventory_hostname }}"
     delegate_sap_vm_provision_dns_root_domain_name: "{{ sap_vm_provision_dns_root_domain }}"
 
@@ -156,14 +166,14 @@
         dest: /root/.ssh/authorized_keys
         mode: '0600'
         content: |
-          {{ register_ibmcloud_ssh_public_key.resource.public_key }}
+          {{ __sap_vm_provision_task_ibmcloud_ssh_public_key.resource.public_key }}
 
     - name: Permit root login
+      register: __sap_vm_provision_task_os_sshd_config
       ansible.builtin.replace:
         path: /etc/ssh/sshd_config
         regexp: '(^PermitRootLogin no)'
         replace: 'PermitRootLogin yes'
-      register: sshd_config
 
     - name: Reload sshd service
       ansible.builtin.service:
@@ -177,8 +187,8 @@
 
 - name: Append loop value to register
   ansible.builtin.set_fact:
-    register_provisioned_host_single: "{{ register_provisioned_host_single | combine( { 'host_node' : inventory_hostname } , { 'sap_host_type' : lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan][scaleout_origin_host_spec | default(inventory_hostname)].sap_host_type } , { 'sap_system_type' : (lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan][scaleout_origin_host_spec | default(inventory_hostname)].sap_system_type | default('')) } ) }}"
+    __sap_vm_provision_task_provision_host_single: "{{ __sap_vm_provision_task_provision_host_single | combine( { 'host_node' : inventory_hostname } , { 'sap_host_type' : lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan][scaleout_origin_host_spec | default(inventory_hostname)].sap_host_type } , { 'sap_system_type' : (lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan][scaleout_origin_host_spec | default(inventory_hostname)].sap_system_type | default('')) } ) }}"
 
 - name: Append output to merged register
   ansible.builtin.set_fact:
-    register_provisioned_host_all: "{{ register_provisioned_host_all + [register_provisioned_host_single] }}"
+    register_provisioned_host_all: "{{ register_provisioned_host_all + [__sap_vm_provision_task_provision_host_single] }}"

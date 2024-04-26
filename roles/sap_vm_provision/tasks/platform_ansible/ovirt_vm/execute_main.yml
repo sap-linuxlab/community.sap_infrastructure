@@ -1,56 +1,90 @@
 ---
 
-- name: OVirt Authentication
-  ovirt.ovirt.ovirt_auth:
-    insecure: "{{ sap_vm_provision_ovirt_engine_insecure_bool | default(true) }}"
-    url: "{{ sap_vm_provision_ovirt_engine_url | default(lookup('env', 'OVIRT_URL')) | default(omit) }}"
-    hostname: "{{ sap_vm_provision_ovirt_engine_fqdn | default(lookup('env', 'OVIRT_HOSTNAME')) | default(omit) }}"
-    username: "{{ sap_vm_provision_ovirt_engine_user | default(lookup('env', 'OVIRT_USERNAME')) | default(omit) }}"
-    password: "{{ sap_vm_provision_ovirt_engine_password | default(lookup('env', 'OVIRT_PASSWORD')) | default(omit) }}"
-    ca_file: "{{ sap_vm_provision_ovirt_engine_cafile | default(lookup('env', 'OVIRT_CAFILE')) | default(omit) }}"
-  when: ovirt_auth is undefined or not ovirt_auth
-  register: ovirt_session
+- name: Ansible Task block for looped provisioning of OVirt Virtual Machines
+  any_errors_fatal: true
+  # Using environment, no_log is ineffective and log will show 'EXEC /bin/sh -c 'ENV_VAR=value python3 /AnsiballZ_ansible_module_name.py && sleep 0'
+  # Therefore do not use environment for secrets, use only for non-sensitive values as this will reduce Ansible Task parameters.
+  # environment:
+  block:
 
-- name: Set fact to hold loop variables from include_tasks
-  ansible.builtin.set_fact:
-    register_provisioned_host_all: []
+    - name: OVirt Authentication
+      no_log: "{{ __sap_vm_provision_no_log }}"
+      register: __sap_vm_provision_task_ovirt_session
+      ovirt.ovirt.ovirt_auth:
+        insecure: "{{ sap_vm_provision_ovirt_engine_insecure_bool | default(true) }}"
+        url: "{{ sap_vm_provision_ovirt_engine_url | default(lookup('env', 'OVIRT_URL')) | default(omit) }}"
+        hostname: "{{ sap_vm_provision_ovirt_engine_fqdn | default(lookup('env', 'OVIRT_HOSTNAME')) | default(omit) }}"
+        username: "{{ sap_vm_provision_ovirt_engine_user | default(lookup('env', 'OVIRT_USERNAME')) | default(omit) }}"
+        password: "{{ sap_vm_provision_ovirt_engine_password | default(lookup('env', 'OVIRT_PASSWORD')) | default(omit) }}"
+        ca_file: "{{ sap_vm_provision_ovirt_engine_cafile | default(lookup('env', 'OVIRT_CAFILE')) | default(omit) }}"
+      when: ovirt_auth is undefined or not ovirt_auth
 
-- name: Provision hosts to OVirt
-  register: register_provisioned_hosts
-  ansible.builtin.include_tasks:
-    file: "{{ 'platform_' + sap_vm_provision_iac_type }}/{{ sap_vm_provision_iac_platform }}/execute_provision.yml"
-  vars:
-    ovirt_auth: "{{ sap_vm_provision_ovirt_auth }}"
+    - name: Set fact to hold loop variables from include_tasks
+      ansible.builtin.set_fact:
+        register_provisioned_host_all: []
 
-- name: Add hosts provisioned to the Ansible Inventory
-  register: register_add_hosts
-  ansible.builtin.add_host:
-    name: "{{ add_item[0].host_node }}"
-    groups: "{{ add_item[0].sap_system_type + '_' if (add_item[0].sap_system_type != '') }}{{ add_item[0].sap_host_type }}"
-    ansible_host: "{{ add_item[0].reported_devices[0].ips[0].address }}"
-    ansible_user: "root"
-    ansible_ssh_private_key_file: "{{ sap_vm_provision_ssh_host_private_key_file_path }}"
-    ansible_ssh_common_args: -o ConnectTimeout=180 -o ControlMaster=auto -o ControlPersist=3600s -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ForwardX11=no
-  loop: "{{ ansible_play_hosts | map('extract', hostvars, 'register_provisioned_host_all')  }}"
-  loop_control:
-    label: "{{ add_item[0].host_node }}"
-    loop_var: add_item
+    - name: Provision hosts to OVirt
+      register: __sap_vm_provision_task_provision_host_all_run
+      ansible.builtin.include_tasks:
+        file: "{{ 'platform_' + sap_vm_provision_iac_type }}/{{ sap_vm_provision_iac_platform }}/execute_provision.yml"
+      vars:
+        ovirt_auth: "{{ sap_vm_provision_ovirt_auth }}"
+
+    - name: Add hosts provisioned to the Ansible Inventory
+      register: __sap_vm_provision_task_provision_host_all_add
+      ansible.builtin.add_host:
+        name: "{{ add_item[0].host_node }}"
+        groups: "{{ add_item[0].sap_system_type + '_' if (add_item[0].sap_system_type != '') }}{{ add_item[0].sap_host_type }}"
+        ansible_host: "{{ add_item[0].reported_devices[0].ips[0].address }}"
+        ansible_user: "root"
+        ansible_ssh_private_key_file: "{{ sap_vm_provision_ssh_host_private_key_file_path }}"
+        ansible_ssh_common_args: -o ConnectTimeout=180 -o ControlMaster=auto -o ControlPersist=3600s -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ForwardX11=no
+      loop: "{{ ansible_play_hosts | map('extract', hostvars, 'register_provisioned_host_all')  }}"
+      loop_control:
+        label: "{{ add_item[0].host_node }}"
+        loop_var: add_item
 
 
 # Cannot override any variables from extravars input, see https://docs.ansible.com/ansible/latest/playbook_guide/playbooks_variables.html#understanding-variable-precedence
 # Ensure no default value exists for any prompted variable before execution of Ansible Playbook
 
-- name: Set fact to hold all inventory hosts in all groups
-  ansible.builtin.set_fact:
-    groups_merged_list: "{{ [ [ groups['hana_primary'] | default([]) ] , [ groups['hana_secondary'] | default([]) ] , [ groups['nwas_ascs'] | default([]) ] , [ groups['nwas_ers'] | default([]) ] , [ groups['nwas_pas'] | default([]) ] , [ groups['nwas_aas'] | default([]) ] ] | flatten | select() }}"
+    - name: Set fact to hold all inventory hosts in all groups
+      ansible.builtin.set_fact:
+        groups_merged_list: "{{ [ [ groups['hana_primary'] | default([]) ] , [ groups['hana_secondary'] | default([]) ] , [ groups['nwas_ascs'] | default([]) ] , [ groups['nwas_ers'] | default([]) ] , [ groups['nwas_pas'] | default([]) ] , [ groups['nwas_aas'] | default([]) ] ] | flatten | select() }}"
 
-- name: Set Ansible Vars
-  register: register_set_ansible_vars
-  ansible.builtin.include_tasks:
-    file: common/set_ansible_vars.yml
+    - name: Set Ansible Vars
+      register: __sap_vm_provision_task_ansible_vars_set
+      ansible.builtin.include_tasks:
+        file: common/set_ansible_vars.yml
 
   #  - ansible.builtin.debug:
-  #      var: register_add_hosts.results
+  #      var: __sap_vm_provision_task_provision_host_all_add.results
+
+  rescue:
+    # This requires no_log set on each Ansible Task, and not set on the Ansible Task Block
+    # This requires an Ansible Task Block containing the Ansible Tasks for calling
+    # Infrastructure Platform APIs (via Ansible Modules)
+    - name: Show errors in task outputs
+      ansible.builtin.fail:
+        msg: "{{ lookup('ansible.builtin.vars', loop_item) }}"
+      loop:
+        - __sap_vm_provision_task_provision_host_all_run
+        - __sap_vm_provision_task_provision_host_single_check_exists
+        - __sap_vm_provision_task_ovirt_os
+        - __sap_vm_provision_task_provision_host_single_boot_disk
+        - __sap_vm_provision_task_provision_host_single
+        - __sap_vm_provision_task_provision_host_single_info
+        - __sap_vm_provision_task_provision_host_single_volumes
+        - __sap_vm_provision_task_provision_host_all_add
+      loop_control:
+        loop_var: loop_item
+        index_var: loop_item_index
+        label: "{{ 'Variable No. ' + (loop_item_index | string) }}"
+      when:
+        - lookup('ansible.builtin.vars', loop_item, default='') | length > 0
+        - not lookup('ansible.builtin.vars', loop_item, default='') is skipped
+        - lookup('ansible.builtin.vars', loop_item, default='') is failed
+
 
 - name: Ansible Task block to execute on target inventory hosts
   delegate_to: "{{ inventory_hostname }}"
@@ -69,26 +103,26 @@
         name: "{{ inventory_hostname_short }}"
 
     - name: Set /etc/hosts
-      register: register_etc_hosts_file
+      register: __sap_vm_provision_task_os_etc_hosts
       ansible.builtin.include_tasks:
         file: common/set_etc_hosts.yml
 
     - name: Set /etc/hosts for HA
-      register: register_etc_hosts_file_ha
+      register: __sap_vm_provision_task_os_etc_hosts_ha
       ansible.builtin.include_tasks:
         file: common/set_etc_hosts_ha.yml
       when:
         - (groups["hana_secondary"] is defined and (groups["hana_secondary"] | length>0)) or (groups["nwas_ers"] is defined and (groups["nwas_ers"] | length>0)) or (groups["anydb_secondary"] is defined and (groups["anydb_secondary"] | length>0))
 
     - name: Set /etc/hosts for Scale-Out
-      register: register_etc_hosts_file_scaleout
+      register: __sap_vm_provision_task_os_etc_hosts_scaleout
       ansible.builtin.include_tasks:
         file: common/set_etc_hosts_scaleout.yml
       when:
         - (groups["hana_primary"] is defined and (groups["hana_primary"] | length>0)) and (sap_hana_scaleout_active_coordinator is defined or sap_hana_scaleout_active_worker is defined or sap_hana_scaleout_standby is defined)
 
     - name: Set vars for sap_storage_setup Ansible Role
-      register: register_ansible_vars_storage
+      register: __sap_vm_provision_task_ansible_vars_storage
       ansible.builtin.include_tasks:
         file: common/set_ansible_vars_storage.yml
 
