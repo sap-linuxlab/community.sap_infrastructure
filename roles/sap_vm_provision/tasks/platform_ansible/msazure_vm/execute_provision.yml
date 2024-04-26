@@ -15,19 +15,26 @@
     - not inventory_hostname in lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan].keys()
 
 - name: Verify if network interface for MS Azure VM already exists (i.e. re-run)
-  register: register_provisioned_vnic_info
+  no_log: "{{ __sap_vm_provision_no_log }}"
+  register: __sap_vm_provision_task_provision_host_single_vnic_info
   azure.azcollection.azure_rm_networkinterface_info:
     resource_group: "{{ sap_vm_provision_msazure_resource_group_name }}"
     name: "{{ inventory_hostname }}-nic"
+    # Azure credentials
+    subscription_id: "{{ sap_vm_provision_msazure_subscription_id }}"
+    tenant: "{{ sap_vm_provision_msazure_tenant_id }}"
+    client_id: "{{ sap_vm_provision_msazure_app_client_id }}"
+    secret: "{{ sap_vm_provision_msazure_app_client_secret }}"
 
 - name: Provision network interface for MS Azure VM
-  register: register_provisioned_vnic
+  no_log: "{{ __sap_vm_provision_no_log }}"
+  register: __sap_vm_provision_task_provision_host_single_vnic
   azure.azcollection.azure_rm_networkinterface:
     resource_group: "{{ sap_vm_provision_msazure_resource_group_name }}"
     location: "{{ sap_vm_provision_msazure_location_region }}"
     name: "{{ inventory_hostname }}-nic"
     virtual_network: "{{ sap_vm_provision_msazure_vnet_name }}"
-    subnet_name: "{{ sap_vm_provision_msazure_vnet_subnet_name }}"
+    subnet_name: "{{ sap_vm_provision___sap_vm_provision_msazure_vnet_subnet_name }}"
     create_with_security_group: false
     ip_configurations:
       - name: "{{ inventory_hostname }}-nic-ipconfig"
@@ -35,9 +42,15 @@
         #private_ip_allocation_method: "Static" # When static, must define the specific IP Address
     enable_accelerated_networking: true
     enable_ip_forwarding: "{{ lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan][scaleout_origin_host_spec | default(inventory_hostname)].disable_ip_anti_spoofing }}" # When disable the Anti IP Spoofing = true, then Enable IP Forwarding = true
-  when: not (register_provisioned_vnic_info.networkinterfaces | length) > 0
+    # Azure credentials
+    subscription_id: "{{ sap_vm_provision_msazure_subscription_id }}"
+    tenant: "{{ sap_vm_provision_msazure_tenant_id }}"
+    client_id: "{{ sap_vm_provision_msazure_app_client_id }}"
+    secret: "{{ sap_vm_provision_msazure_app_client_secret }}"
+  when: not (__sap_vm_provision_task_provision_host_single_vnic_info.networkinterfaces | length) > 0
 
 - name: Provision MS Azure VM
+  no_log: "{{ __sap_vm_provision_no_log }}"
   register: __sap_vm_provision_task_provision_host_single
   azure.azcollection.azure_rm_virtualmachine:
     resource_group: "{{ sap_vm_provision_msazure_resource_group_name }}"
@@ -62,18 +75,35 @@
       type: SystemAssigned
     state: "present"
     started: true
+    # Azure credentials
+    subscription_id: "{{ sap_vm_provision_msazure_subscription_id }}"
+    tenant: "{{ sap_vm_provision_msazure_tenant_id }}"
+    client_id: "{{ sap_vm_provision_msazure_app_client_id }}"
+    secret: "{{ sap_vm_provision_msazure_app_client_secret }}"
 
 
 - name: Read MS Azure VM information
+  no_log: "{{ __sap_vm_provision_no_log }}"
   register: __sap_vm_provision_task_provision_host_single_info
   azure.azcollection.azure_rm_virtualmachine_info:
     resource_group: "{{ sap_vm_provision_msazure_resource_group_name }}"
     name: "{{ inventory_hostname }}"
+    # Azure credentials
+    subscription_id: "{{ sap_vm_provision_msazure_subscription_id }}"
+    tenant: "{{ sap_vm_provision_msazure_tenant_id }}"
+    client_id: "{{ sap_vm_provision_msazure_app_client_id }}"
+    secret: "{{ sap_vm_provision_msazure_app_client_secret }}"
 
 - name: Read MS Azure VM attached disks information
+  no_log: "{{ __sap_vm_provision_no_log }}"
   register: __sap_vm_provision_task_ansible_facts_host_disks_info
   azure.azcollection.azure_rm_manageddisk_info:
     managed_by: "{{ __sap_vm_provision_task_provision_host_single_info.vms[0].id }}"
+    # Azure credentials
+    subscription_id: "{{ sap_vm_provision_msazure_subscription_id }}"
+    tenant: "{{ sap_vm_provision_msazure_tenant_id }}"
+    client_id: "{{ sap_vm_provision_msazure_app_client_id }}"
+    secret: "{{ sap_vm_provision_msazure_app_client_secret }}"
 
 
 - name: Create fact for delegate host IP
@@ -171,6 +201,7 @@
 # The volume creation task requires the above task to define the parameter
 # which contains the calculated unique device names.
 - name: Provision Azure Managed Disk volumes for Azure VM filesystems
+  no_log: "{{ __sap_vm_provision_no_log }}"
   register: __sap_vm_provision_task_provision_host_single_volumes
   azure.azcollection.azure_rm_manageddisk:
     resource_group: "{{ sap_vm_provision_msazure_resource_group_name }}"
@@ -182,6 +213,11 @@
         resource_group: "{{ sap_vm_provision_msazure_resource_group_name }}"
     # Premium SSD size (P), Standard SSD size (E), Standard HDD size (S)
     storage_account_type: "{% if vol_item.type | regex_search('^P.*') %}Premium_LRS{% elif vol_item.type | regex_search('^E.*') %}StandardSSD_LRS{% elif vol_item.type | regex_search('^S.*') %}Standard_LRS{% else %}StandardSSD_LRS{% endif %}" # Standard_LRS, StandardSSD_LRS, Premium_LRS, UltraSSD_LRS
+    # Azure credentials
+    subscription_id: "{{ sap_vm_provision_msazure_subscription_id }}"
+    tenant: "{{ sap_vm_provision_msazure_tenant_id }}"
+    client_id: "{{ sap_vm_provision_msazure_app_client_id }}"
+    secret: "{{ sap_vm_provision_msazure_app_client_secret }}"
   loop: "{{ filesystem_volume_map }}"
   loop_control:
     loop_var: vol_item

@@ -45,12 +45,17 @@
       when: not sap_ha_pacemaker_cluster_healthcheck_nwas_abap_ers_port is defined
 
     - name: Gather MS Azure Subnet ID
-      register: msazure_vnet_subnet_info
+      no_log: "{{ __sap_vm_provision_no_log }}"
+      register: __sap_vm_provision_msazure_vnet_subnet_info
       azure.azcollection.azure_rm_subnet_info:
         resource_group: "{{ sap_vm_provision_msazure_resource_group_name }}"
         virtual_network_name: "{{ sap_vm_provision_msazure_vnet_name }}"
-        name: "{{ sap_vm_provision_msazure_vnet_subnet_name }}"
-
+        name: "{{ sap_vm_provision___sap_vm_provision_msazure_vnet_subnet_name }}"
+        # Azure credentials
+        subscription_id: "{{ sap_vm_provision_msazure_subscription_id }}"
+        tenant: "{{ sap_vm_provision_msazure_tenant_id }}"
+        client_id: "{{ sap_vm_provision_msazure_app_client_id }}"
+        secret: "{{ sap_vm_provision_msazure_app_client_secret }}"
 
     - name: Define Ansible Variables for Azure Load Balancer - VIP for SAP HANA
       ansible.builtin.set_fact:
@@ -60,7 +65,7 @@
           name: "lb-vip-hana{{ vip_index_nr }}"
           private_ip_address: "{{ vip_item | regex_replace('/.*', '') }}"
           private_ip_allocation_method: "Static"
-          subnet: "{{ msazure_vnet_subnet_info.subnets[0].id }}"
+          subnet: "{{ __sap_vm_provision_msazure_vnet_subnet_info.subnets[0].id }}"
           zones: ["1", "2", "3"] # Zone-redundant
       when:
         - vip_item | length > 0
@@ -79,7 +84,7 @@
           name: "lb-vip-anydb{{ vip_index_nr }}"
           private_ip_address: "{{ vip_item | regex_replace('/.*', '') }}"
           private_ip_allocation_method: "Static"
-          subnet: "{{ msazure_vnet_subnet_info.subnets[0].id }}"
+          subnet: "{{ __sap_vm_provision_msazure_vnet_subnet_info.subnets[0].id }}"
           zones: ["1", "2", "3"] # Zone-redundant
       when:
         - vip_item | length > 0
@@ -98,7 +103,7 @@
           name: "lb-vip-nwas{{ vip_index_nr }}"
           private_ip_address: "{{ vip_item | regex_replace('/.*', '') }}"
           private_ip_allocation_method: "Static"
-          subnet: "{{ msazure_vnet_subnet_info.subnets[0].id }}"
+          subnet: "{{ __sap_vm_provision_msazure_vnet_subnet_info.subnets[0].id }}"
           zones: ["1", "2", "3"] # Zone-redundant
       when:
         - vip_item | length > 0
@@ -239,7 +244,8 @@
 
 
     - name: MS Azure Load Balancer (network L4) - Update NLB for SAP HANA with Virtual IP and Health Probe configuration
-      register: msazure_lb1_info
+      no_log: "{{ __sap_vm_provision_no_log }}"
+      register: __sap_vm_provision_msazure_lb1_info
       azure.azcollection.azure_rm_loadbalancer:
         resource_group: "{{ sap_vm_provision_msazure_resource_group_name }}"
         name: "lb-sap-hana-ha" # "lb-sap-ha"
@@ -249,10 +255,16 @@
           - name: lb-backend-pool-hana
         probes: "{{ (lb_probes1 | default([])) }}" # "{{ (lb_probes1 | default([])) + (lb_probes2 | default([])) }}"
         load_balancing_rules: "{{ (lb_rules1 | default([])) }}" # "{{ (lb_rules1 | default([])) + (lb_rules2 | default([])) }}"
+        # Azure credentials
+        subscription_id: "{{ sap_vm_provision_msazure_subscription_id }}"
+        tenant: "{{ sap_vm_provision_msazure_tenant_id }}"
+        client_id: "{{ sap_vm_provision_msazure_app_client_id }}"
+        secret: "{{ sap_vm_provision_msazure_app_client_secret }}"
       when: (groups["hana_secondary"] is defined and (groups["hana_secondary"]|length>0))
 
     - name: MS Azure Load Balancer (network L4) - Update NLB for SAP AnyDB with Virtual IP and Health Probe configuration
-      register: msazure_lb1_info
+      no_log: "{{ __sap_vm_provision_no_log }}"
+      register: __sap_vm_provision_msazure_lb1_info
       azure.azcollection.azure_rm_loadbalancer:
         resource_group: "{{ sap_vm_provision_msazure_resource_group_name }}"
         name: "lb-sap-anydb-ha" # "lb-sap-ha"
@@ -262,10 +274,16 @@
           - name: lb-backend-pool-anydb
         probes: "{{ (lb_probes1 | default([])) }}" # "{{ (lb_probes1 | default([])) + (lb_probes2 | default([])) }}"
         load_balancing_rules: "{{ (lb_rules1 | default([])) }}" # "{{ (lb_rules1 | default([])) + (lb_rules2 | default([])) }}"
+        # Azure credentials
+        subscription_id: "{{ sap_vm_provision_msazure_subscription_id }}"
+        tenant: "{{ sap_vm_provision_msazure_tenant_id }}"
+        client_id: "{{ sap_vm_provision_msazure_app_client_id }}"
+        secret: "{{ sap_vm_provision_msazure_app_client_secret }}"
       when: (groups["anydb_secondary"] is defined and (groups["anydb_secondary"]|length>0))
 
     - name: MS Azure Load Balancer (network L4) - Update NLB for SAP NetWeaver with Virtual IP and Health Probe configuration
-      register: msazure_lb2_info
+      no_log: "{{ __sap_vm_provision_no_log }}"
+      register: __sap_vm_provision_msazure_lb2_info
       azure.azcollection.azure_rm_loadbalancer:
         resource_group: "{{ sap_vm_provision_msazure_resource_group_name }}"
         name: "lb-sap-nwas-ha"
@@ -275,4 +293,9 @@
           - name: lb-backend-pool-nwas-ascs
         probes: "{{ (lb_probes2 | default([])) }}"
         load_balancing_rules: "{{ (lb_rules2 | default([])) }}"
+        # Azure credentials
+        subscription_id: "{{ sap_vm_provision_msazure_subscription_id }}"
+        tenant: "{{ sap_vm_provision_msazure_tenant_id }}"
+        client_id: "{{ sap_vm_provision_msazure_app_client_id }}"
+        secret: "{{ sap_vm_provision_msazure_app_client_secret }}"
       when: (groups["nwas_ers"] is defined and (groups["nwas_ers"]|length>0))
