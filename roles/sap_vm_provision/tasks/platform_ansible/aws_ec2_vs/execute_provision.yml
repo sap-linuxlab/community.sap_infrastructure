@@ -44,7 +44,7 @@
 - name: Read AWS EC2 instance information
   register: __sap_vm_provision_task_provision_host_single_info
   no_log: "{{ __sap_vm_provision_no_log }}"
-  amazon.aws.ec2___sap_vm_provision_task_provision_host_single_info:
+  amazon.aws.ec2_instance_info:
     filters:
       "tag:Name": "{{ inventory_hostname }}"
       "instance-state-name": ["running"]
@@ -122,7 +122,7 @@
 - name: Read AWS EC2 instance information
   register: __sap_vm_provision_task_provision_host_single_info
   no_log: "{{ __sap_vm_provision_no_log }}"
-  amazon.aws.ec2___sap_vm_provision_task_provision_host_single_info:
+  amazon.aws.ec2_instance_info:
     filters:
       "tag:Name": "{{ inventory_hostname }}"
     access_key: "{{ sap_vm_provision_aws_access_key }}"
