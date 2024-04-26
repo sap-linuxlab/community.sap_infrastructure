@@ -263,7 +263,6 @@
         - __sap_vm_provision_msazure_lb1b_info
         - __sap_vm_provision_msazure_lb2_info
         - __sap_vm_provision_task_provision_host_single_vnic1
-        - __sap_vm_provision_task_provision_host_single_vnic1
         - __sap_vm_provision_task_provision_host_single_vnic2
       loop_control:
         loop_var: loop_item

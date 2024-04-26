@@ -573,3 +573,8 @@ sap_vm_provision_vmware_vm_host_specifications_dictionary:
           disk_count: 1                  # default: 1
           disk_size: 512                 # size in GB, integer
           disk_type: scsi                # VMware Virtual Disk Node (scsi, ide, sata)
+
+
+# Default to prevent Infrastructure Platform credential secrets leaking
+# This should only be amended for debugging
+__sap_vm_provision_no_log: true
