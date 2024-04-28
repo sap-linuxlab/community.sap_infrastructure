@@ -67,7 +67,7 @@
 
 - name: Set facts for all hosts - use facts from localhost - HA/DR - IBM Cloud, IBM Power VS
   ansible.builtin.set_fact:
-    sap_ha_pacemaker_cluster_ibmcloud_powervs_workspace_crn: "{{ register_ibmcloud_power_iaas_workspace_service_instance.resource.crn }}"
+    sap_ha_pacemaker_cluster_ibmcloud_powervs_workspace_crn: "{{ __sap_vm_provision_task_ibmcloud_pi_workspace_service_instance.resource.crn }}"
     sap_ha_pacemaker_cluster_ibmcloud_api_key: "{{ sap_ha_pacemaker_cluster_ibmcloud_api_key }}"
     sap_ha_pacemaker_cluster_ibmcloud_region: "{{ list_ibmcloud_powervs_location_to_powervs_region[sap_vm_provision_ibmcloud_powervs_location] }}" # Lookup IBM Power VS Region from the given IBM Power VS Location during sap_vm_provision execution
   when:

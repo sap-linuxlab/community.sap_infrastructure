@@ -23,10 +23,12 @@
     pi_cloud_instance_id: "{{ __sap_vm_provision_task_ibmcloud_pi_workspace_service_instance.resource.guid }}" # must be GUID, not CRN
 
     pi_instance_name: "{{ inventory_hostname }}"
-    pi_image_id: "{{ __sap_vm_provision_task_ibmcloud_pi_os_image_provisioned.resource.id if __sap_vm_provision_task_ibmcloud_pi_os_image_provisioned.rc == 0 else __sap_vm_provision_task_ibmcloud_pi_os_image_existing.resource.id }}"
+    pi_image_id: "{{ __sap_vm_provision_task_ibmcloud_pi_os_image_existing.resource.id }}"
 
-    pi_sys_type: e980
+    pi_sys_type: "{{ lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan][scaleout_origin_host_spec | default(inventory_hostname)].ibmcloud_powervs_hardware_machine_type }}"
+
     pi_sap_profile_id: "{{ lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan][scaleout_origin_host_spec | default(inventory_hostname)].virtual_machine_profile }}"
+
     pi_key_pair_name: "{{ sap_vm_provision_ibmcloud_powervs_key_pair_name_ssh_host_public_key }}"
 
     pi_network:
