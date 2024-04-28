@@ -126,10 +126,10 @@
       ansible.builtin.include_tasks:
         file: common/set_ansible_vars_storage.yml
 
-    - name: Register Package Repositories
-      ansible.builtin.include_tasks:
-        file: common/register_os.yml
-
     - name: Register Web Forward Proxy
       ansible.builtin.include_tasks:
         file: common/register_proxy.yml
+
+    - name: Register Package Repositories
+      ansible.builtin.include_tasks:
+        file: common/register_os.yml
