@@ -361,6 +361,7 @@
         sleep: 10
         connect_timeout: 15
         timeout: 120
+      when: sap_vm_provision_nfs_mount_point is defined
 
     - name: Verify connection to separate NFS for SAP Transport Directory
       ansible.builtin.wait_for:
@@ -370,6 +371,7 @@
         sleep: 10
         connect_timeout: 15
         timeout: 120
+      when: sap_vm_provision_nfs_mount_point_separate_sap_transport_dir is defined
 
     # Ensure lock to RHEL major.minor version
     # Lock using subscription-manager release --set or /var/lib/rhsm/cache/releasever.json, alternatively using /etc/yum/vars/releasever or /etc/dnf/vars/releasever
