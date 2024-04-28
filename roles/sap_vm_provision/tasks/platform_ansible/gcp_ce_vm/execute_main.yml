@@ -275,7 +275,7 @@
       ansible.builtin.include_tasks:
         file: common/set_etc_hosts_scaleout.yml
       when:
-        - (groups["hana_primary"] is defined and (groups["hana_primary"] | length>0)) and (sap_hana_scaleout_active_coordinator is defined or sap_hana_scaleout_active_worker is defined or sap_hana_scaleout_standby is defined)
+        - (groups["hana_primary"] is defined and (groups["hana_primary"] | length>0)) and (sap_vm_provision_calculate_sap_hana_scaleout_active_coordinator is defined or sap_vm_provision_calculate_sap_hana_scaleout_active_worker is defined or sap_vm_provision_calculate_sap_hana_scaleout_standby is defined)
 
     - name: Set vars for sap_storage_setup Ansible Role
       register: __sap_vm_provision_task_ansible_vars_storage

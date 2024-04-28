@@ -85,6 +85,18 @@ sap_vm_provision_nfs_mount_point_opts: ""
 
 
 ####
+# VM Provision - Generic configuration - Calculate for SAP HANA Scale-Out
+# Only to be used for SAP HANA Scale-Out, and requires additional changes to
+# the Ansible Play that creates the dynamic inventory group before execution
+# of the Ansible Role (see documentation)
+####
+
+# sap_vm_provision_calculate_sap_hana_scaleout_active_coordinator: 1
+# sap_vm_provision_calculate_sap_hana_scaleout_active_worker: 2
+# sap_vm_provision_calculate_sap_hana_scaleout_standby: 1 # Only 0 or 1
+
+
+####
 # VM Provision - dynamic inventory variables
 # Cannot be given a value by end user, the Ansible Role populates the variable
 # After sap_vm_provision has executed successfully, these variables can easily be used to populate other Ansible Role variables (e.g. sap_swpm_db_host)
