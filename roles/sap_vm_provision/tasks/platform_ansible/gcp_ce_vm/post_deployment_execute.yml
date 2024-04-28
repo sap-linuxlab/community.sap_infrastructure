@@ -60,7 +60,7 @@
         unhealthy_threshold: 2
         healthy_threshold: 2
         auth_kind: "serviceaccount"
-        service_account_contents: "{{ sap_vm_provision_gcp_credentials_json }}"
+        service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
       when:
         - groups["hana_secondary"] is defined and (groups["hana_secondary"]|length>0)
 
@@ -80,7 +80,7 @@
         unhealthy_threshold: 2
         healthy_threshold: 2
         auth_kind: "serviceaccount"
-        service_account_contents: "{{ sap_vm_provision_gcp_credentials_json }}"
+        service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
       when:
         - groups["anydb_secondary"] is defined and (groups["anydb_secondary"]|length>0)
 
@@ -100,7 +100,7 @@
         unhealthy_threshold: 2
         healthy_threshold: 2
         auth_kind: "serviceaccount"
-        service_account_contents: "{{ sap_vm_provision_gcp_credentials_json }}"
+        service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
       when:
         - groups["nwas_ers"] is defined and (groups["nwas_ers"]|length>0)
 
@@ -120,6 +120,6 @@
         unhealthy_threshold: 2
         healthy_threshold: 2
         auth_kind: "serviceaccount"
-        service_account_contents: "{{ sap_vm_provision_gcp_credentials_json }}"
+        service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
       when:
         - groups["nwas_ers"] is defined and (groups["nwas_ers"]|length>0)

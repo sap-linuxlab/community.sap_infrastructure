@@ -21,7 +21,7 @@
           - family = "{{ lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_os_image_dictionary')[sap_vm_provision_gcp_ce_vm_host_os_image].family }}"
           - -deprecated.state = DEPRECATED
         auth_kind: "serviceaccount"
-        service_account_contents: "{{ sap_vm_provision_gcp_credentials_json }}"
+        service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
 
     - name: Identify GCP Network (VPC)
       no_log: "{{ __sap_vm_provision_no_log }}"
@@ -31,7 +31,7 @@
         filters:
           - name = "{{ sap_vm_provision_gcp_vpc_name }}"
         auth_kind: "serviceaccount"
-        service_account_contents: "{{ sap_vm_provision_gcp_credentials_json }}"
+        service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
 
     - name: Identify GCP Subnetwork (VPC Subnet)
       no_log: "{{ __sap_vm_provision_no_log }}"
@@ -42,7 +42,7 @@
         filters:
           - name = "{{ sap_vm_provision_gcp_vpc_subnet_name }}"
         auth_kind: "serviceaccount"
-        service_account_contents: "{{ sap_vm_provision_gcp_credentials_json }}"
+        service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
 
     - name: Set fact to hold loop variables from include_tasks
       ansible.builtin.set_fact:
@@ -93,7 +93,7 @@
         filters:
           - name = {{ inventory_hostname }}
         auth_kind: "serviceaccount"
-        service_account_contents: "{{ sap_vm_provision_gcp_credentials_json }}"
+        service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
 
     - name: Gather GCP VPC Subnet information
       no_log: "{{ __sap_vm_provision_no_log }}"
@@ -104,7 +104,7 @@
         filters:
           - name = {{ sap_vm_provision_gcp_vpc_subnet_name }}
         auth_kind: "serviceaccount"
-        service_account_contents: "{{ sap_vm_provision_gcp_credentials_json }}"
+        service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
 
     - name: Gather GCP Private DNS information
       no_log: "{{ __sap_vm_provision_no_log }}"
@@ -113,7 +113,7 @@
         project: "{{ sap_vm_provision_gcp_project }}"
         dns_name: "{{ sap_vm_provision_dns_root_domain }}."
         auth_kind: "serviceaccount"
-        service_account_contents: "{{ sap_vm_provision_gcp_credentials_json }}"
+        service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
 
     # - name: Gather information about GCP Router and table for the VPC Subnet
     #   no_log: "{{ __sap_vm_provision_no_log }}"
@@ -125,7 +125,7 @@
     #       - network = "{{ __sap_vm_provision_task_gcp_vpc_info.resources[0].selfLink }}"
     #     #  - name = sap-vpc-router
     #     auth_kind: "serviceaccount"
-    #     service_account_contents: "{{ sap_vm_provision_gcp_credentials_json }}"
+    #     service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
 
     # - name: Verify IP Forwarding for GCP VMs
     #   ansible.builtin.fail:
@@ -147,7 +147,7 @@
         type: A
         ttl: 7200
         auth_kind: "serviceaccount"
-        service_account_contents: "{{ sap_vm_provision_gcp_credentials_json }}"
+        service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
       until: not __sap_vm_provision_task_gcp_pdns_records.failed
       retries: 5
       delay: 5

@@ -52,7 +52,7 @@
     name: "{{ inventory_hostname + '-vol-' + vol_item.name | replace('_', '-')}}"
     size_gb: "{{ vol_item.size }}"
     auth_kind: "serviceaccount"
-    service_account_contents: "{{ sap_vm_provision_gcp_credentials_json }}"
+    service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
   loop: "{{ storage_disks_map }}"
   loop_control:
     loop_var: vol_item
@@ -120,7 +120,7 @@
           - "https://www.googleapis.com/auth/cloud-platform" # Allow full access to all Cloud APIs
           # ["compute-rw", "storage-rw", "logging-write", "monitoring-write", "service-control", "service-management"]
     auth_kind: "serviceaccount"
-    service_account_contents: "{{ sap_vm_provision_gcp_credentials_json }}"
+    service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
 
 # Required as state: present on Ansible Module gcp_compute_instance does not allow for waiting until VM has booted
 - name: Wait 90 seconds for Google Cloud VM to boot
@@ -138,7 +138,7 @@
     filters:
       - name = {{ inventory_hostname }}
     auth_kind: "serviceaccount"
-    service_account_contents: "{{ sap_vm_provision_gcp_credentials_json }}"
+    service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
 
 - name: Create fact for delegate host IP
   ansible.builtin.set_fact:
