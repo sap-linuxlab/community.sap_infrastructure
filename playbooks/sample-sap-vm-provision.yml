@@ -44,4 +44,4 @@
   tasks:
     - name: Include sap_vm_provision Ansible Role
       ansible.builtin.include_role:
-        name: sap_vm_provision
+        name: community.sap_infrastructure.sap_vm_provision
