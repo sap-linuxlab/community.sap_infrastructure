@@ -1,15 +1,4 @@
 ---
-- name: Patch Node Labels
-  kubernetes.core.k8s_json_patch:
-    kind: Node
-    name: "{{ __sap_hypervisor_node_preconfigure_register_worker.name }}"
-    patch:
-      - op: add
-        path: /metadata/labels/cpumanager
-        value: True
-  register: __sap_hypervisor_node_preconfigure_label_node_result
-
-
 - name: Include node network
   ansible.builtin.include_tasks: node-network.yml
   with_items: "{{ __sap_hypervisor_node_preconfigure_register_worker.networks }}"
