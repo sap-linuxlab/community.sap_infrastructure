@@ -1,12 +1,17 @@
 ---
 # The tasks in this file are executed in a loop over the defined hosts
 
+- name: Ensure short hostname is not longer than 13 characters (see SAP Note 611361)
+  ansible.builtin.assert:
+    that: (inventory_hostname | length | int) <= (13 | int)
+    fail_msg: "FAIL: The length of the hostname is {{ inventory_hostname | length | int }} but must be less or equal to 13 characters!"
+
 # When SAP HANA Scale-Out is used, if host name is not in original specifications then strip suffix node number from host name
 - name: Set fact when performing SAP HANA Scale-Out
   ansible.builtin.set_fact:
     scaleout_origin_host_spec: "{{ inventory_hostname | regex_replace('^(.+?)\\d*$', '\\1') }}"
   when:
-    - sap_hana_scaleout_active_coordinator is defined
+    - sap_vm_provision_calculate_sap_hana_scaleout_active_coordinator is defined
     - not inventory_hostname in lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan].keys()
 
 
@@ -141,7 +146,11 @@
 
 
 - name: Provision KubeVirt Virtual Machine
+  no_log: "{{ __sap_vm_provision_no_log }}"
+  register: __sap_vm_provision_task_provision_host_single
   kubevirt.core.kubevirt_vm:
+
+    ## Hypervisor Control Plane definition and credentials
     api_version: "{{ api_version | default(omit) }}"
     validate_certs: "{{ validate_certs | default(omit) }}"
     persist_config: "{{ persist_config | default(omit) }}"
@@ -228,7 +237,8 @@
 
 
 - name: Check VM status
-  register: register_provisioned_host_single_info
+  no_log: "{{ __sap_vm_provision_no_log }}"
+  register: __sap_vm_provision_task_provision_host_single_info
   kubevirt.core.kubevirt_vm_info:
     name: "{{ inventory_hostname }}"
     namespace: "{{ sap_vm_provision_kubevirt_target_namespace }}"
@@ -236,11 +246,11 @@
 
 - name: Create fact for delegate host IP
   ansible.builtin.set_fact:
-    provisioned_private_ip: "{{ register_provisioned_host_single_info.spec.UNKNOWN_VARIABLE_FOR_PRIVATE_IP_HERE }}"
+    provisioned_private_ip: "{{ __sap_vm_provision_task_provision_host_single_info.spec.UNKNOWN_VARIABLE_FOR_PRIVATE_IP_HERE }}"
 
 
 - name: Collect only facts about hardware
-  register: host_disks_info
+  register: __sap_vm_provision_task_ansible_facts_host_disks_info
   ansible.builtin.setup:
     gather_subset:
       - hardware
@@ -258,13 +268,13 @@
 
 #- name: Debug Ansible Facts devices used list
 #  ansible.builtin.debug:
-#    msg: "{{ host_disks_info.ansible_facts.ansible_device_links.ids.keys() | list }}"
+#    msg: "{{ __sap_vm_provision_task_ansible_facts_host_disks_info.ansible_facts.ansible_device_links.ids.keys() | list }}"
 
 
 - name: Append loop value to register
   ansible.builtin.set_fact:
-    register_provisioned_host_single: "{{ register_provisioned_host_single_info.spec.UKNOWN_VARIABLE_HERE | combine( { 'host_node' : inventory_hostname } , { 'sap_host_type' : lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan][scaleout_origin_host_spec | default(inventory_hostname)].sap_host_type } , { 'sap_system_type' : (lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan][scaleout_origin_host_spec | default(inventory_hostname)].sap_system_type | default('')) } ) }}"
+    __sap_vm_provision_task_provision_host_single: "{{ __sap_vm_provision_task_provision_host_single_info.spec.UKNOWN_VARIABLE_HERE | combine( { 'host_node' : inventory_hostname } , { 'sap_host_type' : lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan][scaleout_origin_host_spec | default(inventory_hostname)].sap_host_type } , { 'sap_system_type' : (lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan][scaleout_origin_host_spec | default(inventory_hostname)].sap_system_type | default('')) } ) }}"
 
 - name: Append output to merged register
   ansible.builtin.set_fact:
-    register_provisioned_host_all: "{{ register_provisioned_host_all + [register_provisioned_host_single] }}"
+    register_provisioned_host_all: "{{ register_provisioned_host_all + [__sap_vm_provision_task_provision_host_single] }}"

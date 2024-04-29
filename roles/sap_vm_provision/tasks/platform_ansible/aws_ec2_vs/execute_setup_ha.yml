@@ -1,35 +1,45 @@
 ---
 
 - name: Gather information about AWS account
+  register: __sap_vm_provision_task_aws_account_info
+  no_log: "{{ __sap_vm_provision_no_log }}"
   amazon.aws.aws_caller_info:
-  register: aws_account_info
+    access_key: "{{ sap_vm_provision_aws_access_key }}"
+    secret_key: "{{ sap_vm_provision_aws_secret_access_key }}"
 
 - name: Gather information about AWS VPC Route Table for the VPC Subnet
+  register: __sap_vm_provision_task_aws_vpc_subnet_rt_info
+  no_log: "{{ __sap_vm_provision_no_log }}"
   amazon.aws.ec2_vpc_route_table_info:
     filters:
       association.subnet-id: "{{ sap_vm_provision_aws_vpc_subnet_id }}"
-  register: aws_vpc_subnet_rt_info
-
+    access_key: "{{ sap_vm_provision_aws_access_key }}"
+    secret_key: "{{ sap_vm_provision_aws_secret_access_key }}"
 
 - name: Ansible AWS VPC Route Table append route for SAP HANA HA
+  register: __sap_vm_provision_task_aws_vpc_subnet_rt_route_sap_hana
+  no_log: "{{ __sap_vm_provision_no_log }}"
   amazon.aws.ec2_vpc_route_table:
     lookup: id
-    vpc_id: "{{ aws_vpc_subnet_rt_info.route_tables[0].vpc_id }}"
-    route_table_id: "{{ aws_vpc_subnet_rt_info.route_tables[0].route_table_id }}"
+    vpc_id: "{{ __sap_vm_provision_task_aws_vpc_subnet_rt_info.route_tables[0].vpc_id }}"
+    route_table_id: "{{ __sap_vm_provision_task_aws_vpc_subnet_rt_info.route_tables[0].route_table_id }}"
     purge_subnets: false
     purge_routes: false
     state: present
     routes:
       - dest: "{{ sap_ha_pacemaker_cluster_vip_hana_primary_ip_address | default('192.168.1.90/32') }}"
         instance_id: "{{ hostvars[host_node].ansible_board_asset_tag }}"
+    access_key: "{{ sap_vm_provision_aws_access_key }}"
+    secret_key: "{{ sap_vm_provision_aws_secret_access_key }}"
   loop: "{{ (groups['hana_primary'] | default([])) }}"
   loop_control:
     loop_var: host_node
-  register: aws_vpc_subnet_rt_route_sap_hana
   when:
     - groups["hana_secondary"] is defined and (groups["hana_secondary"] | length>0)
 
 - name: Ansible AWS Route53 DNS Records for SAP HANA HA Virtual Hostname
+  register: __sap_vm_provision_task_aws_route53_sap_hana
+  no_log: "{{ __sap_vm_provision_no_log }}"
   amazon.aws.route53:
     state: present
     private_zone: true
@@ -39,32 +49,38 @@
     ttl: 7200
     value: "{{ (sap_ha_pacemaker_cluster_vip_hana_primary_ip_address | default('192.168.1.90/32')) | regex_replace('/.*', '') }}"
     wait: true
+    access_key: "{{ sap_vm_provision_aws_access_key }}"
+    secret_key: "{{ sap_vm_provision_aws_secret_access_key }}"
   loop: "{{ (groups['hana_primary'] | default([])) }}"
   loop_control:
     loop_var: host_node
   when:
     - groups["hana_secondary"] is defined and (groups["hana_secondary"]|length>0)
 
-
 - name: Ansible AWS VPC Route Table append route for SAP AnyDB HA
+  register: __sap_vm_provision_task_aws_vpc_subnet_rt_route_sap_anydb
+  no_log: "{{ __sap_vm_provision_no_log }}"
   amazon.aws.ec2_vpc_route_table:
     lookup: id
-    vpc_id: "{{ aws_vpc_subnet_rt_info.route_tables[0].vpc_id }}"
-    route_table_id: "{{ aws_vpc_subnet_rt_info.route_tables[0].route_table_id }}"
+    vpc_id: "{{ __sap_vm_provision_task_aws_vpc_subnet_rt_info.route_tables[0].vpc_id }}"
+    route_table_id: "{{ __sap_vm_provision_task_aws_vpc_subnet_rt_info.route_tables[0].route_table_id }}"
     purge_subnets: false
     purge_routes: false
     state: present
     routes:
       - dest: "{{ sap_vm_temp_vip_anydb_primary | default('192.168.1.90/32') }}"
         instance_id: "{{ hostvars[host_node].ansible_board_asset_tag }}"
+    access_key: "{{ sap_vm_provision_aws_access_key }}"
+    secret_key: "{{ sap_vm_provision_aws_secret_access_key }}"
   loop: "{{ (groups['anydb_primary'] | default([])) }}"
   loop_control:
     loop_var: host_node
-  register: aws_vpc_subnet_rt_route_sap_anydb
   when:
     - groups["anydb_secondary"] is defined and (groups["anydb_secondary"] | length>0)
 
 - name: Ansible AWS Route53 DNS Records for SAP AnyDB HA Virtual Hostname
+  register: __sap_vm_provision_task_aws_route53_sap_anydb
+  no_log: "{{ __sap_vm_provision_no_log }}"
   amazon.aws.route53:
     state: present
     private_zone: true
@@ -74,32 +90,38 @@
     ttl: 7200
     value: "{{ (sap_vm_temp_vip_anydb_primary | default('192.168.1.90/32')) | regex_replace('/.*', '') }}"
     wait: true
+    access_key: "{{ sap_vm_provision_aws_access_key }}"
+    secret_key: "{{ sap_vm_provision_aws_secret_access_key }}"
   loop: "{{ (groups['anydb_primary'] | default([])) }}"
   loop_control:
     loop_var: host_node
   when:
     - groups["anydb_secondary"] is defined and (groups["anydb_secondary"]|length>0)
 
-
 - name: Ansible AWS VPC Route Table append route for SAP NetWeaver ASCS HA
+  register: __sap_vm_provision_task_aws_vpc_subnet_rt_route_sap_netweaver_ascs
+  no_log: "{{ __sap_vm_provision_no_log }}"
   amazon.aws.ec2_vpc_route_table:
     lookup: id
-    vpc_id: "{{ aws_vpc_subnet_rt_info.route_tables[0].vpc_id }}"
-    route_table_id: "{{ aws_vpc_subnet_rt_info.route_tables[0].route_table_id }}"
+    vpc_id: "{{ __sap_vm_provision_task_aws_vpc_subnet_rt_info.route_tables[0].vpc_id }}"
+    route_table_id: "{{ __sap_vm_provision_task_aws_vpc_subnet_rt_info.route_tables[0].route_table_id }}"
     purge_subnets: false
     purge_routes: false
     state: present
     routes:
       - dest: "{{ sap_ha_pacemaker_cluster_vip_nwas_abap_ascs_ip_address | default('192.168.2.10/32') }}"
         instance_id: "{{ hostvars[host_node].ansible_board_asset_tag }}"
+    access_key: "{{ sap_vm_provision_aws_access_key }}"
+    secret_key: "{{ sap_vm_provision_aws_secret_access_key }}"
   loop: "{{ (groups['nwas_ascs'] | default([])) }}"
   loop_control:
     loop_var: host_node
-  register: aws_vpc_subnet_rt_route_sap_netweaver_ascs
   when:
     - groups["nwas_ers"] is defined and (groups["nwas_ers"] | length>0)
 
 - name: Ansible AWS Route53 DNS Records for SAP NetWeaver ASCS HA Virtual Hostname
+  register: __sap_vm_provision_task_aws_route53_sap_netweaver_ascs
+  no_log: "{{ __sap_vm_provision_no_log }}"
   amazon.aws.route53:
     state: present
     private_zone: true
@@ -109,32 +131,38 @@
     ttl: 7200
     value: "{{ (sap_ha_pacemaker_cluster_vip_nwas_abap_ascs_ip_address | default('192.168.2.10/32')) | regex_replace('/.*', '') }}"
     wait: true
+    access_key: "{{ sap_vm_provision_aws_access_key }}"
+    secret_key: "{{ sap_vm_provision_aws_secret_access_key }}"
   loop: "{{ (groups['nwas_ascs'] | default([])) }}"
   loop_control:
     loop_var: host_node
   when:
     - groups["nwas_ers"] is defined and (groups["nwas_ers"]|length>0)
 
-
 - name: Ansible AWS VPC Route Table append route for SAP NetWeaver ERS HA
+  register: __sap_vm_provision_task_aws_vpc_subnet_rt_route_sap_netweaver_ers
+  no_log: "{{ __sap_vm_provision_no_log }}"
   amazon.aws.ec2_vpc_route_table:
     lookup: id
-    vpc_id: "{{ aws_vpc_subnet_rt_info.route_tables[0].vpc_id }}"
-    route_table_id: "{{ aws_vpc_subnet_rt_info.route_tables[0].route_table_id }}"
+    vpc_id: "{{ __sap_vm_provision_task_aws_vpc_subnet_rt_info.route_tables[0].vpc_id }}"
+    route_table_id: "{{ __sap_vm_provision_task_aws_vpc_subnet_rt_info.route_tables[0].route_table_id }}"
     purge_subnets: false
     purge_routes: false
     state: present
     routes:
       - dest: "{{ sap_ha_pacemaker_cluster_vip_nwas_abap_ers_ip_address | default('192.168.2.11/32') }}"
         instance_id: "{{ hostvars[host_node].ansible_board_asset_tag }}"
+    access_key: "{{ sap_vm_provision_aws_access_key }}"
+    secret_key: "{{ sap_vm_provision_aws_secret_access_key }}"
   loop: "{{ (groups['nwas_ers'] | default([])) }}"
   loop_control:
     loop_var: host_node
-  register: aws_vpc_subnet_rt_route_sap_netweaver_ers
   when:
     - groups["nwas_ers"] is defined and (groups["nwas_ers"] | length>0)
 
 - name: Ansible AWS Route53 DNS Records for SAP NetWeaver ERS HA Virtual Hostname
+  register: __sap_vm_provision_task_aws_route53_sap_netweaver_ers
+  no_log: "{{ __sap_vm_provision_no_log }}"
   amazon.aws.route53:
     state: present
     private_zone: true
@@ -144,20 +172,23 @@
     ttl: 7200
     value: "{{ (sap_ha_pacemaker_cluster_vip_nwas_abap_ers_ip_address | default('192.168.2.11/32')) | regex_replace('/.*', '') }}"
     wait: true
+    access_key: "{{ sap_vm_provision_aws_access_key }}"
+    secret_key: "{{ sap_vm_provision_aws_secret_access_key }}"
   loop: "{{ (groups['nwas_ers'] | default([])) }}"
   loop_control:
     loop_var: host_node
   when:
     - groups["nwas_ers"] is defined and (groups["nwas_ers"]|length>0)
 
-
 ## For HA of PAS and AAS, if required
 
 # - name: Ansible AWS VPC Route Table append route for SAP NetWeaver PAS HA
+#   register: __sap_vm_provision_task_aws_route53_sap_netweaver_pas
+#   no_log: "{{ __sap_vm_provision_no_log }}"
 #   amazon.aws.ec2_vpc_route_table:
 #     lookup: id
-#     vpc_id: "{{ aws_vpc_subnet_rt_info.route_tables[0].vpc_id }}"
-#     route_table_id: "{{ aws_vpc_subnet_rt_info.route_tables[0].route_table_id }}"
+#     vpc_id: "{{ __sap_vm_provision_task_aws_vpc_subnet_rt_info.route_tables[0].vpc_id }}"
+#     route_table_id: "{{ __sap_vm_provision_task_aws_vpc_subnet_rt_info.route_tables[0].route_table_id }}"
 #     purge_subnets: false
 #     purge_routes: false
 #     state: present
@@ -167,7 +198,6 @@
 #   loop: "{{ (groups['nwas_pas'] | default([])) }}"
 #   loop_control:
 #     loop_var: host_node
-#   register: aws_vpc_subnet_rt_route_sap_netweaver_pas
 #   when:
 #     - groups["nwas_ers"] is defined and (groups["nwas_ers"] | length>0)
 
@@ -189,10 +219,12 @@
 
 
 # - name: Ansible AWS VPC Route Table append route for SAP NetWeaver AAS HA
+#   register: __sap_vm_provision_task_aws_route53_sap_netweaver_aas
+#   no_log: "{{ __sap_vm_provision_no_log }}"
 #   amazon.aws.ec2_vpc_route_table:
 #     lookup: id
-#     vpc_id: "{{ aws_vpc_subnet_rt_info.route_tables[0].vpc_id }}"
-#     route_table_id: "{{ aws_vpc_subnet_rt_info.route_tables[0].route_table_id }}"
+#     vpc_id: "{{ __sap_vm_provision_task_aws_vpc_subnet_rt_info.route_tables[0].vpc_id }}"
+#     route_table_id: "{{ __sap_vm_provision_task_aws_vpc_subnet_rt_info.route_tables[0].route_table_id }}"
 #     purge_subnets: false
 #     purge_routes: false
 #     state: present
@@ -202,7 +234,6 @@
 #   loop: "{{ (groups['nwas_aas'] | default([])) }}"
 #   loop_control:
 #     loop_var: host_node
-#   register: aws_vpc_subnet_rt_route_sap_netweaver_aas
 #   when:
 #     - groups["nwas_ers"] is defined and (groups["nwas_ers"] | length>0)
 
@@ -224,6 +255,8 @@
 
 
 - name: AWS IAM Role - HA-Role-Pacemaker
+  register: __sap_vm_provision_task_aws_iam_role_ha_pacemaker
+  no_log: "{{ __sap_vm_provision_no_log }}"
   amazon.aws.iam_role:
     name: "HA-Role-Pacemaker"
     assume_role_policy_document: |
@@ -240,9 +273,13 @@
               }
           ]
       }
+    access_key: "{{ sap_vm_provision_aws_access_key }}"
+    secret_key: "{{ sap_vm_provision_aws_secret_access_key }}"
 
 # AWS HA for SAP - DataProvider
 - name: AWS IAM Policy - HA-Policy-DataProvider
+  register: __sap_vm_provision_task_aws_iam_policy_dataprovider
+  no_log: "{{ __sap_vm_provision_no_log }}"
   amazon.aws.iam_policy:
     state: present
     iam_type: role
@@ -272,9 +309,13 @@
               }
           ]
       }
+    access_key: "{{ sap_vm_provision_aws_access_key }}"
+    secret_key: "{{ sap_vm_provision_aws_secret_access_key }}"
 
 # AWS HA for SAP - OverlayVirtualIPAgent
 - name: AWS IAM Policy - HA-Policy-OverlayVirtualIPAgent
+  register: __sap_vm_provision_task_aws_iam_policy_overlayip
+  no_log: "{{ __sap_vm_provision_no_log }}"
   amazon.aws.iam_policy:
     state: present
     iam_type: role
@@ -297,13 +338,17 @@
                       "ec2:ReplaceRoute"
                   ],
                   "Effect": "Allow",
-                  "Resource": "arn:aws:ec2:{{ sap_vm_provision_aws_region }}:{{ aws_account_info.account }}:route-table/{{ aws_vpc_subnet_rt_info.route_tables[0].route_table_id }}"
+                  "Resource": "arn:aws:ec2:{{ sap_vm_provision_aws_region }}:{{ __sap_vm_provision_task_aws_account_info.account }}:route-table/{{ __sap_vm_provision_task_aws_vpc_subnet_rt_info.route_tables[0].route_table_id }}"
               }
           ]
       }
+    access_key: "{{ sap_vm_provision_aws_access_key }}"
+    secret_key: "{{ sap_vm_provision_aws_secret_access_key }}"
 
 # AWS HA for SAP - STONITH of SAP HANA
 - name: AWS IAM Policy - HA-Policy-STONITH-SAPHANA
+  register: __sap_vm_provision_task_aws_iam_policy_stonith_saphana
+  no_log: "{{ __sap_vm_provision_no_log }}"
   amazon.aws.iam_policy:
     state: present
     iam_type: role
@@ -332,21 +377,25 @@
                       "ec2:StopInstances"
                   ],
                   "Resource": [
-                      "arn:aws:ec2:{{ sap_vm_provision_aws_region }}:{{ aws_account_info.account }}:instance/{{ hostvars[groups['hana_primary'][0]].ansible_host }}",
-                      "arn:aws:ec2:{{ sap_vm_provision_aws_region }}:{{ aws_account_info.account }}:instance/{{ hostvars[groups['hana_secondary'][0]].ansible_host }}"
+                      "arn:aws:ec2:{{ sap_vm_provision_aws_region }}:{{ __sap_vm_provision_task_aws_account_info.account }}:instance/{{ hostvars[groups['hana_primary'][0]].ansible_host }}",
+                      "arn:aws:ec2:{{ sap_vm_provision_aws_region }}:{{ __sap_vm_provision_task_aws_account_info.account }}:instance/{{ hostvars[groups['hana_secondary'][0]].ansible_host }}"
                   ]
               }
           ]
       }
+    access_key: "{{ sap_vm_provision_aws_access_key }}"
+    secret_key: "{{ sap_vm_provision_aws_secret_access_key }}"
   when: groups["hana_secondary"] is defined and (groups["hana_secondary"]|length>0)
 
 # AWS HA for SAP - STONITH of SAP NWAS
 - name: AWS IAM Policy - HA-Policy-STONITH-SAPNWAS
+  register: __sap_vm_provision_task_aws_iam_policy_stonith_sapnwas
+  no_log: "{{ __sap_vm_provision_no_log }}"
   amazon.aws.iam_policy:
     state: present
     iam_type: role
     iam_name: "HA-Role-Pacemaker"
-    policy_name: "HA-Policy-STONITH-SAPHANA"
+    policy_name: "HA-Policy-STONITH-SAPNWAS"
     policy_json: |
       {
           "Version": "2012-10-17",
@@ -370,74 +419,56 @@
                       "ec2:StopInstances"
                   ],
                   "Resource": [
-                      "arn:aws:ec2:{{ sap_vm_provision_aws_region }}:{{ aws_account_info.account }}:instance/{{ hostvars[groups['nwas_ascs'][0]].ansible_host }}",
-                      "arn:aws:ec2:{{ sap_vm_provision_aws_region }}:{{ aws_account_info.account }}:instance/{{ hostvars[groups['nwas_ers'][0]].ansible_host }}"
+                      "arn:aws:ec2:{{ sap_vm_provision_aws_region }}:{{ __sap_vm_provision_task_aws_account_info.account }}:instance/{{ hostvars[groups['nwas_ascs'][0]].ansible_host }}",
+                      "arn:aws:ec2:{{ sap_vm_provision_aws_region }}:{{ __sap_vm_provision_task_aws_account_info.account }}:instance/{{ hostvars[groups['nwas_ers'][0]].ansible_host }}"
                   ]
               }
           ]
       }
+    access_key: "{{ sap_vm_provision_aws_access_key }}"
+    secret_key: "{{ sap_vm_provision_aws_secret_access_key }}"
   when: groups["nwas_ers"] is defined and (groups["nwas_ers"]|length>0)
-
 
 # Equivalent to
 # aws iam create-instance-profile --instance-profile-name "HA-Instance-Profile-Pacemaker-Cluster"
 # aws iam add-role-to-instance-profile --role-name "HA-Role-Pacemaker" --instance-profile-name "HA-Instance-Profile-Pacemaker-Cluster"
 - name: AWS IAM Instance Profile and attach AWS IAM Role - "HA-Instance-Profile-Pacemaker-Cluster"
+  register: __sap_vm_provision_task_aws_iam_attach_role
+  no_log: "{{ __sap_vm_provision_no_log }}"
   amazon.aws.iam_instance_profile:
     state: present
     name: "HA-Instance-Profile-Pacemaker-Cluster"
     role: "HA-Role-Pacemaker"
     path: "/"
-
-# - name: AWS IAM Instance Profile - "HA-Instance-Profile-Pacemaker-Cluster"
-#   ansible.builtin.command: aws iam create-instance-profile
-#     --instance-profile-name "HA-Instance-Profile-Pacemaker-Cluster"
-#   ignore_errors: true
-
-# - name: AWS IAM Instance Profile attach AWS IAM Role
-#   ansible.builtin.command: aws iam add-role-to-instance-profile
-#     --role-name "HA-Role-Pacemaker"
-#     --instance-profile-name "HA-Instance-Profile-Pacemaker-Cluster"
-#   ignore_errors: true
+    access_key: "{{ sap_vm_provision_aws_access_key }}"
+    secret_key: "{{ sap_vm_provision_aws_secret_access_key }}"
 
 # Equivalent to aws ec2 associate-iam-instance-profile --iam-instance-profile "Name=HA-Instance-Profile-Pacemaker-Cluster" --instance-id {{ hostvars[host_node].ansible_board_asset_tag }}
-- name: AWS EC2 Instances - attach AWS IAM Instance Profile for SAP HANA
+- name: AWS EC2 Instances - associate AWS IAM Instance Profile for SAP HANA
+  register: __sap_vm_provision_task_aws_iam_associate_instance_saphana
+  no_log: "{{ __sap_vm_provision_no_log }}"
   amazon.aws.ec2_instance:
     instance_ids: "{{ hostvars[host_node].ansible_board_asset_tag }}"
     iam_instance_profile: "HA-Instance-Profile-Pacemaker-Cluster"
+    access_key: "{{ sap_vm_provision_aws_access_key }}"
+    secret_key: "{{ sap_vm_provision_aws_secret_access_key }}"
   loop: "{{ [ [ groups['hana_primary'] | default([]) ] , [ groups['hana_secondary'] | default([]) ] ] | flatten | select() }}"
   loop_control:
     loop_var: host_node
   when: groups["hana_secondary"] is defined and (groups["hana_secondary"]|length>0)
   ignore_errors: true
 
-# - name: AWS EC2 Instances - attach AWS IAM Instance Profile for SAP HANA
-#   ansible.builtin.command: aws ec2 associate-iam-instance-profile
-#     --iam-instance-profile "Name=HA-Instance-Profile-Pacemaker-Cluster"
-#     --instance-id {{ hostvars[host_node].ansible_board_asset_tag }}
-#   loop: "{{ [ [ groups['hana_primary'] | default([]) ] , [ groups['hana_secondary'] | default([]) ] ] | flatten | select() }}"
-#   loop_control:
-#     loop_var: host_node
-#   when: groups["hana_secondary"] is defined and (groups["hana_secondary"]|length>0)
-#   ignore_errors: true
-
 # Equivalent to aws ec2 associate-iam-instance-profile --iam-instance-profile "Name=HA-Instance-Profile-Pacemaker-Cluster" --instance-id {{ hostvars[host_node].ansible_board_asset_tag }}
-- name: AWS EC2 Instances - attach AWS IAM Instance Profile for SAP NetWeaver
+- name: AWS EC2 Instances - associate AWS IAM Instance Profile for SAP NetWeaver
+  register: __sap_vm_provision_task_aws_iam_associate_instance_sapnwas
+  no_log: "{{ __sap_vm_provision_no_log }}"
   amazon.aws.ec2_instance:
     instance_ids: "{{ hostvars[host_node].ansible_board_asset_tag }}"
     iam_instance_profile: "HA-Instance-Profile-Pacemaker-Cluster"
+    access_key: "{{ sap_vm_provision_aws_access_key }}"
+    secret_key: "{{ sap_vm_provision_aws_secret_access_key }}"
   loop: "{{ [ [ groups['nwas_ascs'] | default([]) ] , [ groups['nwas_ers'] | default([]) ] , [ groups['nwas_pas'] | default([]) ] , [ groups['nwas_aas'] | default([]) ] ] | flatten | select() }}"
   loop_control:
     loop_var: host_node
   when: groups["nwas_ers"] is defined and (groups["nwas_ers"]|length>0)
   ignore_errors: true
-
-# - name: AWS EC2 Instances - attach AWS IAM Instance Profile for SAP NetWeaver
-#   ansible.builtin.command: aws ec2 associate-iam-instance-profile
-#     --iam-instance-profile "Name=HA-Instance-Profile-Pacemaker-Cluster"
-#     --instance-id {{ hostvars[host_node].ansible_board_asset_tag }}
-#   loop: "{{ [ [ groups['nwas_ascs'] | default([]) ] , [ groups['nwas_ers'] | default([]) ] , [ groups['nwas_pas'] | default([]) ] , [ groups['nwas_aas'] | default([]) ] ] | flatten | select() }}"
-#   loop_control:
-#     loop_var: host_node
-#   when: groups["nwas_ers"] is defined and (groups["nwas_ers"]|length>0)
-#   ignore_errors: true

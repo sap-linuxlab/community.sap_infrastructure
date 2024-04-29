@@ -1,52 +1,64 @@
 ---
 
 - name: Ansible Task block for looped provisioning of Google Cloud CE VMs
-  environment:
-    GCP_AUTH_KIND: "serviceaccount"
-    GCP_SERVICE_ACCOUNT_FILE: "{{ sap_vm_provision_gcp_credentials_json }}"
+  any_errors_fatal: true
+  # Using environment, no_log is ineffective and log will show 'EXEC /bin/sh -c 'ENV_VAR=value python3 /AnsiballZ_ansible_module_name.py && sleep 0'
+  # Therefore do not use environment for secrets, use only for non-sensitive values as this will reduce Ansible Task parameters.
+  # environment:
+  #   GCP_AUTH_KIND: "serviceaccount"
+  #   GCP_SERVICE_ACCOUNT_FILE: "{{ sap_vm_provision_gcp_credentials_json }}"
   block:
 
     # # Must be GlobalOnly or ZonalPreferred. The default is ZonalOnly
     # - name: GCP Project metadata - check VmDnsSetting variable
 
     - name: Identify GCP OS Image
-      register: register_gcp_os_image
+      no_log: "{{ __sap_vm_provision_no_log }}"
+      register: __sap_vm_provision_task_gcp_os_image_info
       google.cloud.gcp_compute_image_info:
         project: "{{ lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_os_image_dictionary')[sap_vm_provision_gcp_ce_vm_host_os_image].project }}"
         filters:
           - family = "{{ lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_os_image_dictionary')[sap_vm_provision_gcp_ce_vm_host_os_image].family }}"
           - -deprecated.state = DEPRECATED
+        auth_kind: "serviceaccount"
+        service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
 
     - name: Identify GCP Network (VPC)
+      no_log: "{{ __sap_vm_provision_no_log }}"
+      register: __sap_vm_provision_task_gcp_vpc_info
       google.cloud.gcp_compute_network_info:
         project: "{{ sap_vm_provision_gcp_project }}"
         filters:
           - name = "{{ sap_vm_provision_gcp_vpc_name }}"
-      register: gcp_vpc_info
+        auth_kind: "serviceaccount"
+        service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
 
     - name: Identify GCP Subnetwork (VPC Subnet)
+      no_log: "{{ __sap_vm_provision_no_log }}"
+      register: __sap_vm_provision_task_gcp_vpc_subnet_info
       google.cloud.gcp_compute_subnetwork_info:
         project: "{{ sap_vm_provision_gcp_project }}"
         region: "{{ sap_vm_provision_gcp_region }}"
         filters:
           - name = "{{ sap_vm_provision_gcp_vpc_subnet_name }}"
-      register: gcp_vpc_subnet_info
+        auth_kind: "serviceaccount"
+        service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
 
     - name: Set fact to hold loop variables from include_tasks
       ansible.builtin.set_fact:
         register_provisioned_host_all: []
 
     - name: Provision hosts to Google Cloud
-      register: register_provisioned_hosts
+      register: __sap_vm_provision_task_provision_host_all_run
       ansible.builtin.include_tasks:
         file: "{{ 'platform_' + sap_vm_provision_iac_type }}/{{ sap_vm_provision_iac_platform }}/execute_provision.yml"
-        apply:
-          environment:
-            GCP_AUTH_KIND: "serviceaccount"
-            GCP_SERVICE_ACCOUNT_FILE: "{{ sap_vm_provision_gcp_credentials_json }}"
+        # apply:
+        #   environment:
+        #     GCP_AUTH_KIND: "serviceaccount"
+        #     GCP_SERVICE_ACCOUNT_FILE: "{{ sap_vm_provision_gcp_credentials_json }}"
 
     - name: Add hosts provisioned to the Ansible Inventory
-      register: register_add_hosts
+      register: __sap_vm_provision_task_provision_host_all_add
       ansible.builtin.add_host:
         name: "{{ add_item[0].host_node }}"
         groups: "{{ add_item[0].sap_system_type + '_' if (add_item[0].sap_system_type != '') }}{{ add_item[0].sap_host_type }}"
@@ -68,65 +80,110 @@
         groups_merged_list: "{{ [ [ groups['hana_primary'] | default([]) ] , [ groups['hana_secondary'] | default([]) ] , [ groups['nwas_ascs'] | default([]) ] , [ groups['nwas_ers'] | default([]) ] , [ groups['nwas_pas'] | default([]) ] , [ groups['nwas_aas'] | default([]) ] ] | flatten | select() }}"
 
     - name: Set Ansible Vars
-      register: register_set_ansible_vars
+      register: __sap_vm_provision_task_ansible_vars_set
       ansible.builtin.include_tasks:
         file: common/set_ansible_vars.yml
 
     - name: Gather GCP VM information
+      no_log: "{{ __sap_vm_provision_no_log }}"
+      register: __sap_vm_provision_task_provision_host_single_info
       google.cloud.gcp_compute_instance_info:
         project: "{{ sap_vm_provision_gcp_project }}"
         zone: "{{ sap_vm_provision_gcp_region_zone }}"
         filters:
           - name = {{ inventory_hostname }}
-      register: gcp_vm_info
+        auth_kind: "serviceaccount"
+        service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
 
     - name: Gather GCP VPC Subnet information
+      no_log: "{{ __sap_vm_provision_no_log }}"
+      register: __sap_vm_provision_task_gcp_vpc_subnet_info
       google.cloud.gcp_compute_subnetwork_info:
         project: "{{ sap_vm_provision_gcp_project }}"
         region: "{{ sap_vm_provision_gcp_region }}"
         filters:
           - name = {{ sap_vm_provision_gcp_vpc_subnet_name }}
-      register: gcp_vpc_subnet_info
+        auth_kind: "serviceaccount"
+        service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
 
     - name: Gather GCP Private DNS information
+      no_log: "{{ __sap_vm_provision_no_log }}"
+      register: __sap_vm_provision_task_gcp_pdns_info
       google.cloud.gcp_dns_managed_zone_info:
         project: "{{ sap_vm_provision_gcp_project }}"
         dns_name: "{{ sap_vm_provision_dns_root_domain }}."
-      register: gcp_pdns_info
+        auth_kind: "serviceaccount"
+        service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
 
     # - name: Gather information about GCP Router and table for the VPC Subnet
+    #   no_log: "{{ __sap_vm_provision_no_log }}"
+    #   register: __sap_vm_provision_task_gcp_router_info
     #   google.cloud.gcp_compute_router_info:
     #     project: "{{ sap_vm_provision_gcp_project }}"
     #     region: "{{ sap_vm_provision_gcp_region }}"
     #     filters:
-    #       - network = "{{ gcp_vpc_info.resources[0].selfLink }}"
+    #       - network = "{{ __sap_vm_provision_task_gcp_vpc_info.resources[0].selfLink }}"
     #     #  - name = sap-vpc-router
-    #   register: gcp_router_info
+    #     auth_kind: "serviceaccount"
+    #     service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
 
     # - name: Verify IP Forwarding for GCP VMs
     #   ansible.builtin.fail:
     #     msg: GCP CE VM does not have IP Forwarding enabled
-    #   when: not gcp_vm_info.resources[0].canIpForward
+    #   when: not __sap_vm_provision_task_provision_host_single_info.resources[0].canIpForward
 
     - name: GCP Private DNS Records for hosts
+      no_log: "{{ __sap_vm_provision_no_log }}"
+      register: __sap_vm_provision_task_gcp_pdns_records
       google.cloud.gcp_dns_resource_record_set:
         state: present
         project: "{{ sap_vm_provision_gcp_project }}"
         managed_zone:
-          name: "{{ gcp_pdns_info.resources[0].name }}"
+          name: "{{ __sap_vm_provision_task_gcp_pdns_info.resources[0].name }}"
           dnsName: "{{ hostvars[inventory_hostname].sap_vm_provision_dns_root_domain }}."
         name: "{{ inventory_hostname }}.{{ hostvars[inventory_hostname].sap_vm_provision_dns_root_domain }}."
         target:
           - "{{ hostvars[inventory_hostname].ansible_host }}"
         type: A
         ttl: 7200
-      register: gcp_pdns_records
-      until: not gcp_pdns_records.failed
+        auth_kind: "serviceaccount"
+        service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
+      until: not __sap_vm_provision_task_gcp_pdns_records.failed
       retries: 5
       delay: 5
 
 #  - ansible.builtin.debug:
-#      var: register_add_hosts.results
+#      var: __sap_vm_provision_task_provision_host_all_add.results
+
+  rescue:
+    # This requires no_log set on each Ansible Task, and not set on the Ansible Task Block
+    # This requires an Ansible Task Block containing the Ansible Tasks for calling
+    # Infrastructure Platform APIs (via Ansible Modules)
+    - name: Show errors in task outputs
+      ansible.builtin.fail:
+        msg: "{{ lookup('ansible.builtin.vars', loop_item) }}"
+      loop:
+        - __sap_vm_provision_task_gcp_os_image_info
+        - __sap_vm_provision_task_gcp_vpc_info
+        - __sap_vm_provision_task_gcp_vpc_subnet_info
+        - __sap_vm_provision_task_provision_host_all_run
+        - __sap_vm_provision_task_provision_host_single_volumes
+        - __sap_vm_provision_task_provision_host_single
+        - __sap_vm_provision_task_provision_host_single_info
+        - __sap_vm_provision_task_provision_host_all_add
+        - __sap_vm_provision_task_gcp_vpc_subnet_info
+        - __sap_vm_provision_task_gcp_pdns_info
+        - __sap_vm_provision_task_gcp_router_info
+        - __sap_vm_provision_task_gcp_pdns_records
+      loop_control:
+        loop_var: loop_item
+        index_var: loop_item_index
+        label: "{{ 'Variable No. ' + (loop_item_index | string) }}"
+      when:
+        - lookup('ansible.builtin.vars', loop_item, default='') | length > 0
+        - not lookup('ansible.builtin.vars', loop_item, default='') is skipped
+        - lookup('ansible.builtin.vars', loop_item, default='') is failed
+
 
 - name: Ansible Task block to execute on target inventory hosts
   delegate_to: "{{ inventory_hostname }}"
@@ -202,26 +259,26 @@
 
 
     - name: Set /etc/hosts
-      register: register_etc_hosts_file
+      register: __sap_vm_provision_task_os_etc_hosts
       ansible.builtin.include_tasks:
         file: common/set_etc_hosts.yml
 
     - name: Set /etc/hosts for HA
-      register: register_etc_hosts_file_ha
+      register: __sap_vm_provision_task_os_etc_hosts_ha
       ansible.builtin.include_tasks:
         file: common/set_etc_hosts_ha.yml
       when:
         - (groups["hana_secondary"] is defined and (groups["hana_secondary"] | length>0)) or (groups["nwas_ers"] is defined and (groups["nwas_ers"] | length>0)) or (groups["anydb_secondary"] is defined and (groups["anydb_secondary"] | length>0))
 
     - name: Set /etc/hosts for Scale-Out
-      register: register_etc_hosts_file_scaleout
+      register: __sap_vm_provision_task_os_etc_hosts_scaleout
       ansible.builtin.include_tasks:
         file: common/set_etc_hosts_scaleout.yml
       when:
-        - (groups["hana_primary"] is defined and (groups["hana_primary"] | length>0)) and (sap_hana_scaleout_active_coordinator is defined or sap_hana_scaleout_active_worker is defined or sap_hana_scaleout_standby is defined)
+        - (groups["hana_primary"] is defined and (groups["hana_primary"] | length>0)) and (sap_vm_provision_calculate_sap_hana_scaleout_active_coordinator is defined or sap_vm_provision_calculate_sap_hana_scaleout_active_worker is defined or sap_vm_provision_calculate_sap_hana_scaleout_standby is defined)
 
     - name: Set vars for sap_storage_setup Ansible Role
-      register: register_ansible_vars_storage
+      register: __sap_vm_provision_task_ansible_vars_storage
       ansible.builtin.include_tasks:
         file: common/set_ansible_vars_storage.yml
 
@@ -242,10 +299,13 @@
 
 - name: Ansible Task block for looped provisioning of High Availability resources for Google Cloud CE VMs
   delegate_to: localhost
+  any_errors_fatal: true
   run_once: true
-  environment:
-    GCP_AUTH_KIND: "serviceaccount"
-    GCP_SERVICE_ACCOUNT_FILE: "{{ sap_vm_provision_gcp_credentials_json }}"
+  # Using environment, no_log is ineffective and log will show 'EXEC /bin/sh -c 'ENV_VAR=value python3 /AnsiballZ_ansible_module_name.py && sleep 0'
+  # Therefore do not use environment for secrets, use only for non-sensitive values as this will reduce Ansible Task parameters.
+  # environment:
+  #   GCP_AUTH_KIND: "serviceaccount"
+  #   GCP_SERVICE_ACCOUNT_FILE: "{{ sap_vm_provision_gcp_credentials_json }}"
   when:
     - sap_ha_pacemaker_cluster_gcp_region_zone is defined
     - (groups["hana_secondary"] is defined and (groups["hana_secondary"] | length>0)) or (groups["nwas_ers"] is defined and (groups["nwas_ers"] | length>0)) or (groups["anydb_secondary"] is defined and (groups["anydb_secondary"] | length>0))
@@ -254,7 +314,41 @@
     - name: Provision High Availability resources for GCP CE hosts
       ansible.builtin.include_tasks:
         file: "{{ 'platform_' + sap_vm_provision_iac_type }}/{{ sap_vm_provision_iac_platform }}/execute_setup_ha.yml"
-        apply:
-          environment:
-            GCP_AUTH_KIND: "serviceaccount"
-            GCP_SERVICE_ACCOUNT_FILE: "{{ sap_vm_provision_gcp_credentials_json }}"
+        # apply:
+        #   environment:
+        #     GCP_AUTH_KIND: "serviceaccount"
+        #     GCP_SERVICE_ACCOUNT_FILE: "{{ sap_vm_provision_gcp_credentials_json }}"
+
+  rescue:
+    # This requires no_log set on each Ansible Task, and not set on the Ansible Task Block
+    # This requires an Ansible Task Block containing the Ansible Tasks for calling
+    # Infrastructure Platform APIs (via Ansible Modules)
+    - name: Show errors in task outputs
+      ansible.builtin.fail:
+        msg: "{{ lookup('ansible.builtin.vars', loop_item) }}"
+      loop:
+        - __sap_vm_provision_task_gcp_vpc_subnet_rt_route_sap_hana
+        - __sap_vm_provision_task_gcp_vpc_subnet_rt_route_sap_netweaver_ascs
+        - __sap_vm_provision_task_gcp_vpc_subnet_rt_route_sap_netweaver_ers
+        - __sap_vm_provision_task_gcp_vpc_subnet_rt_route_sap_netweaver_pas
+        - __sap_vm_provision_task_gcp_vpc_subnet_rt_route_sap_netweaver_aas
+        - __sap_vm_provision_task_gcp_lb_reserved_address
+        - __sap_vm_provision_task_gcp_lb_healthcheck_service
+        - __sap_vm_provision_task_gcp_lb_healthcheck_service_ascs
+        - __sap_vm_provision_task_gcp_lb_healthcheck_service_ers
+        - __sap_vm_provision_task_provision_host_single_info
+        - __sap_vm_provision_task_gcp_lb_instance_group1
+        - __sap_vm_provision_task_gcp_lb_instance_group2
+        - __sap_vm_provision_task_gcp_lb_backend_service_regional
+        - __sap_vm_provision_task_gcp_lb_backend_service_regional_ascs
+        - __sap_vm_provision_task_gcp_lb_backend_service_regional_ers
+        - __sap_vm_provision_task_gcp_lb_forwarding_rule
+        - __sap_vm_provision_task_gcp_lb_reserved_address
+      loop_control:
+        loop_var: loop_item
+        index_var: loop_item_index
+        label: "{{ 'Variable No. ' + (loop_item_index | string) }}"
+      when:
+        - lookup('ansible.builtin.vars', loop_item, default='') | length > 0
+        - not lookup('ansible.builtin.vars', loop_item, default='') is skipped
+        - lookup('ansible.builtin.vars', loop_item, default='') is failed

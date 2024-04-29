@@ -1,12 +1,17 @@
 ---
 # The tasks in this file are executed in a loop over the defined hosts
 
+- name: Ensure short hostname is not longer than 13 characters (see SAP Note 611361)
+  ansible.builtin.assert:
+    that: (inventory_hostname | length | int) <= (13 | int)
+    fail_msg: "FAIL: The length of the hostname is {{ inventory_hostname | length | int }} but must be less or equal to 13 characters!"
+
 # When SAP HANA Scale-Out is used, if host name is not in original specifications then strip suffix node number from host name
 - name: Set fact when performing SAP HANA Scale-Out
   ansible.builtin.set_fact:
     scaleout_origin_host_spec: "{{ inventory_hostname | regex_replace('^(.+?)\\d*$', '\\1') }}"
   when:
-    - sap_hana_scaleout_active_coordinator is defined
+    - sap_vm_provision_calculate_sap_hana_scaleout_active_coordinator is defined
     - not inventory_hostname in lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan].keys()
 
 # Create flat list with names for each volume to be created.
@@ -38,12 +43,16 @@
 # The volume creation task requires the above task to define the parameter
 # which contains the calculated unique device names.
 - name: Provision Google Cloud Persistent Disk volumes for Google Cloud VM filesystems
+  no_log: "{{ __sap_vm_provision_no_log }}"
+  register: __sap_vm_provision_task_provision_host_single_volumes
   google.cloud.gcp_compute_disk:
     state: present
     project: "{{ sap_vm_provision_gcp_project }}"
     zone: "{{ sap_vm_provision_gcp_region_zone }}"
     name: "{{ inventory_hostname + '-vol-' + vol_item.name | replace('_', '-')}}"
     size_gb: "{{ vol_item.size }}"
+    auth_kind: "serviceaccount"
+    service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
   loop: "{{ storage_disks_map }}"
   loop_control:
     loop_var: vol_item
@@ -51,8 +60,7 @@
     label: "{{ vol_item.definition_key }}: {{ vol_item.name }} (size: {{ vol_item.size }})"
   when:
     - vol_item.size > 0
-  register: volume_provisioning
-#  failed_when: "(volume_provisioning.msg is defined) and ('already exists' not in volume_provisioning.msg)"
+#  failed_when: "(__sap_vm_provision_task_provision_host_single_volumes.msg is defined) and ('already exists' not in __sap_vm_provision_task_provision_host_single_volumes.msg)"
 
 
 # Create list of disks to attach to GCP VM
@@ -66,11 +74,11 @@
           'interface': 'SCSI',
           'initialize_params': {
             'disk_type': 'pd-standard',
-            'source_image': register_gcp_os_image.resources[0].selfLink
+            'source_image': __sap_vm_provision_task_gcp_os_image_info.resources[0].selfLink
           }
         }
       ] -%}
-      {% for storage_item in volume_provisioning.results -%}
+      {% for storage_item in __sap_vm_provision_task_provision_host_single_volumes.results -%}
         {% set vol = disks_map.extend([
         {
           'auto_delete': 'true',
@@ -86,7 +94,8 @@
 
 
 - name: Provision Google Cloud VM
-  register: register_provisioned_host_single
+  no_log: "{{ __sap_vm_provision_no_log }}"
+  register: __sap_vm_provision_task_provision_host_single
   google.cloud.gcp_compute_instance:
     state: present
     project: "{{ sap_vm_provision_gcp_project }}"
@@ -96,9 +105,9 @@
     can_ip_forward: "{{ lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan][scaleout_origin_host_spec | default(inventory_hostname)].disable_ip_anti_spoofing }}" # When disable the Anti IP Spoofing = true, then Can IP Forward = true
     network_interfaces:
       - network:
-          selfLink: "{{ gcp_vpc_info.resources[0].selfLink }}"
+          selfLink: "{{ __sap_vm_provision_task_gcp_vpc_info.resources[0].selfLink }}"
         subnetwork:
-          selfLink: "{{ gcp_vpc_subnet_info.resources[0].selfLink }}"
+          selfLink: "{{ __sap_vm_provision_task_gcp_vpc_subnet_info.resources[0].selfLink }}"
     # 'NVME interface is only supported for confidential VMs or the following VM families: [a3-vm, c1-metal, c2-metal, c3-metal, c3-vm, c3d-vm, ct5p-vm, g2-vm, h3-vm, m3-vm, t2a-vm]
     disks: "{{ provisioned_disks_map }}"
     metadata:
@@ -110,26 +119,30 @@
         scopes:
           - "https://www.googleapis.com/auth/cloud-platform" # Allow full access to all Cloud APIs
           # ["compute-rw", "storage-rw", "logging-write", "monitoring-write", "service-control", "service-management"]
+    auth_kind: "serviceaccount"
+    service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
 
 # Required as state: present on Ansible Module gcp_compute_instance does not allow for waiting until VM has booted
 - name: Wait 90 seconds for Google Cloud VM to boot
   ansible.builtin.pause:
     seconds: 90
     prompt: ""
-  when: register_provisioned_host_single.changed
+  when: __sap_vm_provision_task_provision_host_single.changed
 
 - name: Read Google Cloud VM information
+  no_log: "{{ __sap_vm_provision_no_log }}"
+  register: __sap_vm_provision_task_provision_host_single_info
   google.cloud.gcp_compute_instance_info:
     project: "{{ sap_vm_provision_gcp_project }}"
     zone: "{{ sap_vm_provision_gcp_region_zone }}"
     filters:
       - name = {{ inventory_hostname }}
-  register: instance_info
-
+    auth_kind: "serviceaccount"
+    service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
 
 - name: Create fact for delegate host IP
   ansible.builtin.set_fact:
-    provisioned_private_ip: "{{ register_provisioned_host_single.networkInterfaces[0].networkIP }}"
+    provisioned_private_ip: "{{ __sap_vm_provision_task_provision_host_single.networkInterfaces[0].networkIP }}"
 
 
 - name: Copy facts to delegate host
@@ -141,7 +154,7 @@
     delegate_sap_vm_provision_bastion_ssh_port: "{{ sap_vm_provision_bastion_ssh_port }}"
     delegate_sap_vm_provision_ssh_bastion_private_key_file_path: "{{ sap_vm_provision_ssh_bastion_private_key_file_path }}"
     delegate_sap_vm_provision_ssh_host_private_key_file_path: "{{ sap_vm_provision_ssh_host_private_key_file_path }}"
-    delegate_private_ip: "{{ register_provisioned_host_single.networkInterfaces[0].networkIP }}"
+    delegate_private_ip: "{{ __sap_vm_provision_task_provision_host_single.networkInterfaces[0].networkIP }}"
     delegate_hostname: "{{ inventory_hostname }}"
     delegate_sap_vm_provision_dns_root_domain_name: "{{ sap_vm_provision_dns_root_domain }}"
 
@@ -172,26 +185,26 @@
           {{ lookup('ansible.builtin.file', sap_vm_provision_ssh_host_public_key_file_path ) }}
 
     - name: Permit root login
+      register: __sap_vm_provision_task_os_sshd_config
       ansible.builtin.replace:
         path: /etc/ssh/sshd_config
         regexp: '(^PermitRootLogin no)'
         replace: 'PermitRootLogin yes'
-      register: sshd_config
 
     - name: Reload sshd service
       ansible.builtin.service:
         name: sshd
         state: reloaded
       when:
-        - sshd_config.changed
+        - __sap_vm_provision_task_os_sshd_config.changed
 
 ### end of block
 
 
 - name: Append loop value to register
   ansible.builtin.set_fact:
-    register_provisioned_host_single: "{{ register_provisioned_host_single | combine( { 'host_node' : inventory_hostname } , { 'sap_host_type' : lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan][scaleout_origin_host_spec | default(inventory_hostname)].sap_host_type } , { 'sap_system_type' : (lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan][scaleout_origin_host_spec | default(inventory_hostname)].sap_system_type | default('')) } ) }}"
+    __sap_vm_provision_task_provision_host_single: "{{ __sap_vm_provision_task_provision_host_single | combine( { 'host_node' : inventory_hostname } , { 'sap_host_type' : lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan][scaleout_origin_host_spec | default(inventory_hostname)].sap_host_type } , { 'sap_system_type' : (lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan][scaleout_origin_host_spec | default(inventory_hostname)].sap_system_type | default('')) } ) }}"
 
 - name: Append output to merged register
   ansible.builtin.set_fact:
-    register_provisioned_host_all: "{{ register_provisioned_host_all + [register_provisioned_host_single] }}"
+    register_provisioned_host_all: "{{ register_provisioned_host_all + [__sap_vm_provision_task_provision_host_single] }}"

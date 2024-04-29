@@ -1,22 +1,34 @@
 ---
 # The tasks in this file are executed in a loop over the defined hosts
 
+- name: Ensure short hostname is not longer than 13 characters (see SAP Note 611361)
+  ansible.builtin.assert:
+    that: (inventory_hostname | length | int) <= (13 | int)
+    fail_msg: "FAIL: The length of the hostname is {{ inventory_hostname | length | int }} but must be less or equal to 13 characters!"
+
 # When SAP HANA Scale-Out is used, if host name is not in original specifications then strip suffix node number from host name
 - name: Set fact when performing SAP HANA Scale-Out
   ansible.builtin.set_fact:
     scaleout_origin_host_spec: "{{ inventory_hostname | regex_replace('^(.+?)\\d*$', '\\1') }}"
   when:
-    - sap_hana_scaleout_active_coordinator is defined
+    - sap_vm_provision_calculate_sap_hana_scaleout_active_coordinator is defined
     - not inventory_hostname in lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan].keys()
 
 - name: Verify if network interface for MS Azure VM already exists (i.e. re-run)
-  register: register_provisioned_vnic_info
+  no_log: "{{ __sap_vm_provision_no_log }}"
+  register: __sap_vm_provision_task_provision_host_single_vnic_info
   azure.azcollection.azure_rm_networkinterface_info:
     resource_group: "{{ sap_vm_provision_msazure_resource_group_name }}"
     name: "{{ inventory_hostname }}-nic"
+    # Azure credentials
+    subscription_id: "{{ sap_vm_provision_msazure_subscription_id }}"
+    tenant: "{{ sap_vm_provision_msazure_tenant_id }}"
+    client_id: "{{ sap_vm_provision_msazure_app_client_id }}"
+    secret: "{{ sap_vm_provision_msazure_app_client_secret }}"
 
 - name: Provision network interface for MS Azure VM
-  register: register_provisioned_vnic
+  no_log: "{{ __sap_vm_provision_no_log }}"
+  register: __sap_vm_provision_task_provision_host_single_vnic
   azure.azcollection.azure_rm_networkinterface:
     resource_group: "{{ sap_vm_provision_msazure_resource_group_name }}"
     location: "{{ sap_vm_provision_msazure_location_region }}"
@@ -30,10 +42,16 @@
         #private_ip_allocation_method: "Static" # When static, must define the specific IP Address
     enable_accelerated_networking: true
     enable_ip_forwarding: "{{ lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan][scaleout_origin_host_spec | default(inventory_hostname)].disable_ip_anti_spoofing }}" # When disable the Anti IP Spoofing = true, then Enable IP Forwarding = true
-  when: not (register_provisioned_vnic_info.networkinterfaces | length) > 0
+    # Azure credentials
+    subscription_id: "{{ sap_vm_provision_msazure_subscription_id }}"
+    tenant: "{{ sap_vm_provision_msazure_tenant_id }}"
+    client_id: "{{ sap_vm_provision_msazure_app_client_id }}"
+    secret: "{{ sap_vm_provision_msazure_app_client_secret }}"
+  when: not (__sap_vm_provision_task_provision_host_single_vnic_info.networkinterfaces | length) > 0
 
 - name: Provision MS Azure VM
-  register: register_provisioned_host_single
+  no_log: "{{ __sap_vm_provision_no_log }}"
+  register: __sap_vm_provision_task_provision_host_single
   azure.azcollection.azure_rm_virtualmachine:
     resource_group: "{{ sap_vm_provision_msazure_resource_group_name }}"
     location: "{{ sap_vm_provision_msazure_location_region }}"
@@ -42,7 +60,7 @@
     ssh_password_enabled: false
     ssh_public_keys:
       - path: /home/azureadmin/.ssh/authorized_keys
-        key_data: "{{ lookup('ansible.builtin.file', sap_vm_provision_ssh_host_public_key_file_path ) }}" # Replace with import/lookup via Ansible Module azure_rm_ssh_public_key/azure_rm_sshpublickey_info
+        key_data: "{{ __sap_vm_provision_task_msazure_key_pair_name_ssh_host_public_key_value }}"
     vm_size: "{{ lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan][scaleout_origin_host_spec | default(inventory_hostname)].virtual_machine_profile }}"
     image:
       publisher: "{{ lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_os_image_dictionary')[sap_vm_provision_msazure_vm_host_os_image].publisher }}"
@@ -53,26 +71,44 @@
     public_ip_allocation_method: "Disabled"
     managed_disk_type: StandardSSD_LRS
     remove_on_absent: ["all"]
-    vm_identity: "SystemAssigned"
+    vm_identity:
+      type: SystemAssigned
     state: "present"
     started: true
+    # Azure credentials
+    subscription_id: "{{ sap_vm_provision_msazure_subscription_id }}"
+    tenant: "{{ sap_vm_provision_msazure_tenant_id }}"
+    client_id: "{{ sap_vm_provision_msazure_app_client_id }}"
+    secret: "{{ sap_vm_provision_msazure_app_client_secret }}"
 
 
 - name: Read MS Azure VM information
-  register: api_host_info
+  no_log: "{{ __sap_vm_provision_no_log }}"
+  register: __sap_vm_provision_task_provision_host_single_info
   azure.azcollection.azure_rm_virtualmachine_info:
     resource_group: "{{ sap_vm_provision_msazure_resource_group_name }}"
     name: "{{ inventory_hostname }}"
+    # Azure credentials
+    subscription_id: "{{ sap_vm_provision_msazure_subscription_id }}"
+    tenant: "{{ sap_vm_provision_msazure_tenant_id }}"
+    client_id: "{{ sap_vm_provision_msazure_app_client_id }}"
+    secret: "{{ sap_vm_provision_msazure_app_client_secret }}"
 
 - name: Read MS Azure VM attached disks information
-  register: api_host_disks_info
+  no_log: "{{ __sap_vm_provision_no_log }}"
+  register: __sap_vm_provision_task_ansible_facts_host_disks_info
   azure.azcollection.azure_rm_manageddisk_info:
-    managed_by: "{{ api_host_info.vms[0].id }}"
+    managed_by: "{{ __sap_vm_provision_task_provision_host_single_info.vms[0].id }}"
+    # Azure credentials
+    subscription_id: "{{ sap_vm_provision_msazure_subscription_id }}"
+    tenant: "{{ sap_vm_provision_msazure_tenant_id }}"
+    client_id: "{{ sap_vm_provision_msazure_app_client_id }}"
+    secret: "{{ sap_vm_provision_msazure_app_client_secret }}"
 
 
 - name: Create fact for delegate host IP
   ansible.builtin.set_fact:
-    provisioned_private_ip: "{{ register_provisioned_host_single.ansible_facts.azure_vm.properties.networkProfile.networkInterfaces[0].properties.ipConfigurations[0].properties.privateIPAddress }}"
+    provisioned_private_ip: "{{ __sap_vm_provision_task_provision_host_single.ansible_facts.azure_vm.network_profile.network_interfaces[0].properties.ip_configurations[0].private_ip_address }}"
 
 
 - name: Copy facts to delegate host
@@ -86,7 +122,7 @@
     delegate_sap_vm_provision_ssh_host_private_key_file_path: "{{ sap_vm_provision_ssh_host_private_key_file_path }}"
 
 - name: Collect only facts about hardware
-  register: host_disks_info
+  register: __sap_vm_provision_task_ansible_facts_host_disks_info
   ansible.builtin.setup:
     gather_subset:
       - hardware
@@ -105,14 +141,14 @@
 
 #- name: Debug Ansible Facts devices used list
 #  ansible.builtin.debug:
-#    msg: "{{ host_disks_info.ansible_facts.ansible_device_links.ids.keys() | list }}"
+#    msg: "{{ __sap_vm_provision_task_ansible_facts_host_disks_info.ansible_facts.ansible_device_links.ids.keys() | list }}"
 
 
 - name: Set fact for available storage volume device names
   ansible.builtin.set_fact:
     available_volumes: |-
       {% set letters = 'bcdefghijklmnopqrstuvwxyz' %}
-      {% set ansible_facts_devices_used_list = host_disks_info.ansible_facts.ansible_device_links.ids.keys() | list %}
+      {% set ansible_facts_devices_used_list = __sap_vm_provision_task_ansible_facts_host_disks_info.ansible_facts.ansible_device_links.ids.keys() | list %}
       {% set volumes = [] %}
       {%- for letter in letters -%}
         {% for device in ansible_facts_devices_used_list -%}
@@ -165,6 +201,8 @@
 # The volume creation task requires the above task to define the parameter
 # which contains the calculated unique device names.
 - name: Provision Azure Managed Disk volumes for Azure VM filesystems
+  no_log: "{{ __sap_vm_provision_no_log }}"
+  register: __sap_vm_provision_task_provision_host_single_volumes
   azure.azcollection.azure_rm_manageddisk:
     resource_group: "{{ sap_vm_provision_msazure_resource_group_name }}"
     location: "{{ sap_vm_provision_msazure_location_region }}"
@@ -175,6 +213,11 @@
         resource_group: "{{ sap_vm_provision_msazure_resource_group_name }}"
     # Premium SSD size (P), Standard SSD size (E), Standard HDD size (S)
     storage_account_type: "{% if vol_item.type | regex_search('^P.*') %}Premium_LRS{% elif vol_item.type | regex_search('^E.*') %}StandardSSD_LRS{% elif vol_item.type | regex_search('^S.*') %}Standard_LRS{% else %}StandardSSD_LRS{% endif %}" # Standard_LRS, StandardSSD_LRS, Premium_LRS, UltraSSD_LRS
+    # Azure credentials
+    subscription_id: "{{ sap_vm_provision_msazure_subscription_id }}"
+    tenant: "{{ sap_vm_provision_msazure_tenant_id }}"
+    client_id: "{{ sap_vm_provision_msazure_app_client_id }}"
+    secret: "{{ sap_vm_provision_msazure_app_client_secret }}"
   loop: "{{ filesystem_volume_map }}"
   loop_control:
     loop_var: vol_item
@@ -183,20 +226,19 @@
   when:
     - vol_item.fstype is defined
     - vol_item.size > 0
-  register: volume_provisioning
-  failed_when: "(volume_provisioning.msg is defined) and ('already exists' not in volume_provisioning.msg)"
+  failed_when: "(__sap_vm_provision_task_provision_host_single_volumes.msg is defined) and ('already exists' not in __sap_vm_provision_task_provision_host_single_volumes.msg)"
 
 
 - name: Add host facts
   ansible.builtin.set_fact:
     filesystem_volume_map: "{{ filesystem_volume_map }}"
-    volume_provisioning: "{{ volume_provisioning }}"
+    __sap_vm_provision_task_provision_host_single_volumes: "{{ __sap_vm_provision_task_provision_host_single_volumes }}"
   delegate_to: "{{ inventory_hostname }}"
   delegate_facts: true
 
 - name: Create fact for delegate host IP
   ansible.builtin.set_fact:
-    provisioned_private_ip: "{{ register_provisioned_host_single.ansible_facts.azure_vm.properties.networkProfile.networkInterfaces[0].properties.ipConfigurations[0].properties.privateIPAddress }}"
+    provisioned_private_ip: "{{ __sap_vm_provision_task_provision_host_single.ansible_facts.azure_vm.network_profile.network_interfaces[0].properties.ip_configurations[0].private_ip_address }}"
 
 - name: Copy facts to delegate host
   delegate_to: "{{ provisioned_private_ip }}"
@@ -207,10 +249,9 @@
     delegate_sap_vm_provision_bastion_ssh_port: "{{ sap_vm_provision_bastion_ssh_port }}"
     delegate_sap_vm_provision_ssh_bastion_private_key_file_path: "{{ sap_vm_provision_ssh_bastion_private_key_file_path }}"
     delegate_sap_vm_provision_ssh_host_private_key_file_path: "{{ sap_vm_provision_ssh_host_private_key_file_path }}"
-    delegate_private_ip: "{{ register_provisioned_host_single.ansible_facts.azure_vm.properties.networkProfile.networkInterfaces[0].properties.ipConfigurations[0].properties.privateIPAddress }}"
+    delegate_private_ip: "{{ __sap_vm_provision_task_provision_host_single.ansible_facts.azure_vm.network_profile.network_interfaces[0].properties.ip_configurations[0].private_ip_address }}"
     delegate_hostname: "{{ inventory_hostname }}"
     delegate_sap_vm_provision_dns_root_domain_name: "{{ sap_vm_provision_dns_root_domain }}"
-    delegate_sap_vm_provision_ssh_host_public_key_file_path: "{{ lookup('ansible.builtin.file', sap_vm_provision_ssh_host_public_key_file_path ) }}" # Replace with import/lookup via Ansible Module azure_rm_ssh_public_key/azure_rm_sshpublickey_info
 
 
 ### begin block, parameters will be applied to each task within the block
@@ -233,26 +274,26 @@
         replace: 'ssh-rsa'
 
     - name: Permit root login
+      register: __sap_vm_provision_task_os_sshd_config
       ansible.builtin.replace:
         path: /etc/ssh/sshd_config
         regexp: '(^PermitRootLogin no)'
         replace: 'PermitRootLogin yes'
-      register: sshd_config
 
     - name: Reload sshd service
       ansible.builtin.service:
         name: sshd
         state: reloaded
       when:
-        - sshd_config.changed
+        - __sap_vm_provision_task_os_sshd_config.changed
 
 ### end of block
 
 
 - name: Append loop value to register
   ansible.builtin.set_fact:
-    register_provisioned_host_single: "{{ register_provisioned_host_single | combine( { 'host_node' : inventory_hostname } , { 'sap_host_type' : lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan][scaleout_origin_host_spec | default(inventory_hostname)].sap_host_type } , { 'sap_system_type' : (lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan][scaleout_origin_host_spec | default(inventory_hostname)].sap_system_type | default('')) } ) }}"
+    __sap_vm_provision_task_provision_host_single: "{{ __sap_vm_provision_task_provision_host_single | combine( { 'host_node' : inventory_hostname } , { 'sap_host_type' : lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan][scaleout_origin_host_spec | default(inventory_hostname)].sap_host_type } , { 'sap_system_type' : (lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan][scaleout_origin_host_spec | default(inventory_hostname)].sap_system_type | default('')) } ) }}"
 
 - name: Append output to merged register
   ansible.builtin.set_fact:
-    register_provisioned_host_all: "{{ register_provisioned_host_all + [register_provisioned_host_single] }}"
+    register_provisioned_host_all: "{{ register_provisioned_host_all + [__sap_vm_provision_task_provision_host_single] }}"

@@ -1,30 +1,38 @@
 ---
 # The tasks in this file are executed in a loop over the defined hosts
 
+- name: Ensure short hostname is not longer than 13 characters (see SAP Note 611361)
+  ansible.builtin.assert:
+    that: (inventory_hostname | length | int) <= (13 | int)
+    fail_msg: "FAIL: The length of the hostname is {{ inventory_hostname | length | int }} but must be less or equal to 13 characters!"
+
 # When SAP HANA Scale-Out is used, if host name is not in original specifications then strip suffix node number from host name
 - name: Set fact when performing SAP HANA Scale-Out
   ansible.builtin.set_fact:
     scaleout_origin_host_spec: "{{ inventory_hostname | regex_replace('^(.+?)\\d*$', '\\1') }}"
   when:
-    - sap_hana_scaleout_active_coordinator is defined
+    - sap_vm_provision_calculate_sap_hana_scaleout_active_coordinator is defined
     - not inventory_hostname in lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan].keys()
 
 
 # Status will change from Building > Warning (VM = Active, Health = Warning) > Active. The Ansible Task will continue once the Active status has been reached.
 - name: Provision IBM Power Virtual Server instance on IBM Cloud
-  register: register_provision_host_single
+  no_log: "{{ __sap_vm_provision_no_log }}"
+  register: __sap_vm_provision_task_provision_host_single
   ibm.cloudcollection.ibm_pi_instance:
-    pi_cloud_instance_id: "{{ register_ibmcloud_power_iaas_workspace_service_instance.resource.guid }}" # must be GUID, not CRN
+    pi_cloud_instance_id: "{{ __sap_vm_provision_task_ibmcloud_pi_workspace_service_instance.resource.guid }}" # must be GUID, not CRN
 
     pi_instance_name: "{{ inventory_hostname }}"
-    pi_image_id: "{{ register_provisioned_os_image.resource.id if register_provisioned_os_image.rc == 0 else register_existing_os_image.resource.id }}"
+    pi_image_id: "{{ __sap_vm_provision_task_ibmcloud_pi_os_image_existing.resource.id }}"
 
-    pi_sys_type: e980
+    pi_sys_type: "{{ lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan][scaleout_origin_host_spec | default(inventory_hostname)].ibmcloud_powervs_hardware_machine_type }}"
+
     pi_sap_profile_id: "{{ lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan][scaleout_origin_host_spec | default(inventory_hostname)].virtual_machine_profile }}"
+
     pi_key_pair_name: "{{ sap_vm_provision_ibmcloud_powervs_key_pair_name_ssh_host_public_key }}"
 
     pi_network:
-      - network_id: "{{ register_ibmcloud_pi_subnet.resource.id }}"
+      - network_id: "{{ __sap_vm_provision_task_ibmcloud_pi_subnet.resource.id }}"
 
     pi_storage_type: tier1
     #pi_volume_ids: []
@@ -32,12 +40,16 @@
     pi_pin_policy: none
     pi_health_status: OK
 
+    ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
+
 # Use check to avoid idempotency issues with legacy ibm.cloudcollection Ansible Collection (until ibm.cloud Ansible Collection is out of beta)
 - name: Check IBM Power Virtual Server instance on IBM Cloud
-  register: register_provisioned_host_single
+  no_log: "{{ __sap_vm_provision_no_log }}"
+  register: __sap_vm_provision_task_provision_host_single
   ibm.cloudcollection.ibm_pi_instance_info:
-    pi_cloud_instance_id: "{{ register_ibmcloud_power_iaas_workspace_service_instance.resource.guid }}" # must be GUID, not CRN
+    pi_cloud_instance_id: "{{ __sap_vm_provision_task_ibmcloud_pi_workspace_service_instance.resource.guid }}" # must be GUID, not CRN
     pi_instance_name: "{{ inventory_hostname }}"
+    ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
 
 
 # Create flat list with names for each volume to be created.
@@ -66,15 +78,17 @@
 
 
 - name: Provision IBM Power Infrastructure Block Storage volumes for IBM Power VS instance filesystems
-  register: register_provisioned_volumes
+  no_log: "{{ __sap_vm_provision_no_log }}"
+  register: __sap_vm_provision_task_provision_host_single_volumes
   ibm.cloudcollection.ibm_pi_volume:
-    pi_cloud_instance_id: "{{ register_ibmcloud_power_iaas_workspace_service_instance.resource.guid }}" # must be GUID, not CRN
+    pi_cloud_instance_id: "{{ __sap_vm_provision_task_ibmcloud_pi_workspace_service_instance.resource.guid }}" # must be GUID, not CRN
     pi_volume_name: "{{ inventory_hostname + '-vol-' + vol_item.name | replace('_', '-')}}"
     pi_volume_type: "{{ vol_item.type }}"
     pi_volume_size: "{{ vol_item.size }}"
     pi_volume_shareable: false
     pi_replication_enabled: false
     #delete_on_termination: true
+    ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
   loop: "{{ storage_disks_map }}"
   loop_control:
     loop_var: vol_item
@@ -83,15 +97,17 @@
   when:
     - vol_item.size > 0
   failed_when:
-    - not register_provisioned_volumes.rc == 0
-    - not 'already exists' in register_provisioned_volumes.stderr
+    - not __sap_vm_provision_task_provision_host_single_volumes.rc == 0
+    - not 'already exists' in __sap_vm_provision_task_provision_host_single_volumes.stderr
 
 # Use check to avoid idempotency issues with legacy ibm.cloudcollection Ansible Collection (until ibm.cloud Ansible Collection is out of beta)
 - name: Check status of IBM Power Infrastructure Block Storage volumes
-  register: register_volumes
+  no_log: "{{ __sap_vm_provision_no_log }}"
+  register: __sap_vm_provision_task_provision_host_single_volumes_info
   ibm.cloudcollection.ibm_pi_volume_info:
-    pi_cloud_instance_id: "{{ register_ibmcloud_power_iaas_workspace_service_instance.resource.guid }}" # must be GUID, not CRN
+    pi_cloud_instance_id: "{{ __sap_vm_provision_task_ibmcloud_pi_workspace_service_instance.resource.guid }}" # must be GUID, not CRN
     pi_volume_name: "{{ inventory_hostname + '-vol-' + vol_item.name | replace('_', '-')}}"
+    ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
   loop: "{{ storage_disks_map }}"
   loop_control:
     loop_var: vol_item
@@ -100,44 +116,48 @@
   when:
     - vol_item.size > 0
   retries: 5
-  until: register_volumes.rc == 0 and (register_volumes.resource is defined and register_volumes.resource.state == "available", "in-use")
+  until: __sap_vm_provision_task_provision_host_single_volumes_info.rc == 0 and (__sap_vm_provision_task_provision_host_single_volumes_info.resource is defined and __sap_vm_provision_task_provision_host_single_volumes_info.resource.state == "available", "in-use")
   delay: 20
 
 - name: Attach IBM Power Infrastructure Block Storage volumes as filesystem for IBM Power VS instance
-  register: register_attached_volumes
+  no_log: "{{ __sap_vm_provision_no_log }}"
+  register: __sap_vm_provision_task_provision_host_single_volume_attachments
   ibm.cloudcollection.ibm_pi_volume_attach:
-    pi_cloud_instance_id: "{{ register_ibmcloud_power_iaas_workspace_service_instance.resource.guid }}" # must be GUID, not CRN
+    pi_cloud_instance_id: "{{ __sap_vm_provision_task_ibmcloud_pi_workspace_service_instance.resource.guid }}" # must be GUID, not CRN
     pi_volume_id: "{{ vol_item.resource.id }}"
-    pi_instance_id: "{{ register_provisioned_host_single.resource.id }}"
-  loop: "{{ register_volumes.results }}"
+    pi_instance_id: "{{ __sap_vm_provision_task_provision_host_single.resource.id }}"
+    ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
+  loop: "{{ __sap_vm_provision_task_provision_host_single_volumes_info.results }}"
   loop_control:
     loop_var: vol_item
     index_var: vol_item_index
     label: "{{ vol_item.resource.pi_volume_name }}"
   failed_when:
-    - not register_attached_volumes.rc == 0
-    - not 'volume cannot be attached in the current state' in register_attached_volumes.stderr # when already attached message
+    - not __sap_vm_provision_task_provision_host_single_volume_attachments.rc == 0
+    - not 'volume cannot be attached in the current state' in __sap_vm_provision_task_provision_host_single_volume_attachments.stderr # when already attached message
   retries: 1
-  until: register_attached_volumes is success
+  until: __sap_vm_provision_task_provision_host_single_volume_attachments is success
   delay: 10
 
 - name: Read IBM Power Virtual Server information
-  register: instance_info
+  no_log: "{{ __sap_vm_provision_no_log }}"
+  register: __sap_vm_provision_task_provision_host_single_info
   ibm.cloudcollection.ibm_pi_instance_info:
-    pi_cloud_instance_id: "{{ register_ibmcloud_power_iaas_workspace_service_instance.resource.guid }}" # must be GUID, not CRN
-    pi_instance_name: "{{ register_provisioned_host_single.resource.pi_instance_name }}"
+    pi_cloud_instance_id: "{{ __sap_vm_provision_task_ibmcloud_pi_workspace_service_instance.resource.guid }}" # must be GUID, not CRN
+    pi_instance_name: "{{ __sap_vm_provision_task_provision_host_single.resource.pi_instance_name }}"
+    ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
 
 - name: Add host facts
   ansible.builtin.set_fact:
-    volume_provisioning: "{{ register_volumes }}"
-    instance_info: "{{ instance_info }}"
+    __sap_vm_provision_task_provision_host_single_volumes: "{{ __sap_vm_provision_task_provision_host_single_volumes_info }}"
+    __sap_vm_provision_task_provision_host_single_info: "{{ __sap_vm_provision_task_provision_host_single_info }}"
   delegate_to: "{{ inventory_hostname }}"
   delegate_facts: true
 
 
 - name: Create fact for delegate host IP
   ansible.builtin.set_fact:
-    provisioned_private_ip: "{{ register_provisioned_host_single.resource.addresses[0].ip }}"
+    provisioned_private_ip: "{{ __sap_vm_provision_task_provision_host_single.resource.networks[0].ip }}"
 
 
 - name: Copy facts to delegate host
@@ -149,7 +169,7 @@
     delegate_sap_vm_provision_bastion_ssh_port: "{{ sap_vm_provision_bastion_ssh_port }}"
     delegate_sap_vm_provision_ssh_bastion_private_key_file_path: "{{ sap_vm_provision_ssh_bastion_private_key_file_path }}"
     delegate_sap_vm_provision_ssh_host_private_key_file_path: "{{ sap_vm_provision_ssh_host_private_key_file_path }}"
-    delegate_private_ip: "{{ register_provisioned_host_single.resource.addresses[0].ip }}"
+    delegate_private_ip: "{{ __sap_vm_provision_task_provision_host_single.resource.networks[0].ip }}"
     delegate_hostname: "{{ inventory_hostname }}"
     delegate_sap_vm_provision_dns_root_domain_name: "{{ sap_vm_provision_dns_root_domain }}"
 
@@ -177,29 +197,29 @@
         dest: /root/.ssh/authorized_keys
         mode: '0600'
         content: |
-          {{ register_ibmcloud_pi_ssh_public_key.resource.ssh_key }}
+          {{ __sap_vm_provision_task_ibmcloud_pi_ssh_public_key.resource.ssh_key }}
 
     - name: Permit root login
+      register: __sap_vm_provision_task_os_sshd_config
       ansible.builtin.replace:
         path: /etc/ssh/sshd_config
         regexp: '(^PermitRootLogin no)'
         replace: 'PermitRootLogin yes'
-      register: sshd_config
 
     - name: Reload sshd service
       ansible.builtin.service:
         name: sshd
         state: reloaded
       when:
-        - sshd_config.changed
+        - __sap_vm_provision_task_os_sshd_config.changed
 
 ### end of block
 
 
 - name: Append loop value to register
   ansible.builtin.set_fact:
-    register_provisioned_host_single: "{{ register_provisioned_host_single | combine( { 'host_node' : inventory_hostname } , { 'sap_host_type' : lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan][scaleout_origin_host_spec | default(inventory_hostname)].sap_host_type } , { 'sap_system_type' : (lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan][scaleout_origin_host_spec | default(inventory_hostname)].sap_system_type | default('')) } ) }}"
+    __sap_vm_provision_task_provision_host_single: "{{ __sap_vm_provision_task_provision_host_single | combine( { 'host_node' : inventory_hostname } , { 'sap_host_type' : lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan][scaleout_origin_host_spec | default(inventory_hostname)].sap_host_type } , { 'sap_system_type' : (lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan][scaleout_origin_host_spec | default(inventory_hostname)].sap_system_type | default('')) } ) }}"
 
 - name: Append output to merged register
   ansible.builtin.set_fact:
-    register_provisioned_host_all: "{{ register_provisioned_host_all + [register_provisioned_host_single] }}"
+    register_provisioned_host_all: "{{ register_provisioned_host_all + [__sap_vm_provision_task_provision_host_single] }}"

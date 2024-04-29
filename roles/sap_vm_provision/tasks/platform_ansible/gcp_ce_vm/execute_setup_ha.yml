@@ -4,34 +4,40 @@
 # Virtual IP Address also uses subnet netmask /32 CIDR, otherwise subnet traffic attempts to route through the Load Balancer Backend Service
 
 # - name: GCP append route for SAP HANA HA (route must be outside of existing VPC Subnet Range/s)
+#   no_log: "{{ __sap_vm_provision_no_log }}"
+#   register: __sap_vm_provision_task_gcp_vpc_subnet_rt_route_sap_hana
 #   google.cloud.gcp_compute_route:
 #     state: present
 #     project: "{{ sap_vm_provision_gcp_project }}"
 #     name: "{{ sap_swpm_db_host }}-vip"
 #     dest_range: "{{ (sap_ha_pacemaker_cluster_vip_hana_primary_ip_address | default('192.168.1.90/32')) | regex_replace('/.*', '') }}"
 #     next_hop_instance:
-#       selfLink: "{{ gcp_vm_info | json_query('results[*].resources[?name==`' + host_node + '`].selfLink') | flatten | join(' ') }}"
+#       selfLink: "{{ __sap_vm_provision_task_provision_host_single_info | json_query('results[*].resources[?name==`' + host_node + '`].selfLink') | flatten | join(' ') }}"
 #     network:
-#       selfLink: "{{ gcp_vpc_info.resources[0].selfLink }}"
+#       selfLink: "{{ __sap_vm_provision_task_gcp_vpc_info.resources[0].selfLink }}"
+#     auth_kind: "serviceaccount"
+#     service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
 #   loop: "{{ (groups['hana_primary'] | default([])) }}"
 #   loop_control:
 #     loop_var: host_node
-#   register: gcp_vpc_subnet_rt_route_sap_hana
 #   when:
 #     - groups["hana_secondary"] is defined and (groups["hana_secondary"] | length>0)
 
 - name: GCP Private DNS Record for SAP HANA HA Virtual Hostname
+  no_log: "{{ __sap_vm_provision_no_log }}"
   google.cloud.gcp_dns_resource_record_set:
     state: present
     project: "{{ sap_vm_provision_gcp_project }}"
     managed_zone:
-      name: "{{ gcp_pdns_info.resources[0].name }}"
+      name: "{{ __sap_vm_provision_task_gcp_pdns_info.resources[0].name }}"
       dnsName: "{{ hostvars[host_node].sap_vm_provision_dns_root_domain }}."
     name: "{{ sap_swpm_db_host }}.{{ hostvars[host_node].sap_vm_provision_dns_root_domain }}."
     target:
       - "{{ (sap_ha_pacemaker_cluster_vip_hana_primary_ip_address | default('192.168.1.90/32')) | regex_replace('/.*', '') }}"
     type: A
     ttl: 7200
+    auth_kind: "serviceaccount"
+    service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
   loop: "{{ (groups['hana_primary'] | default([])) }}"
   loop_control:
     loop_var: host_node
@@ -40,34 +46,40 @@
 
 
 # - name: GCP append route for SAP AnyDB HA (route must be outside of existing VPC Subnet Range/s)
+#   no_log: "{{ __sap_vm_provision_no_log }}"
+#   register: __sap_vm_provision_task_gcp_vpc_subnet_rt_route_sap_hana
 #   google.cloud.gcp_compute_route:
 #     state: present
 #     project: "{{ sap_vm_provision_gcp_project }}"
 #     name: "{{ sap_swpm_db_host }}-vip"
 #     dest_range: "{{ (sap_vm_temp_vip_anydb_primary | default('192.168.1.90/32')) | regex_replace('/.*', '') }}"
 #     next_hop_instance:
-#       selfLink: "{{ gcp_vm_info | json_query('results[*].resources[?name==`' + host_node + '`].selfLink') | flatten | join(' ') }}"
+#       selfLink: "{{ __sap_vm_provision_task_provision_host_single_info | json_query('results[*].resources[?name==`' + host_node + '`].selfLink') | flatten | join(' ') }}"
 #     network:
-#       selfLink: "{{ gcp_vpc_info.resources[0].selfLink }}"
+#       selfLink: "{{ __sap_vm_provision_task_gcp_vpc_info.resources[0].selfLink }}"
+#     auth_kind: "serviceaccount"
+#     service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
 #   loop: "{{ (groups['anydb_primary'] | default([])) }}"
 #   loop_control:
 #     loop_var: host_node
-#   register: gcp_vpc_subnet_rt_route_sap_hana
 #   when:
 #     - groups["hana_secondary"] is defined and (groups["hana_secondary"] | length>0)
 
 - name: GCP Private DNS Record for SAP AnyDB HA Virtual Hostname
+  no_log: "{{ __sap_vm_provision_no_log }}"
   google.cloud.gcp_dns_resource_record_set:
     state: present
     project: "{{ sap_vm_provision_gcp_project }}"
     managed_zone:
-      name: "{{ gcp_pdns_info.resources[0].name }}"
+      name: "{{ __sap_vm_provision_task_gcp_pdns_info.resources[0].name }}"
       dnsName: "{{ hostvars[host_node].sap_vm_provision_dns_root_domain }}."
     name: "{{ sap_swpm_db_host }}.{{ hostvars[host_node].sap_vm_provision_dns_root_domain }}."
     target:
       - "{{ (sap_vm_temp_vip_anydb_primary | default('192.168.1.90/32')) | regex_replace('/.*', '') }}"
     type: A
     ttl: 7200
+    auth_kind: "serviceaccount"
+    service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
   loop: "{{ (groups['anydb_primary'] | default([])) }}"
   loop_control:
     loop_var: host_node
@@ -76,34 +88,40 @@
 
 
 # - name: GCP append route for SAP NetWeaver ASCS HA (route must be outside of existing VPC Subnet Range/s)
+#   no_log: "{{ __sap_vm_provision_no_log }}"
+#   register: __sap_vm_provision_task_gcp_vpc_subnet_rt_route_sap_netweaver_ascs
 #   google.cloud.gcp_compute_route:
 #     state: present
 #     project: "{{ sap_vm_provision_gcp_project }}"
 #     name: "{{ sap_swpm_ascs_instance_hostname }}-vip"
 #     dest_range: "{{ (sap_ha_pacemaker_cluster_vip_nwas_abap_ascs_ip_address | default('192.168.2.10/32')) | regex_replace('/.*', '') }}"
 #     next_hop_instance:
-#       selfLink: "{{ gcp_vm_info | json_query('results[*].resources[?name==`' + host_node + '`].selfLink') | flatten | join(' ') }}"
+#       selfLink: "{{ __sap_vm_provision_task_provision_host_single_info | json_query('results[*].resources[?name==`' + host_node + '`].selfLink') | flatten | join(' ') }}"
 #     network:
-#       selfLink: "{{ gcp_vpc_info.resources[0].selfLink }}"
+#       selfLink: "{{ __sap_vm_provision_task_gcp_vpc_info.resources[0].selfLink }}"
+#     auth_kind: "serviceaccount"
+#     service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
 #   loop: "{{ (groups['nwas_ascs'] | default([])) }}"
 #   loop_control:
 #     loop_var: host_node
-#   register: gcp_vpc_subnet_rt_route_sap_netweaver_ascs
 #   when:
 #     - groups["nwas_ers"] is defined and (groups["nwas_ers"] | length>0)
 
 - name: GCP Private DNS Record for SAP NetWeaver ASCS HA Virtual Hostname
+  no_log: "{{ __sap_vm_provision_no_log }}"
   google.cloud.gcp_dns_resource_record_set:
     state: present
     project: "{{ sap_vm_provision_gcp_project }}"
     managed_zone:
-      name: "{{ gcp_pdns_info.resources[0].name }}"
+      name: "{{ __sap_vm_provision_task_gcp_pdns_info.resources[0].name }}"
       dnsName: "{{ hostvars[host_node].sap_vm_provision_dns_root_domain }}."
     name: "{{ sap_swpm_ascs_instance_hostname }}.{{ hostvars[host_node].sap_vm_provision_dns_root_domain }}."
     target:
       - "{{ (sap_ha_pacemaker_cluster_vip_nwas_abap_ascs_ip_address | default('192.168.2.10/32')) | regex_replace('/.*', '') }}"
     type: A
     ttl: 7200
+    auth_kind: "serviceaccount"
+    service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
   loop: "{{ (groups['nwas_ascs'] | default([])) }}"
   loop_control:
     loop_var: host_node
@@ -112,34 +130,40 @@
 
 
 # - name: GCP append route for SAP NetWeaver ERS HA
+#   no_log: "{{ __sap_vm_provision_no_log }}"
+#   register: __sap_vm_provision_task_gcp_vpc_subnet_rt_route_sap_netweaver_ers
 #   google.cloud.gcp_compute_route:
 #     state: present
 #     project: "{{ sap_vm_provision_gcp_project }}"
 #     name: "{{ sap_swpm_ers_instance_hostname }}-vip"
 #     dest_range: "{{ (sap_ha_pacemaker_cluster_vip_nwas_abap_ers_ip_address | default('192.168.2.11/32')) | regex_replace('/.*', '') }}"
 #     next_hop_instance:
-#       selfLink: "{{ gcp_vm_info | json_query('results[*].resources[?name==`' + host_node + '`].selfLink') | flatten | join(' ') }}"
+#       selfLink: "{{ __sap_vm_provision_task_provision_host_single_info | json_query('results[*].resources[?name==`' + host_node + '`].selfLink') | flatten | join(' ') }}"
 #     network:
-#       selfLink: "{{ gcp_vpc_info.resources[0].selfLink }}"
+#       selfLink: "{{ __sap_vm_provision_task_gcp_vpc_info.resources[0].selfLink }}"
+#     auth_kind: "serviceaccount"
+#     service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
 #   loop: "{{ (groups['nwas_ers'] | default([])) }}"
 #   loop_control:
 #     loop_var: host_node
-#   register: gcp_vpc_subnet_rt_route_sap_netweaver_ers
 #   when:
 #     - groups["nwas_ers"] is defined and (groups["nwas_ers"] | length>0)
 
 - name: GCP Private DNS Record for SAP NetWeaver ERS HA Virtual Hostname
+  no_log: "{{ __sap_vm_provision_no_log }}"
   google.cloud.gcp_dns_resource_record_set:
     state: present
     project: "{{ sap_vm_provision_gcp_project }}"
     managed_zone:
-      name: "{{ gcp_pdns_info.resources[0].name }}"
+      name: "{{ __sap_vm_provision_task_gcp_pdns_info.resources[0].name }}"
       dnsName: "{{ hostvars[host_node].sap_vm_provision_dns_root_domain }}."
     name: "{{ sap_swpm_ers_instance_hostname }}.{{ hostvars[host_node].sap_vm_provision_dns_root_domain }}."
     target:
       - "{{ (sap_ha_pacemaker_cluster_vip_nwas_abap_ers_ip_address | default('192.168.2.11/32')) | regex_replace('/.*', '') }}"
     type: A
     ttl: 7200
+    auth_kind: "serviceaccount"
+    service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
   loop: "{{ (groups['nwas_ers'] | default([])) }}"
   loop_control:
     loop_var: host_node
@@ -150,34 +174,40 @@
 ## For HA of PAS and AAS, if required
 
 # - name: GCP append route for SAP NetWeaver PAS HA
+#   no_log: "{{ __sap_vm_provision_no_log }}"
+#   register: __sap_vm_provision_task_gcp_vpc_subnet_rt_route_sap_netweaver_pas
 #   google.cloud.gcp_compute_route:
 #     state: present
 #     project: "{{ sap_vm_provision_gcp_project }}"
 #     name: "{{ sap_swpm_pas_instance_hostname }}-vip"
 #     dest_range: "{{ (sap_ha_pacemaker_cluster_vip_nwas_abap_pas_ip_address | default('192.168.2.12/32')) | regex_replace('/.*', '') }}"
 #     next_hop_instance:
-#       selfLink: "{{ gcp_vm_info | json_query('results[*].resources[?name==`' + host_node + '`].selfLink') | flatten | join(' ') }}"
+#       selfLink: "{{ __sap_vm_provision_task_provision_host_single_info | json_query('results[*].resources[?name==`' + host_node + '`].selfLink') | flatten | join(' ') }}"
 #     network:
-#       selfLink: "{{ gcp_vpc_info.resources[0].selfLink }}"
+#       selfLink: "{{ __sap_vm_provision_task_gcp_vpc_info.resources[0].selfLink }}"
+#     auth_kind: "serviceaccount"
+#     service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
 #   loop: "{{ (groups['nwas_pas'] | default([])) }}"
 #   loop_control:
 #     loop_var: host_node
-#   register: gcp_vpc_subnet_rt_route_sap_netweaver_pas
 #   when:
 #     - groups["nwas_ers"] is defined and (groups["nwas_ers"] | length>0)
 
 # - name: GCP Private DNS Record for SAP NetWeaver PAS HA Virtual Hostname
+#   no_log: "{{ __sap_vm_provision_no_log }}"
 #   google.cloud.gcp_dns_resource_record_set:
 #     state: present
 #     project: "{{ sap_vm_provision_gcp_project }}"
 #     managed_zone:
-#       name: "{{ gcp_pdns_info.resources[0].name }}"
+#       name: "{{ __sap_vm_provision_task_gcp_pdns_info.resources[0].name }}"
 #       dnsName: "{{ hostvars[host_node].sap_vm_provision_dns_root_domain }}."
 #     name: "{{ sap_swpm_pas_instance_hostname }}.{{ hostvars[host_node].sap_vm_provision_dns_root_domain }}."
 #     target:
 #       - "{{ (sap_ha_pacemaker_cluster_vip_nwas_abap_pas_ip_address | default('192.168.2.12/32')) | regex_replace('/.*', '') }}"
 #     type: A
 #     ttl: 7200
+#     auth_kind: "serviceaccount"
+#     service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
 #   loop: "{{ (groups['nwas_pas'] | default([])) }}"
 #   loop_control:
 #     loop_var: host_node
@@ -186,34 +216,40 @@
 
 
 # - name: GCP append route for SAP NetWeaver AAS HA
+#   no_log: "{{ __sap_vm_provision_no_log }}"
+#   register: __sap_vm_provision_task_gcp_vpc_subnet_rt_route_sap_netweaver_aas
 #   google.cloud.gcp_compute_route:
 #     state: present
 #     project: "{{ sap_vm_provision_gcp_project }}"
 #     name: "{{ sap_swpm_aas_instance_hostname }}-vip"
 #     dest_range: "{{ (sap_ha_pacemaker_cluster_vip_nwas_abap_aas_ip_address | default('192.168.2.13/32')) | regex_replace('/.*', '') }}"
 #     next_hop_instance:
-#       selfLink: "{{ gcp_vm_info | json_query('results[*].resources[?name==`' + host_node + '`].selfLink') | flatten | join(' ') }}"
+#       selfLink: "{{ __sap_vm_provision_task_provision_host_single_info | json_query('results[*].resources[?name==`' + host_node + '`].selfLink') | flatten | join(' ') }}"
 #     network:
-#       selfLink: "{{ gcp_vpc_info.resources[0].selfLink }}"
+#       selfLink: "{{ __sap_vm_provision_task_gcp_vpc_info.resources[0].selfLink }}"
+#     auth_kind: "serviceaccount"
+#     service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
 #   loop: "{{ (groups['nwas_aas'] | default([])) }}"
 #   loop_control:
 #     loop_var: host_node
-#   register: gcp_vpc_subnet_rt_route_sap_netweaver_aas
 #   when:
 #     - groups["nwas_ers"] is defined and (groups["nwas_ers"] | length>0)
 
 # - name: GCP Private DNS Record for SAP NetWeaver AAS HA Virtual Hostname
+#   no_log: "{{ __sap_vm_provision_no_log }}"
 #   google.cloud.gcp_dns_resource_record_set:
 #     state: present
 #     project: "{{ sap_vm_provision_gcp_project }}"
 #     managed_zone:
-#       name: "{{ gcp_pdns_info.resources[0].name }}"
+#       name: "{{ __sap_vm_provision_task_gcp_pdns_info.resources[0].name }}"
 #       dnsName: "{{ hostvars[host_node].sap_vm_provision_dns_root_domain }}."
 #     name: "{{ sap_swpm_aas_instance_hostname }}.{{ hostvars[host_node].sap_vm_provision_dns_root_domain }}."
 #     target:
 #       - "{{ (sap_ha_pacemaker_cluster_vip_nwas_abap_aas_ip_address | default('192.168.2.13/32')) | regex_replace('/.*', '') }}"
 #     type: A
 #     ttl: 7200
+#     auth_kind: "serviceaccount"
+#     service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
 #   loop: "{{ (groups['nwas_aas'] | default([])) }}"
 #   loop_control:
 #     loop_var: host_node
@@ -237,17 +273,20 @@
 # tcpdump -i eth0 net 130.211.0.0/22 and dst port 55550/55551/55552
 
 - name: Create Google Cloud Compute Engine Reserved Static Internal IP Address for the Virtual IP (VIP) of SAP HANA
+  no_log: "{{ __sap_vm_provision_no_log }}"
+  register: __sap_vm_provision_task_gcp_lb_reserved_address
   google.cloud.gcp_compute_address:
     state: present
     project: "{{ sap_vm_provision_gcp_project }}"
     region: "{{ sap_vm_provision_gcp_region }}"
-    subnetwork: { "selfLink": "{{ gcp_vpc_subnet_info.resources[0].selfLink }}" }
+    subnetwork: { "selfLink": "{{ __sap_vm_provision_task_gcp_vpc_subnet_info.resources[0].selfLink }}" }
     name: "lb-reserved-static-ip-vip-hana-{{ vip_item_nr }}"
     address_type: internal
     address: "{{ vip_item | regex_replace('/.*', '') }}"
     #network_tier: PREMIUM # An address with type INTERNAL cannot have a network tier
     purpose: GCE_ENDPOINT # GCE_ENDPOINT is for addresses used by VMs, alias IP ranges, and internal load balancers
-  register: gcp_lb_reserved_address
+    auth_kind: "serviceaccount"
+    service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
   when:
     - vip_item | length > 0
     - groups["hana_secondary"] is defined and (groups["hana_secondary"]|length>0)
@@ -258,6 +297,8 @@
     loop_var: vip_item
 
 - name: Create Google Cloud Compute Engine Health Check (Global) service instance for SAP HANA
+  no_log: "{{ __sap_vm_provision_no_log }}"
+  register: __sap_vm_provision_task_gcp_lb_healthcheck_service
   google.cloud.gcp_compute_health_check:
     state: present
     project: "{{ sap_vm_provision_gcp_project }}"
@@ -270,17 +311,21 @@
     timeout_sec: 10
     unhealthy_threshold: 2
     healthy_threshold: 2
-  register: gcp_lb_healthcheck_service
+    auth_kind: "serviceaccount"
+    service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
   when:
     - groups["hana_secondary"] is defined and (groups["hana_secondary"]|length>0)
 
 - name: Gather GCP VM information
+  no_log: "{{ __sap_vm_provision_no_log }}"
+  register: __sap_vm_provision_task_provision_host_single_info
   google.cloud.gcp_compute_instance_info:
     project: "{{ sap_vm_provision_gcp_project }}"
     zone: "{{ sap_vm_provision_gcp_region_zone }}"
     filters:
       - name = {{ host_node }}
-  register: gcp_vm_info
+    auth_kind: "serviceaccount"
+    service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
   loop: "{{ groups_merged_list }}"
   loop_control:
     loop_var: host_node
@@ -288,17 +333,20 @@
     - groups["hana_secondary"] is defined and (groups["hana_secondary"]|length>0)
 
 - name: Create Google Cloud Compute Engine Instance Group (Self-Managed/Unmanaged) Primary - for SAP HANA
+  no_log: "{{ __sap_vm_provision_no_log }}"
+  register: __sap_vm_provision_task_gcp_lb_instance_group1
   google.cloud.gcp_compute_instance_group:
     state: present
     project: "{{ sap_vm_provision_gcp_project }}"
     name: "lb-instance-group-hana-primary"
-    zone: "{{ gcp_vm_info | json_query('results[*].resources[?name==`' + host_node + '`].zone') | flatten | join(' ') | basename }}"
+    zone: "{{ __sap_vm_provision_task_provision_host_single_info | json_query('results[*].resources[?name==`' + host_node + '`].zone') | flatten | join(' ') | basename }}"
     instances:
-      - { "selfLink": "{{ gcp_vm_info | json_query('results[*].resources[?name==`' + host_node + '`].selfLink') | flatten | join(' ') }}" }
+      - { "selfLink": "{{ __sap_vm_provision_task_provision_host_single_info | json_query('results[*].resources[?name==`' + host_node + '`].selfLink') | flatten | join(' ') }}" }
     #named_ports:
     #  - name: http # default, not applicable to internal passthrough NLB, only applicable to proxy NLB
     #    port: 80 # default
-  register: gcp_lb_instance_group1
+    auth_kind: "serviceaccount"
+    service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
   loop: "{{ (groups['hana_primary'] | default([])) }}"
   loop_control:
     loop_var: host_node
@@ -306,17 +354,20 @@
     - groups["hana_secondary"] is defined and (groups["hana_secondary"]|length>0)
 
 - name: Create Google Cloud Compute Engine Instance Group (Self-Managed/Unmanaged) Secondary (Failover) - for SAP HANA
+  no_log: "{{ __sap_vm_provision_no_log }}"
+  register: __sap_vm_provision_task_gcp_lb_instance_group2
   google.cloud.gcp_compute_instance_group:
     state: present
     project: "{{ sap_vm_provision_gcp_project }}"
     name: "lb-instance-group-hana-secondary"
-    zone: "{{ gcp_vm_info | json_query('results[*].resources[?name==`' + host_node + '`].zone') | flatten | join(' ') | basename }}"
+    zone: "{{ __sap_vm_provision_task_provision_host_single_info | json_query('results[*].resources[?name==`' + host_node + '`].zone') | flatten | join(' ') | basename }}"
     instances:
-      - { "selfLink": "{{ gcp_vm_info | json_query('results[*].resources[?name==`' + host_node + '`].selfLink') | flatten | join(' ') }}" }
+      - { "selfLink": "{{ __sap_vm_provision_task_provision_host_single_info | json_query('results[*].resources[?name==`' + host_node + '`].selfLink') | flatten | join(' ') }}" }
     #named_ports:
     #  - name: http # default, not applicable to internal passthrough NLB, only applicable to proxy NLB
     #    port: 80 # default
-  register: gcp_lb_instance_group2
+    auth_kind: "serviceaccount"
+    service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
   loop: "{{ (groups['hana_secondary'] | default([])) }}"
   loop_control:
     loop_var: host_node
@@ -326,20 +377,22 @@
 # Note: Failover Ratio must be 1.0, which enforces failover to Secondary/Failover Instance Group if any VM the Backend Service's Primary Instance Group
 # No option for --global-health-checks ?
 - name: Create Google Cloud Compute Engine Backend Service (Regional) for the Internal passthrough Network Load Balancer used by SAP HANA
+  no_log: "{{ __sap_vm_provision_no_log }}"
+  register: __sap_vm_provision_task_gcp_lb_backend_service_regional
   google.cloud.gcp_compute_region_backend_service:
     state: present
     project: "{{ sap_vm_provision_gcp_project }}"
     region: "{{ sap_vm_provision_gcp_region }}"
     name: "lb-backend-service-hana"
     backends:
-      - group: "{{ gcp_lb_instance_group1.results[0].selfLink }}"
+      - group: "{{ __sap_vm_provision_task_gcp_lb_instance_group1.results[0].selfLink }}"
         balancing_mode: CONNECTION # UTILIZATION , RATE , CONNECTION
         #failover: false # Should be unset according to GCP for SAP documentation, which is different than set to false
-      - group: "{{ gcp_lb_instance_group2.results[0].selfLink }}"
+      - group: "{{ __sap_vm_provision_task_gcp_lb_instance_group2.results[0].selfLink }}"
         balancing_mode: CONNECTION # UTILIZATION , RATE , CONNECTION
         failover: true
     health_checks:
-      - "{{ gcp_lb_healthcheck_service.selfLink }}"
+      - "{{ __sap_vm_provision_task_gcp_lb_healthcheck_service.selfLink }}"
     load_balancing_scheme: INTERNAL
     failover_policy:
       disable_connection_drain_on_failover: true
@@ -347,11 +400,14 @@
       failover_ratio: 1 # 1.0
     session_affinity: NONE
     #timeout_sec: 30 # value ignored for internal passthrough NLB, default 30s to wait for backend before failure - see https://cloud.google.com/load-balancing/docs/backend-service#timeout-setting
-  register: gcp_lb_backend_service_regional
+    auth_kind: "serviceaccount"
+    service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
   when:
     - groups["hana_secondary"] is defined and (groups["hana_secondary"]|length>0)
 
 - name: Create Google Cloud Compute Engine Forwarding Rule (aka. Frontend IP and Port) for SAP HANA
+  no_log: "{{ __sap_vm_provision_no_log }}"
+  register: __sap_vm_provision_task_gcp_lb_forwarding_rule
   google.cloud.gcp_compute_forwarding_rule:
     state: present
     project: "{{ sap_vm_provision_gcp_project }}"
@@ -361,12 +417,13 @@
     ip_address: "{{ vip_item | regex_replace('/.*', '') }}"
     all_ports: true # For internal network load balancing, allow any ports to be forwarded to the backend service (can not be set if ports are defined)
     allow_global_access: false # Only for use if access to the SAP HANA Database Server is required from outside of the GCP Region
-    backend_service: { "selfLink": "{{ gcp_lb_backend_service_regional.selfLink }}" } # Mandatory, otherwise error "Invalid value for field 'resource.target'"
+    backend_service: { "selfLink": "{{ __sap_vm_provision_task_gcp_lb_backend_service_regional.selfLink }}" } # Mandatory, otherwise error "Invalid value for field 'resource.target'"
     #backend_service: { "selfLink": "https://www.googleapis.com/compute/v1/projects/{{ sap_vm_provision_gcp_project }}/regions/{{ sap_vm_provision_gcp_region }}/backendServices/lb-backend-service-hana" }
-    subnetwork: { "selfLink": "{{ gcp_vpc_subnet_info.resources[0].selfLink }}" }
+    subnetwork: { "selfLink": "{{ __sap_vm_provision_task_gcp_vpc_subnet_info.resources[0].selfLink }}" }
     load_balancing_scheme: INTERNAL
     network_tier: PREMIUM
-  register: gcp_lb_forwarding_rule
+    auth_kind: "serviceaccount"
+    service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
   when:
     - vip_item | length > 0
     - groups["hana_secondary"] is defined and (groups["hana_secondary"]|length>0)
@@ -377,28 +434,34 @@
     loop_var: vip_item
 
 - name: Get information on Google Cloud Compute Engine (Regional) Backend Service
+  no_log: "{{ __sap_vm_provision_no_log }}"
+  register: __sap_vm_provision_task_gcp_lb_backend_service_regional
   google.cloud.gcp_compute_region_backend_service_info:
     project: "{{ sap_vm_provision_gcp_project }}"
     region: "{{ sap_vm_provision_gcp_region }}"
     filters:
       - name = "lb-backend-service-hana"
-  register: gcp_info_lb_backend_service_regional
+    auth_kind: "serviceaccount"
+    service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
   when:
     - groups["hana_secondary"] is defined and (groups["hana_secondary"]|length>0)
 
 
 - name: Create Google Cloud Compute Engine Reserved Static Internal IP Address for the Virtual IP (VIP) of SAP AnyDB
+  no_log: "{{ __sap_vm_provision_no_log }}"
+  register: __sap_vm_provision_task_gcp_lb_reserved_address
   google.cloud.gcp_compute_address:
     state: present
     project: "{{ sap_vm_provision_gcp_project }}"
     region: "{{ sap_vm_provision_gcp_region }}"
-    subnetwork: { "selfLink": "{{ gcp_vpc_subnet_info.resources[0].selfLink }}" }
+    subnetwork: { "selfLink": "{{ __sap_vm_provision_task_gcp_vpc_subnet_info.resources[0].selfLink }}" }
     name: "lb-reserved-static-ip-vip-anydb-{{ vip_item_nr }}"
     address_type: internal
     address: "{{ vip_item | regex_replace('/.*', '') }}"
     #network_tier: PREMIUM # An address with type INTERNAL cannot have a network tier
     purpose: GCE_ENDPOINT # GCE_ENDPOINT is for addresses used by VMs, alias IP ranges, and internal load balancers
-  register: gcp_lb_reserved_address
+    auth_kind: "serviceaccount"
+    service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
   when:
     - vip_item | length > 0
     - groups["anydb_secondary"] is defined and (groups["anydb_secondary"]|length>0)
@@ -409,6 +472,8 @@
     loop_var: vip_item
 
 - name: Create Google Cloud Compute Engine Health Check (Global) service instance for SAP AnyDB
+  no_log: "{{ __sap_vm_provision_no_log }}"
+  register: __sap_vm_provision_task_gcp_lb_healthcheck_service
   google.cloud.gcp_compute_health_check:
     state: present
     project: "{{ sap_vm_provision_gcp_project }}"
@@ -421,17 +486,21 @@
     timeout_sec: 10
     unhealthy_threshold: 2
     healthy_threshold: 2
-  register: gcp_lb_healthcheck_service
+    auth_kind: "serviceaccount"
+    service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
   when:
     - groups["anydb_secondary"] is defined and (groups["anydb_secondary"]|length>0)
 
 - name: Gather GCP VM information
+  no_log: "{{ __sap_vm_provision_no_log }}"
+  register: __sap_vm_provision_task_provision_host_single_info
   google.cloud.gcp_compute_instance_info:
     project: "{{ sap_vm_provision_gcp_project }}"
     zone: "{{ sap_vm_provision_gcp_region_zone }}"
     filters:
       - name = {{ host_node }}
-  register: gcp_vm_info
+    auth_kind: "serviceaccount"
+    service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
   loop: "{{ groups_merged_list }}"
   loop_control:
     loop_var: host_node
@@ -439,17 +508,20 @@
     - groups["anydb_secondary"] is defined and (groups["anydb_secondary"]|length>0)
 
 - name: Create Google Cloud Compute Engine Instance Group (Self-Managed/Unmanaged) Primary - for SAP AnyDB
+  no_log: "{{ __sap_vm_provision_no_log }}"
+  register: __sap_vm_provision_task_gcp_lb_instance_group1
   google.cloud.gcp_compute_instance_group:
     state: present
     project: "{{ sap_vm_provision_gcp_project }}"
     name: "lb-instance-group-anydb-primary"
-    zone: "{{ gcp_vm_info | json_query('results[*].resources[?name==`' + host_node + '`].zone') | flatten | join(' ') | basename }}"
+    zone: "{{ __sap_vm_provision_task_provision_host_single_info | json_query('results[*].resources[?name==`' + host_node + '`].zone') | flatten | join(' ') | basename }}"
     instances:
-      - { "selfLink": "{{ gcp_vm_info | json_query('results[*].resources[?name==`' + host_node + '`].selfLink') | flatten | join(' ') }}" }
+      - { "selfLink": "{{ __sap_vm_provision_task_provision_host_single_info | json_query('results[*].resources[?name==`' + host_node + '`].selfLink') | flatten | join(' ') }}" }
     #named_ports:
     #  - name: http # default, not applicable to internal passthrough NLB, only applicable to proxy NLB
     #    port: 80 # default
-  register: gcp_lb_instance_group1
+    auth_kind: "serviceaccount"
+    service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
   loop: "{{ (groups['anydb_primary'] | default([])) }}"
   loop_control:
     loop_var: host_node
@@ -457,17 +529,20 @@
     - groups["anydb_secondary"] is defined and (groups["anydb_secondary"]|length>0)
 
 - name: Create Google Cloud Compute Engine Instance Group (Self-Managed/Unmanaged) Secondary (Failover) - for SAP AnyDB
+  no_log: "{{ __sap_vm_provision_no_log }}"
+  register: __sap_vm_provision_task_gcp_lb_instance_group2
   google.cloud.gcp_compute_instance_group:
     state: present
     project: "{{ sap_vm_provision_gcp_project }}"
     name: "lb-instance-group-anydb-secondary"
-    zone: "{{ gcp_vm_info | json_query('results[*].resources[?name==`' + host_node + '`].zone') | flatten | join(' ') | basename }}"
+    zone: "{{ __sap_vm_provision_task_provision_host_single_info | json_query('results[*].resources[?name==`' + host_node + '`].zone') | flatten | join(' ') | basename }}"
     instances:
-      - { "selfLink": "{{ gcp_vm_info | json_query('results[*].resources[?name==`' + host_node + '`].selfLink') | flatten | join(' ') }}" }
+      - { "selfLink": "{{ __sap_vm_provision_task_provision_host_single_info | json_query('results[*].resources[?name==`' + host_node + '`].selfLink') | flatten | join(' ') }}" }
     #named_ports:
     #  - name: http # default, not applicable to internal passthrough NLB, only applicable to proxy NLB
     #    port: 80 # default
-  register: gcp_lb_instance_group2
+    auth_kind: "serviceaccount"
+    service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
   loop: "{{ (groups['anydb_secondary'] | default([])) }}"
   loop_control:
     loop_var: host_node
@@ -477,20 +552,22 @@
 # Note: Failover Ratio must be 1.0, which enforces failover to Secondary/Failover Instance Group if any VM the Backend Service's Primary Instance Group
 # No option for --global-health-checks ?
 - name: Create Google Cloud Compute Engine Backend Service (Regional) for the Internal passthrough Network Load Balancer used by SAP AnyDB
+  no_log: "{{ __sap_vm_provision_no_log }}"
+  register: __sap_vm_provision_task_gcp_lb_backend_service_regional
   google.cloud.gcp_compute_region_backend_service:
     state: present
     project: "{{ sap_vm_provision_gcp_project }}"
     region: "{{ sap_vm_provision_gcp_region }}"
     name: "lb-backend-service-anydb"
     backends:
-      - group: "{{ gcp_lb_instance_group1.results[0].selfLink }}"
+      - group: "{{ __sap_vm_provision_task_gcp_lb_instance_group1.results[0].selfLink }}"
         balancing_mode: CONNECTION # UTILIZATION , RATE , CONNECTION
         #failover: false # Should be unset according to GCP for SAP documentation, which is different than set to false
-      - group: "{{ gcp_lb_instance_group2.results[0].selfLink }}"
+      - group: "{{ __sap_vm_provision_task_gcp_lb_instance_group2.results[0].selfLink }}"
         balancing_mode: CONNECTION # UTILIZATION , RATE , CONNECTION
         failover: true
     health_checks:
-      - "{{ gcp_lb_healthcheck_service.selfLink }}"
+      - "{{ __sap_vm_provision_task_gcp_lb_healthcheck_service.selfLink }}"
     load_balancing_scheme: INTERNAL
     failover_policy:
       disable_connection_drain_on_failover: true
@@ -498,11 +575,14 @@
       failover_ratio: 1 # 1.0
     session_affinity: NONE
     #timeout_sec: 30 # value ignored for internal passthrough NLB, default 30s to wait for backend before failure - see https://cloud.google.com/load-balancing/docs/backend-service#timeout-setting
-  register: gcp_lb_backend_service_regional
+    auth_kind: "serviceaccount"
+    service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
   when:
     - groups["anydb_secondary"] is defined and (groups["anydb_secondary"]|length>0)
 
 - name: Create Google Cloud Compute Engine Forwarding Rule (aka. Frontend IP and Port) for SAP AnyDB
+  no_log: "{{ __sap_vm_provision_no_log }}"
+  register: __sap_vm_provision_task_gcp_lb_forwarding_rule
   google.cloud.gcp_compute_forwarding_rule:
     state: present
     project: "{{ sap_vm_provision_gcp_project }}"
@@ -512,12 +592,13 @@
     ip_address: "{{ vip_item | regex_replace('/.*', '') }}"
     all_ports: true # For internal network load balancing, allow any ports to be forwarded to the backend service (can not be set if ports are defined)
     allow_global_access: false # Only for use if access to the SAP AnyDB Database Server is required from outside of the GCP Region
-    backend_service: { "selfLink": "{{ gcp_lb_backend_service_regional.selfLink }}" } # Mandatory, otherwise error "Invalid value for field 'resource.target'"
+    backend_service: { "selfLink": "{{ __sap_vm_provision_task_gcp_lb_backend_service_regional.selfLink }}" } # Mandatory, otherwise error "Invalid value for field 'resource.target'"
     #backend_service: { "selfLink": "https://www.googleapis.com/compute/v1/projects/{{ sap_vm_provision_gcp_project }}/regions/{{ sap_vm_provision_gcp_region }}/backendServices/lb-backend-service-anydb" }
-    subnetwork: { "selfLink": "{{ gcp_vpc_subnet_info.resources[0].selfLink }}" }
+    subnetwork: { "selfLink": "{{ __sap_vm_provision_task_gcp_vpc_subnet_info.resources[0].selfLink }}" }
     load_balancing_scheme: INTERNAL
     network_tier: PREMIUM
-  register: gcp_lb_forwarding_rule
+    auth_kind: "serviceaccount"
+    service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
   when:
     - vip_item | length > 0
     - groups["anydb_secondary"] is defined and (groups["anydb_secondary"]|length>0)
@@ -528,47 +609,58 @@
     loop_var: vip_item
 
 - name: Get information on Google Cloud Compute Engine (Regional) Backend Service
+  no_log: "{{ __sap_vm_provision_no_log }}"
+  register: __sap_vm_provision_task_gcp_lb_backend_service_regional
   google.cloud.gcp_compute_region_backend_service_info:
     project: "{{ sap_vm_provision_gcp_project }}"
     region: "{{ sap_vm_provision_gcp_region }}"
     filters:
       - name = "lb-backend-service-anydb"
-  register: gcp_info_lb_backend_service_regional
+    auth_kind: "serviceaccount"
+    service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
   when:
     - groups["anydb_secondary"] is defined and (groups["anydb_secondary"]|length>0)
 
 
 - name: Create Google Cloud Compute Engine Reserved Static Internal IP Address for the Virtual IP (VIP) of SAP NetWeaver ASCS
+  no_log: "{{ __sap_vm_provision_no_log }}"
+  register: __sap_vm_provision_task_gcp_lb_reserved_address
   google.cloud.gcp_compute_address:
     state: present
     project: "{{ sap_vm_provision_gcp_project }}"
     region: "{{ sap_vm_provision_gcp_region }}"
-    subnetwork: { "selfLink": "{{ gcp_vpc_subnet_info.resources[0].selfLink }}" }
+    subnetwork: { "selfLink": "{{ __sap_vm_provision_task_gcp_vpc_subnet_info.resources[0].selfLink }}" }
     name: "lb-reserved-static-ip-vip-nwas-ascs"
     address_type: internal
     address: "{{ sap_ha_pacemaker_cluster_vip_nwas_abap_ascs_ip_address | regex_replace('/.*', '') }}"
     #network_tier: PREMIUM # An address with type INTERNAL cannot have a network tier
     purpose: GCE_ENDPOINT # GCE_ENDPOINT is for addresses used by VMs, alias IP ranges, and internal load balancers
-  register: gcp_lb_reserved_address
+    auth_kind: "serviceaccount"
+    service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
   when:
     - groups["nwas_ers"] is defined and (groups["nwas_ers"]|length>0)
 
 - name: Create Google Cloud Compute Engine Reserved Static Internal IP Address for the Virtual IP (VIP) of SAP NetWeaver ERS
+  no_log: "{{ __sap_vm_provision_no_log }}"
+  register: __sap_vm_provision_task_gcp_lb_reserved_address
   google.cloud.gcp_compute_address:
     state: present
     project: "{{ sap_vm_provision_gcp_project }}"
     region: "{{ sap_vm_provision_gcp_region }}"
-    subnetwork: { "selfLink": "{{ gcp_vpc_subnet_info.resources[0].selfLink }}" }
+    subnetwork: { "selfLink": "{{ __sap_vm_provision_task_gcp_vpc_subnet_info.resources[0].selfLink }}" }
     name: "lb-reserved-static-ip-vip-nwas-ers"
     address_type: internal
     address: "{{ sap_ha_pacemaker_cluster_vip_nwas_abap_ers_ip_address | regex_replace('/.*', '') }}"
     #network_tier: PREMIUM # An address with type INTERNAL cannot have a network tier
     purpose: GCE_ENDPOINT # GCE_ENDPOINT is for addresses used by VMs, alias IP ranges, and internal load balancers
-  register: gcp_lb_reserved_address
+    auth_kind: "serviceaccount"
+    service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
   when:
     - groups["nwas_ers"] is defined and (groups["nwas_ers"]|length>0)
 
 - name: Create Google Cloud Compute Engine Health Check (Global) service instance for SAP NetWeaver ASCS
+  no_log: "{{ __sap_vm_provision_no_log }}"
+  register: __sap_vm_provision_task_gcp_lb_healthcheck_service_ascs
   google.cloud.gcp_compute_health_check:
     state: present
     project: "{{ sap_vm_provision_gcp_project }}"
@@ -581,11 +673,14 @@
     timeout_sec: 10
     unhealthy_threshold: 2
     healthy_threshold: 2
-  register: gcp_lb_healthcheck_service_ascs
+    auth_kind: "serviceaccount"
+    service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
   when:
     - groups["nwas_ers"] is defined and (groups["nwas_ers"]|length>0)
 
 - name: Create Google Cloud Compute Engine Health Check (Global) service instance for SAP NetWeaver ERS
+  no_log: "{{ __sap_vm_provision_no_log }}"
+  register: __sap_vm_provision_task_gcp_lb_healthcheck_service_ers
   google.cloud.gcp_compute_health_check:
     state: present
     project: "{{ sap_vm_provision_gcp_project }}"
@@ -598,17 +693,21 @@
     timeout_sec: 10
     unhealthy_threshold: 2
     healthy_threshold: 2
-  register: gcp_lb_healthcheck_service_ers
+    auth_kind: "serviceaccount"
+    service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
   when:
     - groups["nwas_ers"] is defined and (groups["nwas_ers"]|length>0)
 
 - name: Gather GCP VM information
+  no_log: "{{ __sap_vm_provision_no_log }}"
+  register: __sap_vm_provision_task_provision_host_single_info
   google.cloud.gcp_compute_instance_info:
     project: "{{ sap_vm_provision_gcp_project }}"
     zone: "{{ sap_vm_provision_gcp_region_zone }}"
     filters:
       - name = {{ host_node }}
-  register: gcp_vm_info
+    auth_kind: "serviceaccount"
+    service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
   loop: "{{ groups_merged_list }}"
   loop_control:
     loop_var: host_node
@@ -616,17 +715,20 @@
     - groups["nwas_ers"] is defined and (groups["nwas_ers"]|length>0)
 
 - name: Create Google Cloud Compute Engine Instance Group (Self-Managed/Unmanaged) Primary - for SAP NetWeaver ASCS
+  no_log: "{{ __sap_vm_provision_no_log }}"
+  register: __sap_vm_provision_task_gcp_lb_instance_group1
   google.cloud.gcp_compute_instance_group:
     state: present
     project: "{{ sap_vm_provision_gcp_project }}"
     name: "lb-instance-group-nwas-ascs"
-    zone: "{{ gcp_vm_info | json_query('results[*].resources[?name==`' + host_node + '`].zone') | flatten | join(' ') | basename }}"
+    zone: "{{ __sap_vm_provision_task_provision_host_single_info | json_query('results[*].resources[?name==`' + host_node + '`].zone') | flatten | join(' ') | basename }}"
     instances:
-      - { "selfLink": "{{ gcp_vm_info | json_query('results[*].resources[?name==`' + host_node + '`].selfLink') | flatten | join(' ') }}" }
+      - { "selfLink": "{{ __sap_vm_provision_task_provision_host_single_info | json_query('results[*].resources[?name==`' + host_node + '`].selfLink') | flatten | join(' ') }}" }
     #named_ports:
     #  - name: http # default, not applicable to internal passthrough NLB, only applicable to proxy NLB
     #    port: 80 # default
-  register: gcp_lb_instance_group1
+    auth_kind: "serviceaccount"
+    service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
   loop: "{{ (groups['nwas_ascs'] | default([])) }}"
   loop_control:
     loop_var: host_node
@@ -634,17 +736,20 @@
     - groups["nwas_ers"] is defined and (groups["nwas_ers"]|length>0)
 
 - name: Create Google Cloud Compute Engine Instance Group (Self-Managed/Unmanaged) Secondary (Failover) - for SAP NetWeaver ERS
+  no_log: "{{ __sap_vm_provision_no_log }}"
+  register: __sap_vm_provision_task_gcp_lb_instance_group2
   google.cloud.gcp_compute_instance_group:
     state: present
     project: "{{ sap_vm_provision_gcp_project }}"
     name: "lb-instance-group-nwas-ers"
-    zone: "{{ gcp_vm_info | json_query('results[*].resources[?name==`' + host_node + '`].zone') | flatten | join(' ') | basename }}"
+    zone: "{{ __sap_vm_provision_task_provision_host_single_info | json_query('results[*].resources[?name==`' + host_node + '`].zone') | flatten | join(' ') | basename }}"
     instances:
-      - { "selfLink": "{{ gcp_vm_info | json_query('results[*].resources[?name==`' + host_node + '`].selfLink') | flatten | join(' ') }}" }
+      - { "selfLink": "{{ __sap_vm_provision_task_provision_host_single_info | json_query('results[*].resources[?name==`' + host_node + '`].selfLink') | flatten | join(' ') }}" }
     #named_ports:
     #  - name: http # default, not applicable to internal passthrough NLB, only applicable to proxy NLB
     #    port: 80 # default
-  register: gcp_lb_instance_group2
+    auth_kind: "serviceaccount"
+    service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
   loop: "{{ (groups['nwas_ers'] | default([])) }}"
   loop_control:
     loop_var: host_node
@@ -654,20 +759,22 @@
 # Note: Failover Ratio must be 1.0, which enforces failover to Secondary/Failover Instance Group if any VM the Backend Service's Primary Instance Group
 # No option for --global-health-checks ?
 - name: Create Google Cloud Compute Engine Backend Service (Regional) for the Internal passthrough Network Load Balancer used by SAP NetWeaver ASCS
+  no_log: "{{ __sap_vm_provision_no_log }}"
+  register: __sap_vm_provision_task_gcp_lb_backend_service_regional_ascs
   google.cloud.gcp_compute_region_backend_service:
     state: present
     project: "{{ sap_vm_provision_gcp_project }}"
     region: "{{ sap_vm_provision_gcp_region }}"
     name: "lb-backend-service-nwas-ascs"
     backends:
-      - group: "{{ gcp_lb_instance_group1.results[0].selfLink }}"
+      - group: "{{ __sap_vm_provision_task_gcp_lb_instance_group1.results[0].selfLink }}"
         balancing_mode: CONNECTION # UTILIZATION , RATE , CONNECTION
         #failover: false # Should be unset according to GCP for SAP documentation, which is different than set to false
-      - group: "{{ gcp_lb_instance_group2.results[0].selfLink }}"
+      - group: "{{ __sap_vm_provision_task_gcp_lb_instance_group2.results[0].selfLink }}"
         balancing_mode: CONNECTION # UTILIZATION , RATE , CONNECTION
         failover: true
     health_checks:
-      - "{{ gcp_lb_healthcheck_service_ascs.selfLink }}"
+      - "{{ __sap_vm_provision_task_gcp_lb_healthcheck_service_ascs.selfLink }}"
     load_balancing_scheme: INTERNAL
     failover_policy:
       disable_connection_drain_on_failover: true
@@ -675,27 +782,30 @@
       failover_ratio: 1 # 1.0
     session_affinity: NONE
     #timeout_sec: 30 # value ignored for internal passthrough NLB, default 30s to wait for backend before failure - see https://cloud.google.com/load-balancing/docs/backend-service#timeout-setting
-  register: gcp_lb_backend_service_regional_ascs
+    auth_kind: "serviceaccount"
+    service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
   when:
     - groups["nwas_ers"] is defined and (groups["nwas_ers"]|length>0)
 
 # Note: Failover Ratio must be 1.0, which enforces failover to Secondary/Failover Instance Group if any VM the Backend Service's Primary Instance Group
 # No option for --global-health-checks ?
 - name: Create Google Cloud Compute Engine Backend Service (Regional) for the Internal passthrough Network Load Balancer used by SAP NetWeaver ERS
+  no_log: "{{ __sap_vm_provision_no_log }}"
+  register: __sap_vm_provision_task_gcp_lb_backend_service_regional_ers
   google.cloud.gcp_compute_region_backend_service:
     state: present
     project: "{{ sap_vm_provision_gcp_project }}"
     region: "{{ sap_vm_provision_gcp_region }}"
     name: "lb-backend-service-nwas-ers"
     backends:
-      - group: "{{ gcp_lb_instance_group2.results[0].selfLink }}"
+      - group: "{{ __sap_vm_provision_task_gcp_lb_instance_group2.results[0].selfLink }}"
         balancing_mode: CONNECTION # UTILIZATION , RATE , CONNECTION
         #failover: false # Should be unset according to GCP for SAP documentation, which is different than set to false
-      - group: "{{ gcp_lb_instance_group1.results[0].selfLink }}"
+      - group: "{{ __sap_vm_provision_task_gcp_lb_instance_group1.results[0].selfLink }}"
         balancing_mode: CONNECTION # UTILIZATION , RATE , CONNECTION
         failover: true
     health_checks:
-      - "{{ gcp_lb_healthcheck_service_ers.selfLink }}"
+      - "{{ __sap_vm_provision_task_gcp_lb_healthcheck_service_ers.selfLink }}"
     load_balancing_scheme: INTERNAL
     failover_policy:
       disable_connection_drain_on_failover: true
@@ -703,11 +813,14 @@
       failover_ratio: 1 # 1.0
     session_affinity: NONE
     #timeout_sec: 30 # value ignored for internal passthrough NLB, default 30s to wait for backend before failure - see https://cloud.google.com/load-balancing/docs/backend-service#timeout-setting
-  register: gcp_lb_backend_service_regional_ers
+    auth_kind: "serviceaccount"
+    service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
   when:
     - groups["nwas_ers"] is defined and (groups["nwas_ers"]|length>0)
 
 - name: Create Google Cloud Compute Engine Forwarding Rule (aka. Frontend IP and Port) for SAP NetWeaver ASCS
+  no_log: "{{ __sap_vm_provision_no_log }}"
+  register: __sap_vm_provision_task_gcp_lb_forwarding_rule
   google.cloud.gcp_compute_forwarding_rule:
     state: present
     project: "{{ sap_vm_provision_gcp_project }}"
@@ -717,16 +830,19 @@
     ip_address: "{{ sap_ha_pacemaker_cluster_vip_nwas_abap_ascs_ip_address | regex_replace('/.*', '') }}"
     all_ports: true # For internal network load balancing, allow any ports to be forwarded to the backend service (can not be set if ports are defined)
     allow_global_access: false # Only for use if access to the SAP NetWeaver Database Server is required from outside of the GCP Region
-    backend_service: { "selfLink": "{{ gcp_lb_backend_service_regional_ascs.selfLink }}" } # Mandatory, otherwise error "Invalid value for field 'resource.target'"
+    backend_service: { "selfLink": "{{ __sap_vm_provision_task_gcp_lb_backend_service_regional_ascs.selfLink }}" } # Mandatory, otherwise error "Invalid value for field 'resource.target'"
     #backend_service: { "selfLink": "https://www.googleapis.com/compute/v1/projects/{{ sap_vm_provision_gcp_project }}/regions/{{ sap_vm_provision_gcp_region }}/backendServices/lb-backend-service-nwas-ascs" }
-    subnetwork: { "selfLink": "{{ gcp_vpc_subnet_info.resources[0].selfLink }}" }
+    subnetwork: { "selfLink": "{{ __sap_vm_provision_task_gcp_vpc_subnet_info.resources[0].selfLink }}" }
     load_balancing_scheme: INTERNAL
     network_tier: PREMIUM
-  register: gcp_lb_forwarding_rule
+    auth_kind: "serviceaccount"
+    service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
   when:
     - groups["nwas_ers"] is defined and (groups["nwas_ers"]|length>0)
 
 - name: Create Google Cloud Compute Engine Forwarding Rule (aka. Frontend IP and Port) for SAP NetWeaver ERS
+  no_log: "{{ __sap_vm_provision_no_log }}"
+  register: __sap_vm_provision_task_gcp_lb_forwarding_rule
   google.cloud.gcp_compute_forwarding_rule:
     state: present
     project: "{{ sap_vm_provision_gcp_project }}"
@@ -736,32 +852,39 @@
     ip_address: "{{ sap_ha_pacemaker_cluster_vip_nwas_abap_ers_ip_address | regex_replace('/.*', '') }}"
     all_ports: true # For internal network load balancing, allow any ports to be forwarded to the backend service (can not be set if ports are defined)
     allow_global_access: false # Only for use if access to the SAP NetWeaver Database Server is required from outside of the GCP Region
-    backend_service: { "selfLink": "{{ gcp_lb_backend_service_regional_ascs.selfLink }}" } # Mandatory, otherwise error "Invalid value for field 'resource.target'"
+    backend_service: { "selfLink": "{{ __sap_vm_provision_task_gcp_lb_backend_service_regional_ascs.selfLink }}" } # Mandatory, otherwise error "Invalid value for field 'resource.target'"
     #backend_service: { "selfLink": "https://www.googleapis.com/compute/v1/projects/{{ sap_vm_provision_gcp_project }}/regions/{{ sap_vm_provision_gcp_region }}/backendServices/lb-backend-service-nwas-ascs" }
-    subnetwork: { "selfLink": "{{ gcp_vpc_subnet_info.resources[0].selfLink }}" }
+    subnetwork: { "selfLink": "{{ __sap_vm_provision_task_gcp_vpc_subnet_info.resources[0].selfLink }}" }
     load_balancing_scheme: INTERNAL
     network_tier: PREMIUM
-  register: gcp_lb_forwarding_rule
+    auth_kind: "serviceaccount"
+    service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
   when:
     - groups["nwas_ers"] is defined and (groups["nwas_ers"]|length>0)
 
 
 - name: Get information on Google Cloud Compute Engine (Regional) Backend Service for SAP NetWeaver ASCS
+  no_log: "{{ __sap_vm_provision_no_log }}"
+  register: __sap_vm_provision_task_gcp_lb_backend_service_regional
   google.cloud.gcp_compute_region_backend_service_info:
     project: "{{ sap_vm_provision_gcp_project }}"
     region: "{{ sap_vm_provision_gcp_region }}"
     filters:
       - name = "lb-backend-service-nwas-ascs"
-  register: gcp_info_lb_backend_service_regional
+    auth_kind: "serviceaccount"
+    service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
   when:
     - groups["nwas_ers"] is defined and (groups["nwas_ers"]|length>0)
 
 - name: Get information on Google Cloud Compute Engine (Regional) Backend Service for SAP NetWeaver ERS
+  no_log: "{{ __sap_vm_provision_no_log }}"
+  register: __sap_vm_provision_task_gcp_lb_backend_service_regional
   google.cloud.gcp_compute_region_backend_service_info:
     project: "{{ sap_vm_provision_gcp_project }}"
     region: "{{ sap_vm_provision_gcp_region }}"
     filters:
       - name = "lb-backend-service-nwas-ers"
-  register: gcp_info_lb_backend_service_regional
+    auth_kind: "serviceaccount"
+    service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
   when:
     - groups["nwas_ers"] is defined and (groups["nwas_ers"]|length>0)
