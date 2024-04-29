@@ -44,8 +44,8 @@
   tasks:
     - name: Sleep so we can investigate the container environement
       pause:
-        minutes: 60
+        minutes: 5
 
     - name: Include sap_vm_provision Ansible Role
       ansible.builtin.include_role:
-        name: community.sap_infrastructure.sap_vm_provision
+        name: sap_vm_provision
