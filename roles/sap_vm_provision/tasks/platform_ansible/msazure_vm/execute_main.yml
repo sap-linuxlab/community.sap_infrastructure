@@ -21,7 +21,7 @@
     # Therefore use without any parameter to retrieve list of all SSH Public Keys and filter in Ansible
     - name: Get all SSH Public Keys in MS Azure
       no_log: "{{ __sap_vm_provision_no_log }}"
-      register: __sap_vm_provision_msazure_key_pair_name_ssh_host_public_keys
+      register: __sap_vm_provision_task_msazure_key_pair_name_ssh_host_public_keys
       azure.azcollection.azure_rm_sshpublickey_info:
         # Azure credentials
         subscription_id: "{{ sap_vm_provision_msazure_subscription_id }}"
@@ -31,11 +31,11 @@
 
     - name: Set fact for selected SSH Public Key in MS Azure
       ansible.builtin.set_fact:
-        __sap_vm_provision_msazure_key_pair_name_ssh_host_public_key_value: "{{ (__sap_vm_provision_msazure_key_pair_name_ssh_host_public_keys.ssh_keys | selectattr('name', '==', sap_vm_provision_msazure_key_pair_name_ssh_host_public_key))[0].public_key }}"
+        __sap_vm_provision_task_msazure_key_pair_name_ssh_host_public_key_value: "{{ (__sap_vm_provision_task_msazure_key_pair_name_ssh_host_public_keys.ssh_keys | selectattr('name', '==', sap_vm_provision_msazure_key_pair_name_ssh_host_public_key))[0].public_key }}"
 
     - name: Get Private DNS Zone Virtual Network Links
       no_log: "{{ __sap_vm_provision_no_log }}"
-      register: __sap_vm_provision_msazure_private_dns_virtual_network_links
+      register: __sap_vm_provision_task_msazure_private_dns_virtual_network_links
       azure.azcollection.azure_rm_privatednszonelink_info:
         # DNS may exist in separate Resource Group. Use empty string var (or default false if undefined) to evaluate to false boolean, and use Python or logic operator
         resource_group: "{{ (sap_vm_provision_msazure_private_dns_resource_group_name | default(false)) or sap_vm_provision_msazure_resource_group_name }}"
@@ -48,7 +48,7 @@
 
     - name: Set boolean fact for Auto Registration of DNS Records from Private DNS Zone Virtual Network Link
       ansible.builtin.set_fact:
-        __sap_vm_provision_msazure_private_dns_auto_register_records: "{{ (__sap_vm_provision_msazure_private_dns_virtual_network_links.virtualnetworklinks | selectattr('virtual_network.id', 'search', sap_vm_provision_msazure_vnet_name))[0].registration_enabled }}"
+        __sap_vm_provision_task_msazure_private_dns_auto_register_records: "{{ (__sap_vm_provision_task_msazure_private_dns_virtual_network_links.virtualnetworklinks | selectattr('virtual_network.id', 'search', sap_vm_provision_msazure_vnet_name))[0].registration_enabled }}"
 
     - name: Provision hosts to MS Azure
       register: __sap_vm_provision_task_provision_host_all_run
@@ -105,7 +105,7 @@
         tenant: "{{ sap_vm_provision_msazure_tenant_id }}"
         client_id: "{{ sap_vm_provision_msazure_app_client_id }}"
         secret: "{{ sap_vm_provision_msazure_app_client_secret }}"
-      when: not __sap_vm_provision_msazure_private_dns_auto_register_records
+      when: not __sap_vm_provision_task_msazure_private_dns_auto_register_records
 
   #  - ansible.builtin.debug:
   #      var: __sap_vm_provision_task_provision_host_all_add.results
@@ -118,8 +118,8 @@
       ansible.builtin.fail:
         msg: "{{ lookup('ansible.builtin.vars', loop_item) }}"
       loop:
-        - __sap_vm_provision_msazure_key_pair_name_ssh_host_public_keys
-        - __sap_vm_provision_msazure_private_dns_virtual_network_links
+        - __sap_vm_provision_task_msazure_key_pair_name_ssh_host_public_keys
+        - __sap_vm_provision_task_msazure_private_dns_virtual_network_links
         - __sap_vm_provision_task_provision_host_all_run
         - __sap_vm_provision_task_provision_host_single_vnic_info
         - __sap_vm_provision_task_provision_host_single_vnic
@@ -250,18 +250,18 @@
       ansible.builtin.fail:
         msg: "{{ lookup('ansible.builtin.vars', loop_item) }}"
       loop:
-        - __sap_vm_provision_msazure_vnet_subnet_rt_info
-        - __sap_vm_provision_msazure_vnet_subnet_rt_route_sap_hana
-        - __sap_vm_provision_msazure_vnet_subnet_rt_route_sap_netweaver_ascs
-        - __sap_vm_provision_msazure_vnet_subnet_rt_route_sap_netweaver_ers
-        - __sap_vm_provision_msazure_vnet_subnet_rt_route_sap_netweaver_pas
-        - __sap_vm_provision_msazure_vnet_subnet_rt_route_sap_netweaver_aas
-        - __sap_vm_provision_msazure_iam_role_fencing
-        - __sap_vm_provision_msazure_vm_info_collect
-        - __sap_vm_provision_msazure_vnet_subnet_info
-        - __sap_vm_provision_msazure_lb1a_info
-        - __sap_vm_provision_msazure_lb1b_info
-        - __sap_vm_provision_msazure_lb2_info
+        - __sap_vm_provision_task_msazure_vnet_subnet_rt_info
+        - __sap_vm_provision_task_msazure_vnet_subnet_rt_route_sap_hana
+        - __sap_vm_provision_task_msazure_vnet_subnet_rt_route_sap_netweaver_ascs
+        - __sap_vm_provision_task_msazure_vnet_subnet_rt_route_sap_netweaver_ers
+        - __sap_vm_provision_task_msazure_vnet_subnet_rt_route_sap_netweaver_pas
+        - __sap_vm_provision_task_msazure_vnet_subnet_rt_route_sap_netweaver_aas
+        - __sap_vm_provision_task_msazure_iam_role_fencing
+        - __sap_vm_provision_task_msazure_vm_info_collect
+        - __sap_vm_provision_task_msazure_vnet_subnet_info
+        - __sap_vm_provision_task_msazure_lb1a_info
+        - __sap_vm_provision_task_msazure_lb1b_info
+        - __sap_vm_provision_task_msazure_lb2_info
         - __sap_vm_provision_task_provision_host_single_vnic1
         - __sap_vm_provision_task_provision_host_single_vnic2
       loop_control:

@@ -48,7 +48,7 @@
 
     - name: Gather MS Azure Subnet ID
       no_log: "{{ __sap_vm_provision_no_log }}"
-      register: __sap_vm_provision_msazure_vnet_subnet_info
+      register: __sap_vm_provision_task_msazure_vnet_subnet_info
       azure.azcollection.azure_rm_subnet_info:
         resource_group: "{{ sap_vm_provision_msazure_resource_group_name }}"
         virtual_network_name: "{{ sap_vm_provision_msazure_vnet_name }}"
@@ -67,7 +67,7 @@
           name: "lb-vip-hana{{ vip_index_nr }}"
           private_ip_address: "{{ vip_item | regex_replace('/.*', '') }}"
           private_ip_allocation_method: "Static"
-          subnet: "{{ __sap_vm_provision_msazure_vnet_subnet_info.subnets[0].id }}"
+          subnet: "{{ __sap_vm_provision_task_msazure_vnet_subnet_info.subnets[0].id }}"
           zones: ["1", "2", "3"] # Zone-redundant
       when:
         - vip_item | length > 0
@@ -86,7 +86,7 @@
           name: "lb-vip-anydb{{ vip_index_nr }}"
           private_ip_address: "{{ vip_item | regex_replace('/.*', '') }}"
           private_ip_allocation_method: "Static"
-          subnet: "{{ __sap_vm_provision_msazure_vnet_subnet_info.subnets[0].id }}"
+          subnet: "{{ __sap_vm_provision_task_msazure_vnet_subnet_info.subnets[0].id }}"
           zones: ["1", "2", "3"] # Zone-redundant
       when:
         - vip_item | length > 0
@@ -105,7 +105,7 @@
           name: "lb-vip-nwas{{ vip_index_nr }}"
           private_ip_address: "{{ vip_item | regex_replace('/.*', '') }}"
           private_ip_allocation_method: "Static"
-          subnet: "{{ __sap_vm_provision_msazure_vnet_subnet_info.subnets[0].id }}"
+          subnet: "{{ __sap_vm_provision_task_msazure_vnet_subnet_info.subnets[0].id }}"
           zones: ["1", "2", "3"] # Zone-redundant
       when:
         - vip_item | length > 0
@@ -247,7 +247,7 @@
 
     - name: MS Azure Load Balancer (network L4) - Update NLB for SAP HANA with Virtual IP and Health Probe configuration
       no_log: "{{ __sap_vm_provision_no_log }}"
-      register: __sap_vm_provision_msazure_lb1_info
+      register: __sap_vm_provision_task_msazure_lb1_info
       azure.azcollection.azure_rm_loadbalancer:
         resource_group: "{{ sap_vm_provision_msazure_resource_group_name }}"
         name: "lb-sap-hana-ha" # "lb-sap-ha"
@@ -266,7 +266,7 @@
 
     - name: MS Azure Load Balancer (network L4) - Update NLB for SAP AnyDB with Virtual IP and Health Probe configuration
       no_log: "{{ __sap_vm_provision_no_log }}"
-      register: __sap_vm_provision_msazure_lb1_info
+      register: __sap_vm_provision_task_msazure_lb1_info
       azure.azcollection.azure_rm_loadbalancer:
         resource_group: "{{ sap_vm_provision_msazure_resource_group_name }}"
         name: "lb-sap-anydb-ha" # "lb-sap-ha"
@@ -285,7 +285,7 @@
 
     - name: MS Azure Load Balancer (network L4) - Update NLB for SAP NetWeaver with Virtual IP and Health Probe configuration
       no_log: "{{ __sap_vm_provision_no_log }}"
-      register: __sap_vm_provision_msazure_lb2_info
+      register: __sap_vm_provision_task_msazure_lb2_info
       azure.azcollection.azure_rm_loadbalancer:
         resource_group: "{{ sap_vm_provision_msazure_resource_group_name }}"
         name: "lb-sap-nwas-ha"
