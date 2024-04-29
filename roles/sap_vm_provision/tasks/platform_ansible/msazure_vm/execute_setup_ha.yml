@@ -1,7 +1,7 @@
 ---
 
 # - name: Gather information about MS Azure Route Table for the VNet Subnet
-#   register: __sap_vm_provision_msazure_vnet_subnet_rt_info
+#   register: __sap_vm_provision_task_msazure_vnet_subnet_rt_info
 #   no_log: "{{ __sap_vm_provision_no_log }}"
 #   azure.azcollection.azure_rm_routetable_info:
 #     resource_group: "{{ sap_vm_provision_msazure_resource_group_name }}"
@@ -14,10 +14,10 @@
 
 # - name: Ansible MS Azure Route Table append route for SAP HANA HA
 #   no_log: "{{ __sap_vm_provision_no_log }}"
-#   register: __sap_vm_provision_msazure_vnet_subnet_rt_route_sap_hana
+#   register: __sap_vm_provision_task_msazure_vnet_subnet_rt_route_sap_hana
 #   azure.azcollection.azure_rm_route:
 #     resource_group: "{{ sap_vm_provision_msazure_resource_group_name }}"
-#     route_table_name: "{{ __sap_vm_provision_msazure_vnet_subnet_rt_info.route_tables[0].id }}"
+#     route_table_name: "{{ __sap_vm_provision_task_msazure_vnet_subnet_rt_info.route_tables[0].id }}"
 #     name: "{{ sap_swpm_db_host }}-rt"
 #     address_prefix: "{{ sap_ha_pacemaker_cluster_vip_hana_primary_ip_address | default('192.168.1.90/32') }}"
 #     next_hop_type: "virtual_appliance"
@@ -57,10 +57,10 @@
 
 # - name: Ansible MS Azure Route Table append route for SAP NetWeaver ASCS HA
 #   no_log: "{{ __sap_vm_provision_no_log }}"
-#   register: __sap_vm_provision_msazure_vnet_subnet_rt_route_sap_netweaver_ascs
+#   register: __sap_vm_provision_task_msazure_vnet_subnet_rt_route_sap_netweaver_ascs
 #   azure.azcollection.azure_rm_route:
 #     resource_group: "{{ sap_vm_provision_msazure_resource_group_name }}"
-#     route_table_name: "{{ __sap_vm_provision_msazure_vnet_subnet_rt_info.route_tables[0].id }}"
+#     route_table_name: "{{ __sap_vm_provision_task_msazure_vnet_subnet_rt_info.route_tables[0].id }}"
 #     name: "{{ sap_swpm_ascs_instance_hostname }}-rt"
 #     address_prefix: "{{ sap_ha_pacemaker_cluster_vip_nwas_abap_ascs_ip_address | default('192.168.2.10/32') }}"
 #     next_hop_type: "virtual_appliance"
@@ -100,10 +100,10 @@
 
 # - name: Ansible MS Azure Route Table append route for SAP NetWeaver ERS HA
 #   no_log: "{{ __sap_vm_provision_no_log }}"
-#   register: __sap_vm_provision_msazure_vnet_subnet_rt_route_sap_netweaver_ers
+#   register: __sap_vm_provision_task_msazure_vnet_subnet_rt_route_sap_netweaver_ers
 #   azure.azcollection.azure_rm_route:
 #     resource_group: "{{ sap_vm_provision_msazure_resource_group_name }}"
-#     route_table_name: "{{ __sap_vm_provision_msazure_vnet_subnet_rt_info.route_tables[0].id }}"
+#     route_table_name: "{{ __sap_vm_provision_task_msazure_vnet_subnet_rt_info.route_tables[0].id }}"
 #     name: "{{ sap_swpm_ers_instance_hostname }}-rt"
 #     address_prefix: "{{ sap_ha_pacemaker_cluster_vip_nwas_abap_ers_ip_address | default('192.168.2.11/32') }}"
 #     next_hop_type: "virtual_appliance"
@@ -145,10 +145,10 @@
 
 # - name: Ansible MS Azure Route Table append route for SAP NetWeaver PAS HA
 #   no_log: "{{ __sap_vm_provision_no_log }}"
-#   register: __sap_vm_provision_msazure_vnet_subnet_rt_route_sap_netweaver_pas
+#   register: __sap_vm_provision_task_msazure_vnet_subnet_rt_route_sap_netweaver_pas
 #   azure.azcollection.azure_rm_route:
 #     resource_group: "{{ sap_vm_provision_msazure_resource_group_name }}"
-#     route_table_name: "{{ __sap_vm_provision_msazure_vnet_subnet_rt_info.route_tables[0].id }}"
+#     route_table_name: "{{ __sap_vm_provision_task_msazure_vnet_subnet_rt_info.route_tables[0].id }}"
 #     name: "{{ sap_swpm_pas_instance_hostname }}-rt"
 #     address_prefix: "{{ sap_ha_pacemaker_cluster_vip_nwas_abap_pas_ip_address | default('192.168.2.12/32') }}"
 #     next_hop_type: "virtual_appliance"
@@ -188,10 +188,10 @@
 
 # - name: Ansible MS Azure Route Table append route for SAP NetWeaver AAS HA
 #   no_log: "{{ __sap_vm_provision_no_log }}"
-#   register: __sap_vm_provision_msazure_vnet_subnet_rt_route_sap_netweaver_aas
+#   register: __sap_vm_provision_task_msazure_vnet_subnet_rt_route_sap_netweaver_aas
 #   azure.azcollection.azure_rm_route:
 #     resource_group: "{{ sap_vm_provision_msazure_resource_group_name }}"
-#     route_table_name: "{{ __sap_vm_provision_msazure_vnet_subnet_rt_info.route_tables[0].id }}"
+#     route_table_name: "{{ __sap_vm_provision_task_msazure_vnet_subnet_rt_info.route_tables[0].id }}"
 #     name: "{{ sap_swpm_aas_instance_hostname }}-rt"
 #     address_prefix: "{{ sap_ha_pacemaker_cluster_vip_nwas_abap_aas_ip_address | default('192.168.2.13/32') }}"
 #     next_hop_type: "virtual_appliance"
@@ -231,7 +231,7 @@
 
 - name: MS Azure IAM Role - Definition
   no_log: "{{ __sap_vm_provision_no_log }}"
-  register: __sap_vm_provision_msazure_iam_role_fencing
+  register: __sap_vm_provision_task_msazure_iam_role_fencing
   azure.azcollection.azure_rm_roledefinition:
     name: "Linux Fence Agent Role"
     description: "Allows to power-off and start virtual machines"
@@ -254,7 +254,7 @@
 
 - name: MS Azure - GenericRestClient call to Virtual Machine API to identify Managed Service Identity (MSI)
   no_log: "{{ __sap_vm_provision_no_log }}"
-  register: __sap_vm_provision_msazure_vm_info_collect
+  register: __sap_vm_provision_task_msazure_vm_info_collect
   azure.azcollection.azure_rm_resource_info:
     resource_group: "{{ sap_vm_provision_msazure_resource_group_name }}"
     provider: Compute
@@ -275,7 +275,7 @@
   azure.azcollection.azure_rm_roleassignment:
     #auth_source: msi
     role_definition_id:
-      "{{ __sap_vm_provision_msazure_iam_role_fencing.id }}"
+      "{{ __sap_vm_provision_task_msazure_iam_role_fencing.id }}"
     scope: "/subscriptions/{{ sap_vm_provision_msazure_subscription_id }}"
     assignee_object_id: "{{ host_node.response[0].identity.principalId | default(none) }}"
     # Azure credentials
@@ -283,7 +283,7 @@
     tenant: "{{ sap_vm_provision_msazure_tenant_id }}"
     client_id: "{{ sap_vm_provision_msazure_app_client_id }}"
     secret: "{{ sap_vm_provision_msazure_app_client_secret }}"
-  loop: "{{ __sap_vm_provision_msazure_vm_info_collect.results }}"
+  loop: "{{ __sap_vm_provision_task_msazure_vm_info_collect.results }}"
   loop_control:
     loop_var: host_node
     label: "{{ host_node.response[0].name | default(none) }}" # Use default to avoid "Failed to template 'dict object' has no attribute 'response'"
@@ -330,7 +330,7 @@
 
     - name: Gather MS Azure Subnet ID
       no_log: "{{ __sap_vm_provision_no_log }}"
-      register: __sap_vm_provision_msazure_vnet_subnet_info
+      register: __sap_vm_provision_task_msazure_vnet_subnet_info
       azure.azcollection.azure_rm_subnet_info:
         resource_group: "{{ sap_vm_provision_msazure_resource_group_name }}"
         virtual_network_name: "{{ sap_vm_provision_msazure_vnet_name }}"
@@ -349,7 +349,7 @@
           name: "lb-vip-hana{{ vip_index_nr }}"
           private_ip_address: "{{ vip_item | regex_replace('/.*', '') }}"
           private_ip_allocation_method: "Static"
-          subnet: "{{ __sap_vm_provision_msazure_vnet_subnet_info.subnets[0].id }}"
+          subnet: "{{ __sap_vm_provision_task_msazure_vnet_subnet_info.subnets[0].id }}"
           zones: ["1", "2", "3"] # Zone-redundant
       when:
         - vip_item | length > 0
@@ -368,7 +368,7 @@
           name: "lb-vip-anydb{{ vip_index_nr }}"
           private_ip_address: "{{ vip_item | regex_replace('/.*', '') }}"
           private_ip_allocation_method: "Static"
-          subnet: "{{ __sap_vm_provision_msazure_vnet_subnet_info.subnets[0].id }}"
+          subnet: "{{ __sap_vm_provision_task_msazure_vnet_subnet_info.subnets[0].id }}"
           zones: ["1", "2", "3"] # Zone-redundant
       when:
         - vip_item | length > 0
@@ -387,7 +387,7 @@
           name: "lb-vip-nwas{{ vip_index_nr }}"
           private_ip_address: "{{ vip_item | regex_replace('/.*', '') }}"
           private_ip_allocation_method: "Static"
-          subnet: "{{ __sap_vm_provision_msazure_vnet_subnet_info.subnets[0].id }}"
+          subnet: "{{ __sap_vm_provision_task_msazure_vnet_subnet_info.subnets[0].id }}"
           zones: ["1", "2", "3"] # Zone-redundant
       when:
         - vip_item | length > 0
@@ -528,7 +528,7 @@
 
     - name: MS Azure Load Balancer (network L4) - Create NLB for SAP HANA with Virtual IP and Health Probe configuration
       no_log: "{{ __sap_vm_provision_no_log }}"
-      register: __sap_vm_provision_msazure_lb1a_info
+      register: __sap_vm_provision_task_msazure_lb1a_info
       azure.azcollection.azure_rm_loadbalancer:
         resource_group: "{{ sap_vm_provision_msazure_resource_group_name }}"
         name: "lb-sap-hana-ha" # "lb-sap-ha"
@@ -547,7 +547,7 @@
 
     - name: MS Azure Load Balancer (network L4) - Create NLB for SAP AnyDB with Virtual IP and Health Probe configuration
       no_log: "{{ __sap_vm_provision_no_log }}"
-      register: __sap_vm_provision_msazure_lb1b_info
+      register: __sap_vm_provision_task_msazure_lb1b_info
       azure.azcollection.azure_rm_loadbalancer:
         resource_group: "{{ sap_vm_provision_msazure_resource_group_name }}"
         name: "lb-sap-anydb-ha" # "lb-sap-ha"
@@ -566,12 +566,12 @@
 
     - name: MS Azure Load Balancer (network L4) - Define Ansible Variable of Load Balancer for Database Server
       ansible.builtin.set_fact:
-        __sap_vm_provision_msazure_lb1_info: "{{ __sap_vm_provision_msazure_lb1a_info if (groups['hana_secondary'] is defined and (groups['hana_secondary']|length>0)) else __sap_vm_provision_msazure_lb1b_info if (groups['anydb_secondary'] is defined and (groups['anydb_secondary']|length>0)) }}"
+        __sap_vm_provision_task_msazure_lb1_info: "{{ __sap_vm_provision_task_msazure_lb1a_info if (groups['hana_secondary'] is defined and (groups['hana_secondary']|length>0)) else __sap_vm_provision_task_msazure_lb1b_info if (groups['anydb_secondary'] is defined and (groups['anydb_secondary']|length>0)) }}"
       when: (groups["hana_secondary"] is defined and (groups["hana_secondary"]|length>0)) or (groups["anydb_secondary"] is defined and (groups["anydb_secondary"]|length>0))
 
     - name: MS Azure Load Balancer (network L4) - Create NLB for SAP NetWeaver with Virtual IP and Health Probe configuration
       no_log: "{{ __sap_vm_provision_no_log }}"
-      register: __sap_vm_provision_msazure_lb2_info
+      register: __sap_vm_provision_task_msazure_lb2_info
       azure.azcollection.azure_rm_loadbalancer:
         resource_group: "{{ sap_vm_provision_msazure_resource_group_name }}"
         name: "lb-sap-nwas-ha"
@@ -590,17 +590,17 @@
 
     - name: Set fact to hold loop variables from include_tasks when SAP HANA HA
       ansible.builtin.set_fact:
-        lb_ha_sap_hana: "{{ __sap_vm_provision_msazure_lb1_info.state.backend_address_pools | selectattr('name', '==', 'lb-backend-pool-hana') | map(attribute='id') | first }}"
+        lb_ha_sap_hana: "{{ __sap_vm_provision_task_msazure_lb1_info.state.backend_address_pools | selectattr('name', '==', 'lb-backend-pool-hana') | map(attribute='id') | first }}"
       when: (groups["hana_secondary"] is defined and (groups["hana_secondary"]|length>0))
 
     - name: Set fact to hold loop variables from include_tasks when SAP AnyDB HA
       ansible.builtin.set_fact:
-        lb_ha_sap_anydb: "{{ __sap_vm_provision_msazure_lb1_info.state.backend_address_pools | selectattr('name', '==', 'lb-backend-pool-anydb') | map(attribute='id') | first }}"
+        lb_ha_sap_anydb: "{{ __sap_vm_provision_task_msazure_lb1_info.state.backend_address_pools | selectattr('name', '==', 'lb-backend-pool-anydb') | map(attribute='id') | first }}"
       when: (groups["anyb_secondary"] is defined and (groups["anydb_secondary"]|length>0))
 
     - name: Set fact to hold loop variables from include_tasks when SAP NetWeaver HA
       ansible.builtin.set_fact:
-        lb_ha_sap_nwas: "{{ __sap_vm_provision_msazure_lb2_info.state.backend_address_pools | selectattr('name', '==', 'lb-backend-pool-nwas-ascs') | map(attribute='id') | first }}"
+        lb_ha_sap_nwas: "{{ __sap_vm_provision_task_msazure_lb2_info.state.backend_address_pools | selectattr('name', '==', 'lb-backend-pool-nwas-ascs') | map(attribute='id') | first }}"
       when: (groups["nwas_ers"] is defined and (groups["nwas_ers"]|length>0))
 
     - name: Update network interfaces for MS Azure VM - for SAP HANA HA with load balancing

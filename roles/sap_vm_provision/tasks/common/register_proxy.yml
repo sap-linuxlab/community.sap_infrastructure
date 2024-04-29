@@ -4,7 +4,7 @@
 
 - name: Ansible Task block for Web Forward Proxy setup
   when:
-    - sap_vm_provision_proxy_web_forward_proxy_ip is defined
+    - (sap_vm_provision_proxy_web_forward_proxy_ip is defined) and (sap_vm_provision_proxy_web_forward_proxy_ip | length > 0)
   block:
 
     - name: Set var for non-interactive login shell on RHEL

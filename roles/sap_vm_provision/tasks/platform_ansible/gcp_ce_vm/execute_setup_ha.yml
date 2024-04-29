@@ -16,7 +16,7 @@
 #     network:
 #       selfLink: "{{ __sap_vm_provision_task_gcp_vpc_info.resources[0].selfLink }}"
 #     auth_kind: "serviceaccount"
-#     service_account_contents: "{{ sap_vm_provision_gcp_credentials_json }}"
+#     service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
 #   loop: "{{ (groups['hana_primary'] | default([])) }}"
 #   loop_control:
 #     loop_var: host_node
@@ -37,7 +37,7 @@
     type: A
     ttl: 7200
     auth_kind: "serviceaccount"
-    service_account_contents: "{{ sap_vm_provision_gcp_credentials_json }}"
+    service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
   loop: "{{ (groups['hana_primary'] | default([])) }}"
   loop_control:
     loop_var: host_node
@@ -58,7 +58,7 @@
 #     network:
 #       selfLink: "{{ __sap_vm_provision_task_gcp_vpc_info.resources[0].selfLink }}"
 #     auth_kind: "serviceaccount"
-#     service_account_contents: "{{ sap_vm_provision_gcp_credentials_json }}"
+#     service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
 #   loop: "{{ (groups['anydb_primary'] | default([])) }}"
 #   loop_control:
 #     loop_var: host_node
@@ -79,7 +79,7 @@
     type: A
     ttl: 7200
     auth_kind: "serviceaccount"
-    service_account_contents: "{{ sap_vm_provision_gcp_credentials_json }}"
+    service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
   loop: "{{ (groups['anydb_primary'] | default([])) }}"
   loop_control:
     loop_var: host_node
@@ -100,7 +100,7 @@
 #     network:
 #       selfLink: "{{ __sap_vm_provision_task_gcp_vpc_info.resources[0].selfLink }}"
 #     auth_kind: "serviceaccount"
-#     service_account_contents: "{{ sap_vm_provision_gcp_credentials_json }}"
+#     service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
 #   loop: "{{ (groups['nwas_ascs'] | default([])) }}"
 #   loop_control:
 #     loop_var: host_node
@@ -121,7 +121,7 @@
     type: A
     ttl: 7200
     auth_kind: "serviceaccount"
-    service_account_contents: "{{ sap_vm_provision_gcp_credentials_json }}"
+    service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
   loop: "{{ (groups['nwas_ascs'] | default([])) }}"
   loop_control:
     loop_var: host_node
@@ -142,7 +142,7 @@
 #     network:
 #       selfLink: "{{ __sap_vm_provision_task_gcp_vpc_info.resources[0].selfLink }}"
 #     auth_kind: "serviceaccount"
-#     service_account_contents: "{{ sap_vm_provision_gcp_credentials_json }}"
+#     service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
 #   loop: "{{ (groups['nwas_ers'] | default([])) }}"
 #   loop_control:
 #     loop_var: host_node
@@ -163,7 +163,7 @@
     type: A
     ttl: 7200
     auth_kind: "serviceaccount"
-    service_account_contents: "{{ sap_vm_provision_gcp_credentials_json }}"
+    service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
   loop: "{{ (groups['nwas_ers'] | default([])) }}"
   loop_control:
     loop_var: host_node
@@ -186,7 +186,7 @@
 #     network:
 #       selfLink: "{{ __sap_vm_provision_task_gcp_vpc_info.resources[0].selfLink }}"
 #     auth_kind: "serviceaccount"
-#     service_account_contents: "{{ sap_vm_provision_gcp_credentials_json }}"
+#     service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
 #   loop: "{{ (groups['nwas_pas'] | default([])) }}"
 #   loop_control:
 #     loop_var: host_node
@@ -207,7 +207,7 @@
 #     type: A
 #     ttl: 7200
 #     auth_kind: "serviceaccount"
-#     service_account_contents: "{{ sap_vm_provision_gcp_credentials_json }}"
+#     service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
 #   loop: "{{ (groups['nwas_pas'] | default([])) }}"
 #   loop_control:
 #     loop_var: host_node
@@ -228,7 +228,7 @@
 #     network:
 #       selfLink: "{{ __sap_vm_provision_task_gcp_vpc_info.resources[0].selfLink }}"
 #     auth_kind: "serviceaccount"
-#     service_account_contents: "{{ sap_vm_provision_gcp_credentials_json }}"
+#     service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
 #   loop: "{{ (groups['nwas_aas'] | default([])) }}"
 #   loop_control:
 #     loop_var: host_node
@@ -249,7 +249,7 @@
 #     type: A
 #     ttl: 7200
 #     auth_kind: "serviceaccount"
-#     service_account_contents: "{{ sap_vm_provision_gcp_credentials_json }}"
+#     service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
 #   loop: "{{ (groups['nwas_aas'] | default([])) }}"
 #   loop_control:
 #     loop_var: host_node
@@ -286,7 +286,7 @@
     #network_tier: PREMIUM # An address with type INTERNAL cannot have a network tier
     purpose: GCE_ENDPOINT # GCE_ENDPOINT is for addresses used by VMs, alias IP ranges, and internal load balancers
     auth_kind: "serviceaccount"
-    service_account_contents: "{{ sap_vm_provision_gcp_credentials_json }}"
+    service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
   when:
     - vip_item | length > 0
     - groups["hana_secondary"] is defined and (groups["hana_secondary"]|length>0)
@@ -312,7 +312,7 @@
     unhealthy_threshold: 2
     healthy_threshold: 2
     auth_kind: "serviceaccount"
-    service_account_contents: "{{ sap_vm_provision_gcp_credentials_json }}"
+    service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
   when:
     - groups["hana_secondary"] is defined and (groups["hana_secondary"]|length>0)
 
@@ -325,7 +325,7 @@
     filters:
       - name = {{ host_node }}
     auth_kind: "serviceaccount"
-    service_account_contents: "{{ sap_vm_provision_gcp_credentials_json }}"
+    service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
   loop: "{{ groups_merged_list }}"
   loop_control:
     loop_var: host_node
@@ -346,7 +346,7 @@
     #  - name: http # default, not applicable to internal passthrough NLB, only applicable to proxy NLB
     #    port: 80 # default
     auth_kind: "serviceaccount"
-    service_account_contents: "{{ sap_vm_provision_gcp_credentials_json }}"
+    service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
   loop: "{{ (groups['hana_primary'] | default([])) }}"
   loop_control:
     loop_var: host_node
@@ -367,7 +367,7 @@
     #  - name: http # default, not applicable to internal passthrough NLB, only applicable to proxy NLB
     #    port: 80 # default
     auth_kind: "serviceaccount"
-    service_account_contents: "{{ sap_vm_provision_gcp_credentials_json }}"
+    service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
   loop: "{{ (groups['hana_secondary'] | default([])) }}"
   loop_control:
     loop_var: host_node
@@ -401,7 +401,7 @@
     session_affinity: NONE
     #timeout_sec: 30 # value ignored for internal passthrough NLB, default 30s to wait for backend before failure - see https://cloud.google.com/load-balancing/docs/backend-service#timeout-setting
     auth_kind: "serviceaccount"
-    service_account_contents: "{{ sap_vm_provision_gcp_credentials_json }}"
+    service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
   when:
     - groups["hana_secondary"] is defined and (groups["hana_secondary"]|length>0)
 
@@ -423,7 +423,7 @@
     load_balancing_scheme: INTERNAL
     network_tier: PREMIUM
     auth_kind: "serviceaccount"
-    service_account_contents: "{{ sap_vm_provision_gcp_credentials_json }}"
+    service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
   when:
     - vip_item | length > 0
     - groups["hana_secondary"] is defined and (groups["hana_secondary"]|length>0)
@@ -442,7 +442,7 @@
     filters:
       - name = "lb-backend-service-hana"
     auth_kind: "serviceaccount"
-    service_account_contents: "{{ sap_vm_provision_gcp_credentials_json }}"
+    service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
   when:
     - groups["hana_secondary"] is defined and (groups["hana_secondary"]|length>0)
 
@@ -461,7 +461,7 @@
     #network_tier: PREMIUM # An address with type INTERNAL cannot have a network tier
     purpose: GCE_ENDPOINT # GCE_ENDPOINT is for addresses used by VMs, alias IP ranges, and internal load balancers
     auth_kind: "serviceaccount"
-    service_account_contents: "{{ sap_vm_provision_gcp_credentials_json }}"
+    service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
   when:
     - vip_item | length > 0
     - groups["anydb_secondary"] is defined and (groups["anydb_secondary"]|length>0)
@@ -487,7 +487,7 @@
     unhealthy_threshold: 2
     healthy_threshold: 2
     auth_kind: "serviceaccount"
-    service_account_contents: "{{ sap_vm_provision_gcp_credentials_json }}"
+    service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
   when:
     - groups["anydb_secondary"] is defined and (groups["anydb_secondary"]|length>0)
 
@@ -500,7 +500,7 @@
     filters:
       - name = {{ host_node }}
     auth_kind: "serviceaccount"
-    service_account_contents: "{{ sap_vm_provision_gcp_credentials_json }}"
+    service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
   loop: "{{ groups_merged_list }}"
   loop_control:
     loop_var: host_node
@@ -521,7 +521,7 @@
     #  - name: http # default, not applicable to internal passthrough NLB, only applicable to proxy NLB
     #    port: 80 # default
     auth_kind: "serviceaccount"
-    service_account_contents: "{{ sap_vm_provision_gcp_credentials_json }}"
+    service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
   loop: "{{ (groups['anydb_primary'] | default([])) }}"
   loop_control:
     loop_var: host_node
@@ -542,7 +542,7 @@
     #  - name: http # default, not applicable to internal passthrough NLB, only applicable to proxy NLB
     #    port: 80 # default
     auth_kind: "serviceaccount"
-    service_account_contents: "{{ sap_vm_provision_gcp_credentials_json }}"
+    service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
   loop: "{{ (groups['anydb_secondary'] | default([])) }}"
   loop_control:
     loop_var: host_node
@@ -576,7 +576,7 @@
     session_affinity: NONE
     #timeout_sec: 30 # value ignored for internal passthrough NLB, default 30s to wait for backend before failure - see https://cloud.google.com/load-balancing/docs/backend-service#timeout-setting
     auth_kind: "serviceaccount"
-    service_account_contents: "{{ sap_vm_provision_gcp_credentials_json }}"
+    service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
   when:
     - groups["anydb_secondary"] is defined and (groups["anydb_secondary"]|length>0)
 
@@ -598,7 +598,7 @@
     load_balancing_scheme: INTERNAL
     network_tier: PREMIUM
     auth_kind: "serviceaccount"
-    service_account_contents: "{{ sap_vm_provision_gcp_credentials_json }}"
+    service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
   when:
     - vip_item | length > 0
     - groups["anydb_secondary"] is defined and (groups["anydb_secondary"]|length>0)
@@ -617,7 +617,7 @@
     filters:
       - name = "lb-backend-service-anydb"
     auth_kind: "serviceaccount"
-    service_account_contents: "{{ sap_vm_provision_gcp_credentials_json }}"
+    service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
   when:
     - groups["anydb_secondary"] is defined and (groups["anydb_secondary"]|length>0)
 
@@ -636,7 +636,7 @@
     #network_tier: PREMIUM # An address with type INTERNAL cannot have a network tier
     purpose: GCE_ENDPOINT # GCE_ENDPOINT is for addresses used by VMs, alias IP ranges, and internal load balancers
     auth_kind: "serviceaccount"
-    service_account_contents: "{{ sap_vm_provision_gcp_credentials_json }}"
+    service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
   when:
     - groups["nwas_ers"] is defined and (groups["nwas_ers"]|length>0)
 
@@ -654,7 +654,7 @@
     #network_tier: PREMIUM # An address with type INTERNAL cannot have a network tier
     purpose: GCE_ENDPOINT # GCE_ENDPOINT is for addresses used by VMs, alias IP ranges, and internal load balancers
     auth_kind: "serviceaccount"
-    service_account_contents: "{{ sap_vm_provision_gcp_credentials_json }}"
+    service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
   when:
     - groups["nwas_ers"] is defined and (groups["nwas_ers"]|length>0)
 
@@ -674,7 +674,7 @@
     unhealthy_threshold: 2
     healthy_threshold: 2
     auth_kind: "serviceaccount"
-    service_account_contents: "{{ sap_vm_provision_gcp_credentials_json }}"
+    service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
   when:
     - groups["nwas_ers"] is defined and (groups["nwas_ers"]|length>0)
 
@@ -694,7 +694,7 @@
     unhealthy_threshold: 2
     healthy_threshold: 2
     auth_kind: "serviceaccount"
-    service_account_contents: "{{ sap_vm_provision_gcp_credentials_json }}"
+    service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
   when:
     - groups["nwas_ers"] is defined and (groups["nwas_ers"]|length>0)
 
@@ -707,7 +707,7 @@
     filters:
       - name = {{ host_node }}
     auth_kind: "serviceaccount"
-    service_account_contents: "{{ sap_vm_provision_gcp_credentials_json }}"
+    service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
   loop: "{{ groups_merged_list }}"
   loop_control:
     loop_var: host_node
@@ -728,7 +728,7 @@
     #  - name: http # default, not applicable to internal passthrough NLB, only applicable to proxy NLB
     #    port: 80 # default
     auth_kind: "serviceaccount"
-    service_account_contents: "{{ sap_vm_provision_gcp_credentials_json }}"
+    service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
   loop: "{{ (groups['nwas_ascs'] | default([])) }}"
   loop_control:
     loop_var: host_node
@@ -749,7 +749,7 @@
     #  - name: http # default, not applicable to internal passthrough NLB, only applicable to proxy NLB
     #    port: 80 # default
     auth_kind: "serviceaccount"
-    service_account_contents: "{{ sap_vm_provision_gcp_credentials_json }}"
+    service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
   loop: "{{ (groups['nwas_ers'] | default([])) }}"
   loop_control:
     loop_var: host_node
@@ -783,7 +783,7 @@
     session_affinity: NONE
     #timeout_sec: 30 # value ignored for internal passthrough NLB, default 30s to wait for backend before failure - see https://cloud.google.com/load-balancing/docs/backend-service#timeout-setting
     auth_kind: "serviceaccount"
-    service_account_contents: "{{ sap_vm_provision_gcp_credentials_json }}"
+    service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
   when:
     - groups["nwas_ers"] is defined and (groups["nwas_ers"]|length>0)
 
@@ -814,7 +814,7 @@
     session_affinity: NONE
     #timeout_sec: 30 # value ignored for internal passthrough NLB, default 30s to wait for backend before failure - see https://cloud.google.com/load-balancing/docs/backend-service#timeout-setting
     auth_kind: "serviceaccount"
-    service_account_contents: "{{ sap_vm_provision_gcp_credentials_json }}"
+    service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
   when:
     - groups["nwas_ers"] is defined and (groups["nwas_ers"]|length>0)
 
@@ -836,7 +836,7 @@
     load_balancing_scheme: INTERNAL
     network_tier: PREMIUM
     auth_kind: "serviceaccount"
-    service_account_contents: "{{ sap_vm_provision_gcp_credentials_json }}"
+    service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
   when:
     - groups["nwas_ers"] is defined and (groups["nwas_ers"]|length>0)
 
@@ -858,7 +858,7 @@
     load_balancing_scheme: INTERNAL
     network_tier: PREMIUM
     auth_kind: "serviceaccount"
-    service_account_contents: "{{ sap_vm_provision_gcp_credentials_json }}"
+    service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
   when:
     - groups["nwas_ers"] is defined and (groups["nwas_ers"]|length>0)
 
@@ -872,7 +872,7 @@
     filters:
       - name = "lb-backend-service-nwas-ascs"
     auth_kind: "serviceaccount"
-    service_account_contents: "{{ sap_vm_provision_gcp_credentials_json }}"
+    service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
   when:
     - groups["nwas_ers"] is defined and (groups["nwas_ers"]|length>0)
 
@@ -885,6 +885,6 @@
     filters:
       - name = "lb-backend-service-nwas-ers"
     auth_kind: "serviceaccount"
-    service_account_contents: "{{ sap_vm_provision_gcp_credentials_json }}"
+    service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
   when:
     - groups["nwas_ers"] is defined and (groups["nwas_ers"]|length>0)

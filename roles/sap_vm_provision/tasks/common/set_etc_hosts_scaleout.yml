@@ -4,7 +4,7 @@
 
 - name: Ansible Play for controlling execution to an Infrastructure Platform when SAP HANA Scale-Out is used
   when:
-    - (groups["hana_primary"] is defined and (groups["hana_primary"] | length>0)) and (sap_hana_scaleout_active_coordinator is defined or sap_hana_scaleout_active_worker is defined or sap_hana_scaleout_standby is defined)
+    - (groups["hana_primary"] is defined and (groups["hana_primary"] | length>0)) and (sap_vm_provision_calculate_sap_hana_scaleout_active_coordinator is defined or sap_vm_provision_calculate_sap_hana_scaleout_active_worker is defined or sap_vm_provision_calculate_sap_hana_scaleout_standby is defined)
   block:
 
     # Required to collect the remote host's facts for further processing
@@ -35,7 +35,7 @@
       loop_control:
         label: "{{ inventory_hostname_short }}"
       when:
-        - (sap_hana_scaleout_standby == 0) or (not sap_hana_scaleout_standby is defined)
+        - (sap_vm_provision_calculate_sap_hana_scaleout_standby == 0) or (not sap_vm_provision_calculate_sap_hana_scaleout_standby is defined)
 
     - name: Update /etc/hosts file for SAP HANA Scale-Out Active Workers (with Standby)
       ansible.builtin.lineinfile:
@@ -46,7 +46,7 @@
         - "# SAP HANA scale-out workers\n{% for host in (groups['hana_primary'] | reject('search', '0') | list)[:-1] %}{% if (host != inventory_hostname_short) %}{{ hostvars[host]['ansible_host'] }}\t{{ hostvars[host]['ansible_fqdn'] }}\t{{ hostvars[host]['inventory_hostname_short'] }}\n{% endif %}{% endfor %}"
       loop_control:
         label: "{{ inventory_hostname_short }}"
-      when: sap_hana_scaleout_standby > 0
+      when: sap_vm_provision_calculate_sap_hana_scaleout_standby > 0
 
     - name: Update /etc/hosts file for SAP HANA Scale-Out Standby
       ansible.builtin.lineinfile:
@@ -58,5 +58,5 @@
       loop_control:
         label: "{{ inventory_hostname_short }}"
       when:
-        - sap_hana_scaleout_standby > 0
+        - sap_vm_provision_calculate_sap_hana_scaleout_standby > 0
         - not inventory_hostname_short == hostvars[(groups['hana_primary'] | last)]['inventory_hostname_short']

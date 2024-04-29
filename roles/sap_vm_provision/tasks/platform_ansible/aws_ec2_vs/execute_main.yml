@@ -71,7 +71,7 @@
         file: common/set_ansible_vars.yml
 
     - name: Ansible AWS Route53 DNS Records for hosts
-      register: __sap_vm_provision_task_route53
+      register: __sap_vm_provision_task_aws_route53
       no_log: "{{ __sap_vm_provision_no_log }}"
       amazon.aws.route53:
         state: present
@@ -100,7 +100,7 @@
         - __sap_vm_provision_task_provision_host_single_volumes
         - __sap_vm_provision_task_provision_host_all_add
         - __sap_vm_provision_task_aws_vpc_subnet_rt_info
-        - __sap_vm_provision_task_route53
+        - __sap_vm_provision_task_aws_route53
       loop_control:
         loop_var: loop_item
         index_var: loop_item_index
@@ -144,7 +144,7 @@
       ansible.builtin.include_tasks:
         file: common/set_etc_hosts_scaleout.yml
       when:
-        - (groups["hana_primary"] is defined and (groups["hana_primary"] | length>0)) and (sap_hana_scaleout_active_coordinator is defined or sap_hana_scaleout_active_worker is defined or sap_hana_scaleout_standby is defined)
+        - (groups["hana_primary"] is defined and (groups["hana_primary"] | length>0)) and (sap_vm_provision_calculate_sap_hana_scaleout_active_coordinator is defined or sap_vm_provision_calculate_sap_hana_scaleout_active_worker is defined or sap_vm_provision_calculate_sap_hana_scaleout_standby is defined)
 
     - name: Set vars for sap_storage_setup Ansible Role
       register: __sap_vm_provision_task_ansible_vars_storage
