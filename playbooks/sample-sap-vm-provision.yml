@@ -1,0 +1,47 @@
+---
+
+- name: Ansible Play to run sap_vm_provision Ansible Role
+  hosts: all
+  gather_facts: true
+  serial: 1
+
+
+#      ansible.builtin.include_tasks: "{{ 'platform_' + sap_vm_provision_iac_type }}/{{ sap_vm_provision_iac_platform }}/execute_main.yml"
+
+
+
+  vars:
+#    sap_vm_provision_platform: redhat_ocp_virt
+    sap_vm_provision_iac_type: ansible
+    sap_vm_provision_iac_platform: redhat_ocp_virt 
+    sap_vm_provision_host_specification_plan: example_host_specification_plan
+    sap_hypervisor_node_kubeconfig: "{{ lookup( 'ansible.builtin.env', 'KUBECONFIG') }}"
+
+    # XXX namespace?
+    scaleout_origin_host_spec: lu0567
+
+    # XXX Naming w/ kubevirt?
+    sap_vm_provision_kubevirt_os_user: minion
+    sap_vm_provision_kubevirt_os_user_password: banana
+
+    # XXX handle if not defined
+    sap_vm_provision_ssh_host_public_key_file_path: /home/nils/.ssh/id_rsa.pub 
+
+    # XXX namespace?
+    sap_vm_provision_kubevirt_target_namespace: openshift-sriov-network-operator
+
+    # XXX handle DL/existing usage
+    sap_vm_provision_kubevirt_vm_host_os_image_url: "docker://registry.redhat.io/rhel8/rhel-guest-image:9.2.0"
+    sap_vm_provision_kubevirt_vm_host_os_image_base_url: "docker://registry.redhat.io/rhel8/rhel-guest-image:"
+    sap_vm_provision_kubevirt_os_image_namespace: openshift-virtualization-os-images
+
+
+
+  environment:
+    KUBECONFIG: "{{ sap_hypervisor_node_kubeconfig }}"
+    K8S_AUTH_KUBECONFIG: "{{ sap_hypervisor_node_kubeconfig }}"
+
+  tasks:
+    - name: Include sap_vm_provision Ansible Role
+      ansible.builtin.include_role:
+        name: sap_vm_provision
