@@ -82,10 +82,12 @@ For a list of requirements and recommended authorizations on each Infrastructure
         - `google.cloud`
         - `ibm.cloudcollection`
             - _(legacy, to be replaced with `ibm.cloud` in future)_
-        - `kubevirt.core`
+        - `kubevirt.core` for kubevirt_vm or Red Hat OpenShift Virtualization
         - `openstack.cloud`
         - `ovirt.ovirt`
         - `vmware.vmware_rest` <sup>_(requires `cloud.common`)_</sup>
+
+TODO: Split up above dependencies per platform.
 
 
 ## Execution

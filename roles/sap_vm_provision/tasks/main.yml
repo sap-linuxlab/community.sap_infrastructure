@@ -8,7 +8,7 @@
   block:
 
     - name: Execute to target {{ sap_vm_provision_iac_platform }} using {{ sap_vm_provision_iac_type }}
-      ansible.builtin.include_tasks: "{{ 'platform_' + sap_vm_provision_iac_type }}/{{ sap_vm_provision_iac_platform }}/execute_main.yml"
+      ansible.builtin.include_tasks: "{{role_path}}/tasks/platform_{{ sap_vm_provision_iac_type }}/{{ sap_vm_provision_iac_platform }}/execute_main.yml"
       when: not sap_vm_provision_iac_post_deployment is defined or not sap_vm_provision_iac_post_deployment
 
 
