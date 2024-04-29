@@ -63,6 +63,9 @@
 - name: Include prepare
   ansible.builtin.include_tasks: "platform/{{ sap_hypervisor_node_platform }}/prepare.yml"
 
+- name: Include patch cluster masters unschedulable
+  ansible.builtin.include_tasks: "platform/{{ sap_hypervisor_node_platform }}/patch-cluster-masters-unschedulable.yml"
+
 - name: Include tuned virtual host
   ansible.builtin.include_tasks: "platform/{{ sap_hypervisor_node_platform }}/tuned-virtual-host.yml"
 
