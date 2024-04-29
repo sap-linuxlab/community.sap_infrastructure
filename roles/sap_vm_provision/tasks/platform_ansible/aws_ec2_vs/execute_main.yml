@@ -71,7 +71,7 @@
         file: common/set_ansible_vars.yml
 
     - name: Ansible AWS Route53 DNS Records for hosts
-      register: __sap_vm_provision_task_route53
+      register: __sap_vm_provision_task_aws_route53
       no_log: "{{ __sap_vm_provision_no_log }}"
       amazon.aws.route53:
         state: present
@@ -100,7 +100,7 @@
         - __sap_vm_provision_task_provision_host_single_volumes
         - __sap_vm_provision_task_provision_host_all_add
         - __sap_vm_provision_task_aws_vpc_subnet_rt_info
-        - __sap_vm_provision_task_route53
+        - __sap_vm_provision_task_aws_route53
       loop_control:
         loop_var: loop_item
         index_var: loop_item_index

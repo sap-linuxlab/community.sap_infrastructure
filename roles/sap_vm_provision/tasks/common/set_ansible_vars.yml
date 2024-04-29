@@ -51,7 +51,7 @@
     sap_ha_pacemaker_cluster_aws_region: "{{ sap_ha_pacemaker_cluster_aws_region }}"
     sap_ha_pacemaker_cluster_aws_access_key_id: "{{ sap_ha_pacemaker_cluster_aws_access_key_id }}"
     sap_ha_pacemaker_cluster_aws_secret_access_key: "{{ sap_ha_pacemaker_cluster_aws_secret_access_key }}"
-    sap_ha_pacemaker_cluster_aws_vip_update_rt: "{{ __sap_vm_provision_task_vpc_subnet_rt_info.route_tables[0].route_table_id }}"
+    sap_ha_pacemaker_cluster_aws_vip_update_rt: "{{ __sap_vm_provision_task_aws_vpc_subnet_rt_info.route_tables[0].route_table_id }}"
   when:
     - sap_ha_pacemaker_cluster_aws_region is defined
     - sap_vm_provision_iac_platform == "aws_ec2_vs"
