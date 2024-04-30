@@ -1,0 +1,527 @@
+---
+# The tasks in this file are executed in a loop over the defined hosts
+
+# When SAP HANA Scale-Out is used, if host name is not in original specifications then strip suffix node number from host name
+- name: Set fact when performing SAP HANA Scale-Out
+  ansible.builtin.set_fact:
+    scaleout_origin_host_spec: "{{ inventory_hostname | regex_replace('^(.+?)\\d*$', '\\1') }}"
+  when:
+    - sap_hana_scaleout_active_coordinator is defined
+    - not inventory_hostname in lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan].keys()
+
+
+- name: Set fact for VM name
+  ansible.builtin.set_fact:
+    __sap_vm_provision_register_vm_name: "{{ scaleout_origin_host_spec | default(inventory_hostname) }}"
+
+- name: Set fact for VM config
+  ansible.builtin.set_fact:
+    __sap_vm_provision_register_vm_config: "{{ (lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan][__sap_vm_provision_register_vm_name]) }}"
+
+- name: Debug print __sap_vm_provision_register_vm_config
+  debug: var=__sap_vm_provision_register_vm_config
+
+
+
+
+#- name: Get OS PVC
+#  kubernetes.core.k8s_info:
+#    api_version: v1
+#    kind: PersistentVolumeClaim
+#    name: "{{ __sap_vm_provision_register_vm_config.os_image }}" 
+#    namespace: openshift-virtualization-os-images
+#  register: __sap_vm_provision_register_os_pvc
+#
+#- name: Print PVCs
+#  debug: var=__sap_vm_provision_register_os_pvc
+
+#- meta: end_play
+
+#XXX needs fixing
+- name: Set fact for downloaded OS Image
+  ansible.builtin.set_fact:
+    os_image: |-
+      {%- set disks_map = [
+        {
+          'metadata': { 'name': (scaleout_origin_host_spec + '-boot' | replace('_', '-')) },
+          'spec' : {
+            'source' : {
+              'registry' : {
+                'url': __sap_vm_provision_register_vm_config.os_image_url,
+                'pullMethod': 'node'
+              },
+            },
+            'storage' : {
+              'accessModes': ['ReadWriteMany'],
+              'resources': {
+                'requests': {
+                  'storage': '50Gi'
+                }
+              }
+            }
+          }
+        }
+      ] -%}
+      {{ disks_map }}
+  when: __sap_vm_provision_register_vm_config.os_image_url is defined and __sap_vm_provision_register_vm_config.os_image_pvc is not defined
+
+- name: Set fact for existing OS Image
+  ansible.builtin.set_fact:
+    os_image: |
+      {%- set disks_map = [
+        {
+          'metadata': { 'name': (scaleout_origin_host_spec + '-boot' | replace('_', '-')) },
+          'spec' : {
+            'source' : {
+              'pvc' : {
+                'name': __sap_vm_provision_register_vm_config.os_image_pvc,
+                'namespace': __sap_vm_provision_register_vm_config.os_image_pvc_namespace
+              },
+            },
+            'storage' : {
+              'accessModes': ['ReadWriteMany'],
+              'resources': {
+                'requests': {
+                  'storage': '25Gi'
+                }
+              }
+            }
+          }
+        }
+      ] -%}
+      {{ disks_map }}
+  when: __sap_vm_provision_register_vm_config.os_image_pvc is defined and __sap_vm_provision_register_vm_config.os_image_url is not defined
+
+- name: Debug print sap_vm_provision_host_specification_plan
+  debug: var=sap_vm_provision_host_specification_plan
+
+- name: Debug print scaleout_origin_host_spec
+  debug: var=scaleout_origin_host_spec
+
+- name: Debug print inventory_hostname
+  debug: var=inventory_hostname
+
+
+- name: Debug print os_image_existing
+  debug: var=os_image_existing
+
+- name: Set fact for storage volume template map
+  ansible.builtin.set_fact:
+    storage_disks_map: |-
+      {% set disks_map = [] -%}
+      {% for storage_item in __sap_vm_provision_register_vm_config.storage_definition -%}
+              {% set vol = disks_map.extend([
+              {
+                'metadata': { 'name': (scaleout_origin_host_spec + '-' + storage_item.name | replace('_', '-')) },
+                'spec' : {
+                  'source' : {
+                    'blank' : {}
+                  },
+                  'storage' : {
+                    'accessModes': ['ReadWriteMany'],
+                    'resources': {
+                      'requests': {
+                        'storage': ((storage_item.disk_size | default(0)) | string) + 'Gi'
+                      }
+                    },
+                    'storageClassName': storage_item.disk_type | default('')
+                  }
+                }
+              }]) %}
+      {%- endfor %}
+      {{ disks_map }}
+
+
+- name: Set fact for storage volumes attachment list
+  ansible.builtin.set_fact:
+    storage_disk_name_list: |-
+      {% set disks_simple_map = [] -%}
+      {% for list_item in os_image -%}
+        {% set vol = disks_simple_map.extend([
+        {
+          'name': list_item.metadata.name,
+          'dataVolume': { 'name': list_item.metadata.name },
+        }
+        ]) %}
+      {%- endfor %}
+      {% for list_item in storage_disks_map -%}
+        {% set vol = disks_simple_map.extend([
+        {
+          'name': list_item.metadata.name,
+          'dataVolume': { 'name': list_item.metadata.name },
+        }
+        ]) %}
+      {%- endfor %}
+      {{ disks_simple_map }}
+
+- name: Set fact for storage volumes attachment list
+  ansible.builtin.set_fact:
+    storage_disk_name_list: |-
+      {% set disks_simple_map = [] -%}
+      {% for list_item in os_image -%}
+        {% set vol = disks_simple_map.extend([
+        {
+          'name': list_item.metadata.name,
+          'dataVolume': { 'name': list_item.metadata.name },
+        }
+        ]) %}
+      {%- endfor %}
+      {% for list_item in storage_disks_map -%}
+        {% set vol = disks_simple_map.extend([
+        {
+          'name': list_item.metadata.name,
+          'dataVolume': { 'name': list_item.metadata.name },
+        }
+        ]) %}
+      {%- endfor %}
+      {{ disks_simple_map }}
+
+# create 
+#           - bootOrder: 1
+#            disk:
+#              bus: virtio
+#            name: "{{scaleout_origin_host_spec + '-boot' | replace('_', '-')}}"
+#            io: native
+
+
+#          - disk:
+#              bus: virtio
+#            name: cloudinit
+#          - disk:
+#              bus: virtio
+#            name: downwardmetrics
+
+
+- name: Set fact for disk list
+  ansible.builtin.set_fact:
+    storage_disk_list: |-
+      {% set disks_list_simple = [] -%}
+        {% set vol = disks_list_simple.extend([
+        {
+          'name': scaleout_origin_host_spec + '-boot' | replace('_', '-'),
+          'bootOrder': 1,
+          'disk': {
+              'bus': 'virtio',
+              'io': 'native'
+         }
+        },
+        {
+          'name': 'cloudinit',
+          'io': 'native',
+          'disk': {
+              'bus': 'virtio'
+         }
+        },
+        {
+          'name': 'downwardmetrics',
+          'io': 'native',
+          'disk': {
+              'bus': 'virtio'
+         }
+        },
+        ]) %}
+      {% for list_item in storage_disks_map -%}
+        {% set vol = disks_list_simple.extend([
+        {
+          'name': list_item.metadata.name,
+          'io': 'native',
+          'disk': {
+              'bus': 'virtio'
+         }
+        }
+        ]) %}
+      {%- endfor %}
+      {{ disks_list_simple }}
+
+
+- name: Debug print storage_disk_name_list
+  debug: var=storage_disk_name_list
+
+- name: Debug print storage_disks_map
+  debug: var=storage_disks_map
+
+- name: Debug print storage_disks_list
+  debug: var=storage_disk_list
+
+- name: Set fact for cloud-init volume
+  ansible.builtin.set_fact:
+    cloud_init_volume:
+      - name: cloudinit
+        disk:
+          bus: virtio
+        cloudInitNoCloud: "{{ __sap_vm_provision_register_vm_config.cloudinit }}"
+
+- name: Set fact for downwardmetrics volume
+  ansible.builtin.set_fact:
+    downwardmetrics_volume:
+      - downwardMetrics: {}
+        name: downwardmetrics
+
+
+#        - name: sapbridge
+#          type: bridge
+#          networkName: sapbridge-network-definition
+#          model: virtio
+#        - name: banana
+#          type: sriov
+#          networkName: test
+
+
+- name: Set fact for network interfaces
+  ansible.builtin.set_fact:
+    __sap_vm_provision_register_network_interfaces: |-
+      {% set netifs = [] -%}
+      {% for list_item in __sap_vm_provision_register_vm_config.network_definition -%}
+        {% set ifs = netifs.extend([
+        {
+          list_item.type: {},
+          'model': list_item.model,
+          'name': list_item.name,
+        }
+        ]) %}
+      {%- endfor %}
+      {{ netifs }}
+
+#            - bridge: {}
+#              model: virtio
+#              name: bridgeif 
+
+
+#        - name: bridgeif
+#         multus:
+#           networkName: sapbridge-network-definition
+
+
+- name: Set fact for networks definition
+  ansible.builtin.set_fact:
+    __sap_vm_provision_register_networks_definition: |-
+      {% set networks = [] -%}
+      {% for list_item in __sap_vm_provision_register_vm_config.network_definition -%}
+        {% set ifs = networks.extend([
+        {
+          'name': list_item.name,
+          'multus': { 'networkName': list_item.networkName}
+        }
+        ]) %}
+      {%- endfor %}
+      {{ networks }}
+
+#- name: print network
+#  debug: var=__sap_vm_provision_register_network_interfaces, __sap_vm_provision_register_networks_definition
+
+#- name: Set fact for kubevirt_vm_cpu_cores
+#  ansible.builtin.set_fact:
+#    kubevirt_vm_cpu_cores: 2
+
+- name: Delete VMs using Kubernetes module
+  kubernetes.core.k8s:
+    namespace: "{{ sap_vm_provision_kubevirt_target_namespace }}"
+    kind: "VirtualMachine"
+    name: "{{ __sap_vm_provision_register_vm_name }}"
+    state: absent
+
+# delete pvcs
+- name: Delete PVCs associated with the VM
+  kubernetes.core.k8s:
+    state: absent
+    definition:
+      apiVersion: v1
+      kind: PersistentVolumeClaim
+      metadata:
+        # Label selector to match PVCs associated with the deleted VM
+        labels:
+           app: "{{ __sap_vm_provision_register_vm_name }}"
+
+
+- name: Provision KubeVirt Virtual Machine
+  kubevirt.core.kubevirt_vm:
+    api_version: "{{ api_version | default(omit) }}"
+    validate_certs: "{{ validate_certs | default(omit) | bool }}"
+    persist_config: "{{ persist_config | default(omit) }}"
+    host: "{{ host | default(omit) }}" # Target Hypervisor Node
+
+    kubeconfig: "{{ kubeconfig | default(omit) }}"
+    api_key: "{{ api_key | default(omit) }}"
+    username: "{{ username | default(omit) }}"
+    password: "{{ password | default(omit) }}"
+
+    # ca_cert: "{{ ca_cert | default(omit) }}"
+    # client_cert: "{{ client_cert | default(omit) }}"
+    # client_key: "{{ client_key | default(omit) }}"
+    # context: "{{ context | default(omit) }}"
+
+    ## Virtual Machine target Hypervisor definition
+    namespace: "{{ sap_vm_provision_kubevirt_target_namespace }}" # Target namespace
+
+    ## Virtual Machine definition
+    state: present
+    running: true
+    wait: true  # ensure Virtual Machine in ready state before exiting Ansible Task
+    wait_sleep: 30  # 30 second poll for ready state
+    wait_timeout: 600  # 10 minute wait for ready state
+    force: false  # Do not replace existing Virtual Machine with same name
+    name: "{{ scaleout_origin_host_spec }}"
+    labels:
+      app: "{{ scaleout_origin_host_spec }}"
+
+    # Virtual Disk volume definitions
+    data_volume_templates: "{{ storage_disks_map + os_image }}"
+
+    spec:
+      domain:
+        # prevents live migration
+        # ioThreadsPolicy: auto
+        hostname: "{{ scaleout_origin_host_spec }}"
+        evictionStrategy: LiveMigrate
+        terminationGracePeriodSeconds: 1800 # 30 minutes after stop request before VM is force terminated
+
+        resources:
+          requests:
+            memory: "{{ (lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan][scaleout_origin_host_spec | default(inventory_hostname)].kubevirt_vm_memory_gib) + 16 }}Gi" # Static 16GB DRAM overhead for container runtime
+
+        devices:
+
+          networkInterfaceMultiqueue: true
+          blockMultiQueue: true
+          autoattachMemBalloon: false
+          disks: "{{ storage_disk_list }}"
+#          - disk:
+#              bus: virtio
+#            name: cloudinit
+#          - bootOrder: 1
+#            disk:
+#              bus: virtio
+#            name: "{{scaleout_origin_host_spec + '-boot' | replace('_', '-')}}"
+#            io: native
+#          - disk:
+#              bus: virtio
+#            name: hana-data-disk
+#            cache: none
+#            io: native
+#          - disk:
+#              bus: virtio
+#            name: hana-share-disk
+#            cache: none
+#            io: native
+#          - disk:
+#              bus: virtio
+#            name: hana-log-disk
+#            cache: none
+#            io: native
+#         - disk:
+#              bus: virtio
+#            name: downwardmetrics
+          interfaces: "{{ __sap_vm_provision_register_network_interfaces }}"
+#            - bridge: {}
+#              model: virtio
+#              name: bridgeif 
+
+        cpu:
+          cores: "{{ __sap_vm_provision_register_vm_config.kubevirt_vm_cpu_cores | int }}"
+          threads: 2
+
+
+          dedicatedCpuPlacement: true
+          model: host-passthrough
+          numa:
+            guestMappingPassthrough: {}
+          features:
+            - name: x2apic
+              policy: require
+            - name: rdtscp
+              policy: require
+            - name: invtsc
+              policy: require
+
+
+        memory:
+          guest: "{{ lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan][scaleout_origin_host_spec | default(inventory_hostname)].kubevirt_vm_memory_gib }}Gi"
+          hugepages:
+            pageSize: 1Gi
+
+      volumes: "{{ storage_disk_name_list + cloud_init_volume + downwardmetrics_volume }}"
+
+      networks: "{{ __sap_vm_provision_register_networks_definition }}"
+#        - name: bridgeif
+#          multus:
+#            networkName: sapbridge-network-definition
+
+#------------------------------------------------------------------------------------------------------------------------------
+
+
+
+#------------------------------------------------------------------------------------------------------------------------------
+#          cores: "{{ (lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan][scaleout_origin_host_spec | default(inventory_hostname)].kubevirt_vm_cpu_cores) }}"
+#          threads: "{{ lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan][scaleout_origin_host_spec | default(inventory_hostname)].kubevirt_vm_cpu_smt }}"
+#          dedicatedCpuPlacement: true
+#          isolateEmulatorThread: true
+#          model: host-passthrough
+#          numa:
+#            guestMappingPassthrough: {}
+#          features:
+#            - name: x2apic
+#              policy: require
+#            - name: rdtscp
+#              policy: require
+#            - name: invtsc
+#              policy: require
+
+
+# TBD
+#      networks:
+#        - name: bridge-network-definition
+#          multus:
+#            networkName: iface-bridge-sriov
+#        - name: storage-network-definition
+#          multus:
+#            networkName: iface-storage-sriov
+#        - name: multi-network-definition
+#          multus:
+#            networkName: iface-multi-sriov
+
+      #volumes: "{{ storage_disk_name_list + cloud_init_volume }}"
+
+
+- name: Check VM status
+  register: register_provisioned_host_single_info
+  kubevirt.core.kubevirt_vm_info:
+    name: "{{ scaleout_origin_host_spec }}"
+    namespace: "{{ sap_vm_provision_kubevirt_target_namespace }}"
+
+- name: Print register_provisioned_host_single_info
+  debug: var=register_provisioned_host_single_info
+
+#- name: Create fact for delegate host IP
+#  ansible.builtin.set_fact:
+#    provisioned_private_ip: "{{ register_provisioned_host_single_info.spec.UNKNOWN_VARIABLE_FOR_PRIVATE_IP_HERE }}"
+
+
+- name: Collect only facts about hardware
+  register: host_disks_info
+  ansible.builtin.setup:
+    gather_subset:
+      - hardware
+  remote_user: root
+  become: true
+  become_user: root
+  delegate_to: "{{ provisioned_private_ip }}"
+  delegate_facts: false
+  vars:
+    ansible_ssh_private_key_file: "{{ sap_vm_provision_ssh_host_private_key_file_path }}"
+
+#- name: Output disks
+#  ansible.builtin.debug:
+#    var: hostvars[inventory_hostname].ansible_devices.keys() | list
+
+#- name: Debug Ansible Facts devices used list
+#  ansible.builtin.debug:
+#    msg: "{{ host_disks_info.ansible_facts.ansible_device_links.ids.keys() | list }}"
+
+
+- name: Append loop value to register
+  ansible.builtin.set_fact:
+    register_provisioned_host_single: "{{ register_provisioned_host_single_info.spec.UKNOWN_VARIABLE_HERE | combine( { 'host_node' : inventory_hostname } , { 'sap_host_type' : lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan][scaleout_origin_host_spec | default(inventory_hostname)].sap_host_type } , { 'sap_system_type' : (lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan][scaleout_origin_host_spec | default(inventory_hostname)].sap_system_type | default('')) } ) }}"
+
+- name: Append output to merged register
+  ansible.builtin.set_fact:
+    register_provisioned_host_all: "{{ register_provisioned_host_all + [register_provisioned_host_single] }}"

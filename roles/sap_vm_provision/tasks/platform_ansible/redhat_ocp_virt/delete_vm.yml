@@ -1,0 +1,7 @@
+- name: Delete VMs using Kubernetes module
+  kubernetes.core.k8s:
+    name: "{{ sap_provision_vm_namespace }}"
+#    template:
+#     path: "{{ sap_create_vm_template }}"
+    state: absent
+#  loop: "{{ sap_create_vm_names }}"
