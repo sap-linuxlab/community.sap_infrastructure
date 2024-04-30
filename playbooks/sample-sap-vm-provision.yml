@@ -45,6 +45,7 @@
     - name: Sleep so we can investigate the container environement
       pause:
         minutes: 5
+      when: sap_vm_provision_debug is defined and sap_vm_provision_debug == true
 
     - name: Include sap_vm_provision Ansible Role
       ansible.builtin.include_role:
