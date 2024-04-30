@@ -315,6 +315,7 @@
 
 - name: Delete VMs using Kubernetes module
   kubernetes.core.k8s:
+    kubeconfig: "{{ kubeconfig }}"
     namespace: "{{ sap_vm_provision_kubevirt_target_namespace }}"
     kind: "VirtualMachine"
     name: "{{ __sap_vm_provision_register_vm_name }}"
@@ -323,6 +324,7 @@
 # delete pvcs
 - name: Delete PVCs associated with the VM
   kubernetes.core.k8s:
+    kubeconfig: "{{ kubeconfig }}"
     state: absent
     definition:
       apiVersion: v1
