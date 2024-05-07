@@ -62,7 +62,7 @@
 
     - name: Set fact for IBM Cloud Load Balancer/s info
       ansible.builtin.set_fact:
-        ibmcloud_lbs_all_info: "{{ __sap_vm_provision_task_ibmcloud_lb_all_info_shell.stdout | split('Space:') | last | trim | from_json }}"
+        ibmcloud_lbs_all_info: "{{ ('[' + (__sap_vm_provision_task_ibmcloud_lb_all_info_shell.stdout | split('[',1) | last)) | trim | from_json }}"
 
     - name: Set fact for IBM Cloud Load Balancer Back-end Pools to target
       ansible.builtin.set_fact:
