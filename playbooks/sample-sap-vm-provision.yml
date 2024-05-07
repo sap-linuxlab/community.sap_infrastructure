@@ -39,9 +39,12 @@
 
   environment:
     KUBECONFIG: "{{ sap_hypervisor_node_kubeconfig }}"
-    K8S_AUTH_KUBECONFIG: "{{ sap_hypervisor_node_kubeconfig }}"
+#    K8S_AUTH_KUBECONFIG: "{{ sap_hypervisor_node_kubeconfig }}"
 
   tasks:
+    - name: Print K8S_AUTH_KUBECONFIG
+      debug: var=K8S_AUTH_KUBECONFIG
+
     - name: Sleep so we can investigate the container environement
       pause:
         minutes: 5
