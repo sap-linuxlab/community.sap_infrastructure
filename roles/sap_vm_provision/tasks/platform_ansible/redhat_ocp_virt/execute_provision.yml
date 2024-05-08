@@ -346,7 +346,7 @@
 - name: Provision KubeVirt Virtual Machine
   kubevirt.core.kubevirt_vm:
     api_version: "{{ api_version | default(omit) }}"
-    validate_certs: "{{ validate_certs | default(omit) | bool }}"
+    validate_certs: false #"{{ validate_certs | default(omit) | bool }}"
     persist_config: "{{ persist_config | default(omit) }}"
     host: "{{ host | default(omit) }}" # Target Hypervisor Node
 
