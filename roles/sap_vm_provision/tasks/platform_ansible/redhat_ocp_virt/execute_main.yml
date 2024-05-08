@@ -23,7 +23,7 @@
 - name: Set fact for auth - Username and Passwords
   ansible.builtin.set_fact:
     username: "{{ sap_vm_provision_kubevirt_username | default(lookup('env', 'K8S_AUTH_USERNAME')) | default(omit) }}"
-    password: "{{ sap_vm_provision_kubevirt_username | default(lookup('env', 'K8S_AUTH_PASSWORD')) | default(omit) }}"
+    password: "{{ sap_vm_provision_kubevirt_password | default(lookup('env', 'K8S_AUTH_PASSWORD')) | default(omit) }}"
 
 # - name: Set fact for auth - Alternative
 #   ansible.builtin.set_fact:
