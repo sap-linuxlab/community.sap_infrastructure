@@ -39,8 +39,8 @@
 
 
   environment:
-#    KUBECONFIG: "{{ sap_hypervisor_node_kubeconfig }}"
-#    K8S_AUTH_KUBECONFIG: "{{ sap_hypervisor_node_kubeconfig }}"
+    KUBECONFIG: "{{ sap_vm_provision_kubeconfig }}"
+    K8S_AUTH_KUBECONFIG: "{{ sap_vm_provision_kubeconfig }}"
 
   tasks:
     - name: Print K8S_AUTH_KUBECONFIG
