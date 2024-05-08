@@ -317,17 +317,17 @@
 - debug: var=K8S_AUTH_USERNAME
 - debug: var=K8S_AUTH_PASSWORD
 
-- name: Delete VMs using Kubernetes module
-  kubernetes.core.k8s:
-    connections:
-      verify_ssl: false
-      kubeconfig: "{{ sap_vm_provision_kubeconfig }}"
-      username: "{{K8S_AUTH_USERNAME}}"
-      password: "{{K8S_AUTH_PASSWORD}}"
-    namespace: "{{ sap_vm_provision_kubevirt_target_namespace }}"
-    kind: "VirtualMachine"
-    name: "{{ __sap_vm_provision_register_vm_name }}"
-    state: absent
+#- name: Delete VMs using Kubernetes module
+#  kubernetes.core.k8s:
+#    connections:
+#      verify_ssl: false
+#      kubeconfig: "{{ sap_vm_provision_kubeconfig }}"
+#      username: "{{K8S_AUTH_USERNAME}}"
+#      password: "{{K8S_AUTH_PASSWORD}}"
+#    namespace: "{{ sap_vm_provision_kubevirt_target_namespace }}"
+#    kind: "VirtualMachine"
+#    name: "{{ __sap_vm_provision_register_vm_name }}"
+#    state: absent
 
 # delete pvcs
 #- name: Delete PVCs associated with the VM
@@ -350,10 +350,14 @@
     persist_config: "{{ persist_config | default(omit) }}"
     host: "{{ host | default(omit) }}" # Target Hypervisor Node
 
-    kubeconfig: "{{ kubeconfig | default(omit) }}"
-    api_key: "{{ api_key | default(omit) }}"
-    username: "{{ username | default(omit) }}"
-    password: "{{ password | default(omit) }}"
+#    kubeconfig: "{{ kubeconfig | default(omit) }}"
+#    api_key: "{{ api_key | default(omit) }}"
+#    username: "{{ username | default(omit) }}"
+#    password: "{{ password | default(omit) }}"
+
+    kubeconfig: "{{ sap_vm_provision_kubeconfig }}"
+    username: "{{K8S_AUTH_USERNAME}}"
+    password: "{{K8S_AUTH_PASSWORD}}"
 
     # ca_cert: "{{ ca_cert | default(omit) }}"
     # client_cert: "{{ client_cert | default(omit) }}"
