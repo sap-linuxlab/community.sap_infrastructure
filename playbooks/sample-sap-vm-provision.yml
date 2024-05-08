@@ -16,7 +16,7 @@
     sap_vm_provision_iac_platform: redhat_ocp_virt 
     sap_vm_provision_host_specification_plan: example_host_specification_plan
     sap_vm_provision_kubeconfig: "{{ lookup( 'ansible.builtin.env', 'K8S_AUTH_KUBECONFIG') }}"
-    sap_vm_provision_kubeconfig2: "{{ lookup( 'ansible.builtin.env', 'KUBECONFIG') }}"
+    sap_vm_provision_kubevirt_kubeconfig_path: "{{ lookup( 'ansible.builtin.env', 'K8S_AUTH_KUBECONFIG') }}"
 
     # XXX namespace?
     scaleout_origin_host_spec: lu0567
