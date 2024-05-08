@@ -321,6 +321,7 @@
   kubernetes.core.k8s:
     verify_ssl: false
     kubeconfig: "{{ sap_vm_provision_kubeconfig }}"
+    host: api.hybrid.ocp.sap
     username: "{{K8S_AUTH_USERNAME}}"
     password: "{{K8S_AUTH_PASSWORD}}"
     namespace: "{{ sap_vm_provision_kubevirt_target_namespace }}"
