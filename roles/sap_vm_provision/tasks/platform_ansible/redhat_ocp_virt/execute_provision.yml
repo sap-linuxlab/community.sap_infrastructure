@@ -313,12 +313,12 @@
 #  ansible.builtin.set_fact:
 #    kubevirt_vm_cpu_cores: 2
 
-- debug: var=sap_hypervisor_node_kubeconfig
+- debug: var=sap_vm_provision_kubeconfig
 
 - name: Delete VMs using Kubernetes module
   kubernetes.core.k8s:
 #    verify_ssl: false
-    kubeconfig: "{{ sap_hypervisor_node_kubeconfig }}"
+    kubeconfig: "{{ sap_vm_provision_kubeconfig }}"
     namespace: "{{ sap_vm_provision_kubevirt_target_namespace }}"
     kind: "VirtualMachine"
     name: "{{ __sap_vm_provision_register_vm_name }}"
@@ -327,7 +327,7 @@
 # delete pvcs
 - name: Delete PVCs associated with the VM
   kubernetes.core.k8s:
-    kubeconfig: "{{ kubeconfig }}"
+    kubeconfig: "{{ sap_vm_provision_kubeconfig }}"
     state: absent
     definition:
       apiVersion: v1
