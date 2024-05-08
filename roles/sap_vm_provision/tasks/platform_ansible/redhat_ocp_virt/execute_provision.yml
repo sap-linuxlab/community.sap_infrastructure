@@ -314,11 +314,15 @@
 #    kubevirt_vm_cpu_cores: 2
 
 - debug: var=sap_vm_provision_kubeconfig
+- debug: var=K8S_AUTH_USERNAME
+- debug: var=K8S_AUTH_PASSWORD
 
 - name: Delete VMs using Kubernetes module
   kubernetes.core.k8s:
 #    verify_ssl: false
     kubeconfig: "{{ sap_vm_provision_kubeconfig }}"
+    username: "{{K8S_AUTH_USERNAME}}"
+    password: "{{K8S_AUTH_PASSWORD}}"
     namespace: "{{ sap_vm_provision_kubevirt_target_namespace }}"
     kind: "VirtualMachine"
     name: "{{ __sap_vm_provision_register_vm_name }}"
