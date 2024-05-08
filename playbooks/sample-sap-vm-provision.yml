@@ -15,7 +15,8 @@
     sap_vm_provision_iac_type: ansible
     sap_vm_provision_iac_platform: redhat_ocp_virt 
     sap_vm_provision_host_specification_plan: example_host_specification_plan
-    sap_hypervisor_node_kubeconfig: "{{ lookup( 'ansible.builtin.env', 'KUBECONFIG') }}"
+    sap_vm_provision_kubeconfig: "{{ lookup( 'ansible.builtin.env', 'K8S_AUTH_KUBECONFIG') }}"
+    sap_vm_provision_kubeconfig2: "{{ lookup( 'ansible.builtin.env', 'KUBECONFIG') }}"
 
     # XXX namespace?
     scaleout_origin_host_spec: lu0567
@@ -38,12 +39,15 @@
 
 
   environment:
-    KUBECONFIG: "{{ sap_hypervisor_node_kubeconfig }}"
+#    KUBECONFIG: "{{ sap_hypervisor_node_kubeconfig }}"
 #    K8S_AUTH_KUBECONFIG: "{{ sap_hypervisor_node_kubeconfig }}"
 
   tasks:
     - name: Print K8S_AUTH_KUBECONFIG
       debug: var=K8S_AUTH_KUBECONFIG
+
+    - name: Print sap_vm_provision_kubeconfig
+      debug: var=sap_vm_provision_kubeconfig
 
     - name: Sleep so we can investigate the container environement
       pause:
