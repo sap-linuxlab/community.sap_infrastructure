@@ -325,17 +325,17 @@
     state: absent
 
 # delete pvcs
-- name: Delete PVCs associated with the VM
-  kubernetes.core.k8s:
-    kubeconfig: "{{ sap_vm_provision_kubeconfig }}"
-    state: absent
-    definition:
-      apiVersion: v1
-      kind: PersistentVolumeClaim
-      metadata:
-        # Label selector to match PVCs associated with the deleted VM
-        labels:
-           app: "{{ __sap_vm_provision_register_vm_name }}"
+#- name: Delete PVCs associated with the VM
+#  kubernetes.core.k8s:
+#    kubeconfig: "{{ sap_vm_provision_kubeconfig }}"
+#    state: absent
+#    definition:
+#      apiVersion: v1
+#      kind: PersistentVolumeClaim
+#      metadata:
+#        # Label selector to match PVCs associated with the deleted VM
+#        labels:
+#           app: "{{ __sap_vm_provision_register_vm_name }}"
 
 
 - name: Provision KubeVirt Virtual Machine
