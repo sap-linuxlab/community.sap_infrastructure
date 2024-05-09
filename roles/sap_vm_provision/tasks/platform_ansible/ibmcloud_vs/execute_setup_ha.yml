@@ -11,7 +11,7 @@
     source_resource_type: load-balancer
     target_service_name: dns-svcs
     ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
-  failed_when: not __sap_vm_provision_task_ibmcloud_iam_auth_policy.rc == 0 and not 'access policy with identical attributes already exists' in __sap_vm_provision_task_ibmcloud_iam_auth_policy.stderr
+  failed_when: not __sap_vm_provision_task_ibmcloud_iam_auth_policy.rc == 0 and not 'already exists' in __sap_vm_provision_task_ibmcloud_iam_auth_policy.stderr
 
 
 # The IBM Cloud Load Balancer is provisioned before Linux Pacemaker and requires a temporary Health Check Probe port to be used with an an active OS service listening.
@@ -99,7 +99,7 @@
 
 - name: Set fact for IBM Cloud Load Balancer/s info
   ansible.builtin.set_fact:
-    ibmcloud_lbs_all_info: "{{ __sap_vm_provision_task_ibmcloud_lb_all_info_shell.stdout | split('Space:') | last | trim | from_json }}"
+    ibmcloud_lbs_all_info: "{{ ('[' + (__sap_vm_provision_task_ibmcloud_lb_all_info_shell.stdout | split('[',1) | last)) | trim | from_json }}"
 
 # Required because CLI executed with API Key
 - name: Set fact for Ansible Tasks debug with redaction
