@@ -3,7 +3,7 @@
 - name: Install netcat and lsof utils
   ansible.builtin.package:
     name:
-      - nc
+      - "{{ 'netcat' if ansible_os_family == 'Suse' else 'nc' }}"
       - lsof
     state: present
 
