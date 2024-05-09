@@ -54,9 +54,10 @@
 
     # Workaround for bug which populates region and ibmcloud_api_key as TF arguments for ibm_is_lbs_info Ansible Module in legacy Ansible Collection
     - name: IBM Cloud CLI execution to list Load Balancer/s info
+      no_log: "{{ __sap_vm_provision_no_log }}"
       register: __sap_vm_provision_task_ibmcloud_lb_all_info_shell
       ansible.builtin.shell: |
-        ibmcloud config --quiet --check-version false && ibmcloud login -g {{ sap_vm_provision_ibmcloud_resource_group_name }} -r {{ sap_vm_provision_ibmcloud_region }} --quiet
+        ibmcloud config --quiet --check-version false && ibmcloud login --apikey="{{ sap_vm_provision_ibmcloud_api_key }}" -g {{ sap_vm_provision_ibmcloud_resource_group_name }} -r {{ sap_vm_provision_ibmcloud_region }} --quiet
         #ibmcloud plugin install infrastructure-service -f --quiet
         ibmcloud is load-balancers --quiet --output json
 
