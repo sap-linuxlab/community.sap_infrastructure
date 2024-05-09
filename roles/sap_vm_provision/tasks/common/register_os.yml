@@ -2,7 +2,7 @@
 
 #### For On-Premise Package Repo Mirrors ####
 
-- name: Ansible Task block for RHEL Package Repositories setup
+- name: Ansible Task block for RHEL Package Repositories setup with Registration Script
   when:
     - ansible_os_family == 'RedHat'
     - (sap_vm_provision_os_registration_script_command is defined) and (sap_vm_provision_os_registration_script_command | length > 0)
@@ -34,7 +34,7 @@
       ansible.builtin.command: dnf clean all
 
 
-- name: Ansible Task block for SLES Package Repositories setup
+- name: Ansible Task block for SLES Package Repositories setup with Registration Script
   when:
     - ansible_os_family == 'Suse'
     - (sap_vm_provision_os_registration_script_command is defined) and (sap_vm_provision_os_registration_script_command | length > 0)
@@ -62,7 +62,7 @@
 
 #### For Online Registration via SNAT ####
 
-- name: Ansible Task block for RHEL Online Package Repositories setup
+- name: Ansible Task block for RHEL Package Repositories setup via Public Internet
   when:
     - ansible_os_family == 'RedHat'
     - (not sap_vm_provision_os_registration_script_command is defined) or (sap_vm_provision_os_registration_script_command | length == 0)
@@ -75,7 +75,7 @@
       ignore_errors: true
 
 
-- name: Ansible Task block for SLES Online Package Repositories setup
+- name: Ansible Task block for SLES Package Repositories setup via Public Internet
   when:
     - ansible_os_family == 'Suse'
     - (not sap_vm_provision_os_registration_script_command is defined) or (sap_vm_provision_os_registration_script_command | length == 0)
