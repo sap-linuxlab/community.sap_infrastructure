@@ -6,8 +6,8 @@
   when:
     - ansible_os_family == 'RedHat'
     - (sap_vm_provision_os_registration_script_command is defined) and (sap_vm_provision_os_registration_script_command | length > 0)
-    - (not sap_vm_provision_os_online_registration_user is defined) or (sap_vm_provision_os_online_registration_user | length == 0)
-    - (not sap_vm_provision_os_online_registration_passcode is defined) or (sap_vm_provision_os_online_registration_passcode | length == 0)
+    - (not sap_vm_provision_os_online_registration_user is defined) and (sap_vm_provision_os_online_registration_user | length == 0)
+    - (not sap_vm_provision_os_online_registration_passcode is defined) and (sap_vm_provision_os_online_registration_passcode | length == 0)
   block:
 
     - name: Red Hat Package Repositories - Clean any existing Red Hat Subscription Manager data
@@ -38,8 +38,8 @@
   when:
     - ansible_os_family == 'Suse'
     - (sap_vm_provision_os_registration_script_command is defined) and (sap_vm_provision_os_registration_script_command | length > 0)
-    - (not sap_vm_provision_os_online_registration_user is defined) or (sap_vm_provision_os_online_registration_user | length == 0)
-    - (not sap_vm_provision_os_online_registration_passcode is defined) or (sap_vm_provision_os_online_registration_passcode | length == 0)
+    - (not sap_vm_provision_os_online_registration_user is defined) and (sap_vm_provision_os_online_registration_user | length == 0)
+    - (not sap_vm_provision_os_online_registration_passcode is defined) and (sap_vm_provision_os_online_registration_passcode | length == 0)
   block:
 
     - name: SUSE Package Repositories - Import CA file for SUSE RMT server
@@ -65,9 +65,9 @@
 - name: Ansible Task block for RHEL Package Repositories setup via Public Internet
   when:
     - ansible_os_family == 'RedHat'
-    - (not sap_vm_provision_os_registration_script_command is defined) or (sap_vm_provision_os_registration_script_command | length == 0)
-    - (sap_vm_provision_os_online_registration_user is defined) or (sap_vm_provision_os_online_registration_user | length > 0)
-    - (sap_vm_provision_os_online_registration_passcode is defined) or (sap_vm_provision_os_online_registration_passcode | length > 0)
+    - (not sap_vm_provision_os_registration_script_command is defined) and (sap_vm_provision_os_registration_script_command | length == 0)
+    - (sap_vm_provision_os_online_registration_user is defined) and (sap_vm_provision_os_online_registration_user | length > 0)
+    - (sap_vm_provision_os_online_registration_passcode is defined) and (sap_vm_provision_os_online_registration_passcode | length > 0)
   block:
 
     - name: Red Hat Customer Portal (RHCP) Online Package Repositories - Execute
@@ -78,9 +78,9 @@
 - name: Ansible Task block for SLES Package Repositories setup via Public Internet
   when:
     - ansible_os_family == 'Suse'
-    - (not sap_vm_provision_os_registration_script_command is defined) or (sap_vm_provision_os_registration_script_command | length == 0)
-    - (sap_vm_provision_os_online_registration_user is defined) or (sap_vm_provision_os_online_registration_user | length > 0)
-    - (sap_vm_provision_os_online_registration_passcode is defined) or (sap_vm_provision_os_online_registration_passcode | length > 0)
+    - (not sap_vm_provision_os_registration_script_command is defined) and (sap_vm_provision_os_registration_script_command | length == 0)
+    - (sap_vm_provision_os_online_registration_user is defined) and (sap_vm_provision_os_online_registration_user | length > 0)
+    - (sap_vm_provision_os_online_registration_passcode is defined) and (sap_vm_provision_os_online_registration_passcode | length > 0)
   block:
 
     - name: SUSE Customer Center (SCC) Online Package Repositories - Execute
