@@ -57,16 +57,21 @@ sap_vm_provision_dns_root_domain: ""
 
 
 ####
-# VM Provision - Generic configuration - Hypervsior
+# VM Provision - Generic configuration - Hypervsior or Cloud Hyperscaler OS Images with Bring-Your-Own-Subscription (BYOS)
 ####
 
 # Register to OS Vendor online subscription to package repositories
-sap_vm_provision_os_online_registration_passcode: ""
-sap_vm_provision_os_online_registration_user: ""
+# sap_vm_provision_os_online_registration_passcode: ""
+# sap_vm_provision_os_online_registration_user: ""
 
 # Register to Hosted Mirror of OS Vendor package repositories
 # sap_vm_provision_os_registration_ca_file_path: ""
 # sap_vm_provision_os_registration_script_command: ""
+
+
+####
+# VM Provision - Generic configuration - Hypervsior
+####
 
 # Proxy - Web Forward, when SNAT not available for Hypervisor VMs
 # sap_vm_provision_proxy_web_forward_proxy_ip: "" # IP:Port only, no http:// prefix
