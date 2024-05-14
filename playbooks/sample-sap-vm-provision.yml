@@ -43,6 +43,7 @@
     K8S_AUTH_KUBECONFIG: "{{ sap_vm_provision_kubeconfig }}"
     K8S_AUTH_USERNAME: "kubeadmin"
     K8S_AUTH_PASSWORD: "T4Zq8-RewKG-XC8DN-UmokT" 
+    ANSIBLE_JINJA2_NATIVE: true
 
   tasks:
     - name: Print K8S_AUTH_KUBECONFIG
