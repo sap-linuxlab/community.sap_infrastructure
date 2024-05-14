@@ -317,6 +317,9 @@
 - debug: var=K8S_AUTH_USERNAME
 - debug: var=K8S_AUTH_PASSWORD
 
+- name: XXX TBR Login to ocp
+  shell: "oc login -u {{K8S_AUTH_USERNAME}} -p {{K8S_AUTH_PASSWORD}} --server=https://api.hybrid.ocp.sap:6443"
+
 #- name: Delete VMs using Kubernetes module
 #  kubernetes.core.k8s:
 #    verify_ssl: false
