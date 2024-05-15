@@ -346,7 +346,7 @@
           interfaces: "{{ __sap_vm_provision_register_network_interfaces }}"
 
         cpu:
-          cores: "{{ __sap_vm_provision_register_vm_config.kubevirt_vm_cpu_cores | int }}"
+          cores: 4 #"{{ __sap_vm_provision_register_vm_config.kubevirt_vm_cpu_cores | int }}"
           threads: 2
 
 
