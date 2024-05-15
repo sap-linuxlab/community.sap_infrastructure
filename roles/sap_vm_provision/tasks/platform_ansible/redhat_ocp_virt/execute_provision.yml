@@ -320,30 +320,80 @@
 - name: XXX TBR Login to ocp
   shell: "oc login -u {{K8S_AUTH_USERNAME}} -p {{K8S_AUTH_PASSWORD}} --server=https://api.hybrid.ocp.sap:6443"
 
-#- name: Delete VMs using Kubernetes module
-#  kubernetes.core.k8s:
-#    verify_ssl: false
-#    kubeconfig: "{{ sap_vm_provision_kubeconfig }}"
+
+- name: Set fact for VM deploy config
+  ansible.builtin.set_fact:
+    __sap_vm_provision_register_vm_deploy_config:
+      volumes: "{{ storage_disk_name_list + cloud_init_volume + downwardmetrics_volume }}"
+      networks: "{{ __sap_vm_provision_register_networks_definition }}"
+      domain:
+        # prevents live migration
+        # ioThreadsPolicy: auto
+        hostname: "{{ scaleout_origin_host_spec }}"
+        evictionStrategy: LiveMigrate
+        terminationGracePeriodSeconds: 1800 # 30 minutes after stop request before VM is force terminated
+
+        resources:
+          requests:
+            memory: "{{ (lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan][scaleout_origin_host_spec | default(inventory_hostname)].kubevirt_vm_memory_gib) + 16 }}Gi" # Static 16GB DRAM overhead for container runtime
+
+        devices:
+
+          networkInterfaceMultiqueue: true
+          blockMultiQueue: true
+          autoattachMemBalloon: false
+          disks: "{{ storage_disk_list }}"
+          interfaces: "{{ __sap_vm_provision_register_network_interfaces }}"
+
+        cpu:
+          cores: "{{ __sap_vm_provision_register_vm_config.kubevirt_vm_cpu_cores | int }}"
+          threads: 2
+
+
+          dedicatedCpuPlacement: true
+          model: host-passthrough
+          numa:
+            guestMappingPassthrough: {}
+          features:
+            - name: x2apic
+              policy: require
+            - name: rdtscp
+              policy: require
+            - name: invtsc
+              policy: require
+
+
+        memory:
+          guest: "{{ lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan][scaleout_origin_host_spec | default(inventory_hostname)].kubevirt_vm_memory_gib }}Gi"
+          hugepages:
+            pageSize: 1Gi
+
+
+
+- name: Delete VMs using Kubernetes module
+  kubernetes.core.k8s:
+    verify_ssl: false
+    kubeconfig: "{{ sap_vm_provision_kubeconfig }}"
 #    host: api.hybrid.ocp.sap
-#    username: "{{K8S_AUTH_USERNAME}}"
-#    password: "{{K8S_AUTH_PASSWORD}}"
-#    namespace: "{{ sap_vm_provision_kubevirt_target_namespace }}"
-#    kind: "VirtualMachine"
-#    name: "{{ __sap_vm_provision_register_vm_name }}"
-#    state: absent
+    username: "{{K8S_AUTH_USERNAME}}"
+    password: "{{K8S_AUTH_PASSWORD}}"
+    namespace: "{{ sap_vm_provision_kubevirt_target_namespace }}"
+    kind: "VirtualMachine"
+    name: "{{ __sap_vm_provision_register_vm_name }}"
+    state: absent
 
 # delete pvcs
-#- name: Delete PVCs associated with the VM
-#  kubernetes.core.k8s:
-#    kubeconfig: "{{ sap_vm_provision_kubeconfig }}"
-#    state: absent
-#    definition:
-#      apiVersion: v1
-#      kind: PersistentVolumeClaim
-#      metadata:
-#        # Label selector to match PVCs associated with the deleted VM
-#        labels:
-#           app: "{{ __sap_vm_provision_register_vm_name }}"
+- name: Delete PVCs associated with the VM
+  kubernetes.core.k8s:
+    kubeconfig: "{{ sap_vm_provision_kubeconfig }}"
+    state: absent
+    definition:
+      apiVersion: v1
+      kind: PersistentVolumeClaim
+      metadata:
+        # Label selector to match PVCs associated with the deleted VM
+        labels:
+           app: "{{ __sap_vm_provision_register_vm_name }}"
 
 
 - name: Provision KubeVirt Virtual Machine
@@ -384,81 +434,9 @@
     # Virtual Disk volume definitions
     data_volume_templates: "{{ storage_disks_map + os_image }}"
 
-    spec:
-      domain:
-        # prevents live migration
-        # ioThreadsPolicy: auto
-        hostname: "{{ scaleout_origin_host_spec }}"
-        evictionStrategy: LiveMigrate
-        terminationGracePeriodSeconds: 1800 # 30 minutes after stop request before VM is force terminated
-
-        resources:
-          requests:
-            memory: "{{ (lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan][scaleout_origin_host_spec | default(inventory_hostname)].kubevirt_vm_memory_gib) + 16 }}Gi" # Static 16GB DRAM overhead for container runtime
-
-        devices:
-
-          networkInterfaceMultiqueue: true
-          blockMultiQueue: true
-          autoattachMemBalloon: false
-          disks: "{{ storage_disk_list }}"
-#          - disk:
-#              bus: virtio
-#            name: cloudinit
-#          - bootOrder: 1
-#            disk:
-#              bus: virtio
-#            name: "{{scaleout_origin_host_spec + '-boot' | replace('_', '-')}}"
-#            io: native
-#          - disk:
-#              bus: virtio
-#            name: hana-data-disk
-#            cache: none
-#            io: native
-#          - disk:
-#              bus: virtio
-#            name: hana-share-disk
-#            cache: none
-#            io: native
-#          - disk:
-#              bus: virtio
-#            name: hana-log-disk
-#            cache: none
-#            io: native
-#         - disk:
-#              bus: virtio
-#            name: downwardmetrics
-          interfaces: "{{ __sap_vm_provision_register_network_interfaces }}"
-#            - bridge: {}
-#              model: virtio
-#              name: bridgeif 
-
-        cpu:
-          cores: "{{ __sap_vm_provision_register_vm_config.kubevirt_vm_cpu_cores | int }}"
-          threads: 2
+    spec: "{{ __sap_vm_provision_register_vm_deploy_config }}"
 
 
-          dedicatedCpuPlacement: true
-          model: host-passthrough
-          numa:
-            guestMappingPassthrough: {}
-          features:
-            - name: x2apic
-              policy: require
-            - name: rdtscp
-              policy: require
-            - name: invtsc
-              policy: require
-
-
-        memory:
-          guest: "{{ lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan][scaleout_origin_host_spec | default(inventory_hostname)].kubevirt_vm_memory_gib }}Gi"
-          hugepages:
-            pageSize: 1Gi
-
-      volumes: "{{ storage_disk_name_list + cloud_init_volume + downwardmetrics_volume }}"
-
-      networks: "{{ __sap_vm_provision_register_networks_definition }}"
 #        - name: bridgeif
 #          multus:
 #            networkName: sapbridge-network-definition
