@@ -17,7 +17,7 @@
     - name: Sleep so we can investigate the container environement
       pause:
         minutes: 5
-      when: sap_hypervisor_node_preconfigure is defined and sap_hypervisor_node_preconfigure_debug == true
+      when: sap_hypervisor_node_preconfigure_debug is defined and sap_hypervisor_node_preconfigure_debug == true
 
     - name: Include sap_hypervisor_node_preconfigure Ansible Role
       ansible.builtin.include_role:
