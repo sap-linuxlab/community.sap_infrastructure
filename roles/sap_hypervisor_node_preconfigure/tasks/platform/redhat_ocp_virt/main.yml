@@ -19,6 +19,8 @@
 - name: Get a list of all nodes from any namespace
   kubernetes.core.k8s_info:
     kind: Node
+    api_key: "{{ __sap_hypervisor_node_preconfigure_register_openshift_auth_results.openshift_auth.api_key }}"
+    kubeconfig: "{{ sap_hypervisor_node_kubeconfig }}"
   register: __sap_hypervisor_node_preconfigure_register_node_list
 
 - name: Generate list with worker node names
