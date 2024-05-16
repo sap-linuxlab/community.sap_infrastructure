@@ -1,15 +1,16 @@
 ---
 - name: Log in (obtain access token)
   community.okd.openshift_auth:
-    username: kubeadmin
-    password: "{{ openshift_admin_password }}"
-  register: openshift_auth_results
+    host: "{{ sap_hypervisor_node_preconfigure_ocp_endpoint }}"
+    username: "{{ sap_hypervisor_node_preconfigure_ocp_admin_username }}"
+    password: "{{ sap_hypervisor_node_preconfigure_ocp_admin_password }}"
+  register: __sap_hypervisor_node_preconfigure_register_openshift_auth_results
 
 # Previous task provides the token/api_key, while all other parameters
 # are taken from module_defaults
 - name: Get a list of all pods from any namespace
   kubernetes.core.k8s_info:
-    api_key: "{{ openshift_auth_results.openshift_auth.api_key }}"
+    api_key: "{{ __sap_hypervisor_node_preconfigure_register_openshift_auth_results.openshift_auth.api_key }}"
     kind: Pod
   register: pod_list
 
