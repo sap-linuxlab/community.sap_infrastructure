@@ -9,12 +9,12 @@
 
 # Previous task provides the token/api_key, while all other parameters
 # are taken from module_defaults
-- name: Get a list of all pods from any namespace
-  kubernetes.core.k8s_info:
-    api_key: "{{ __sap_hypervisor_node_preconfigure_register_openshift_auth_results.openshift_auth.api_key }}"
-    kind: Pod
-    validate_certs: false
-  register: pod_list
+#- name: Get a list of all pods from any namespace
+#  kubernetes.core.k8s_info:
+#    api_key: "{{ __sap_hypervisor_node_preconfigure_register_openshift_auth_results.openshift_auth.api_key }}"
+#    kind: Pod
+#    validate_certs: false
+#  register: pod_list
 
 - name: Get a list of all nodes from any namespace
   kubernetes.core.k8s_info:
