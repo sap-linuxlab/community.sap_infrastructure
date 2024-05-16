@@ -85,6 +85,8 @@
 
 - name: Create CNV HyperConverged
   kubernetes.core.k8s:
+    api_key: "{{ __sap_hypervisor_node_preconfigure_register_openshift_auth_results.openshift_auth.api_key }}"
+    kubeconfig: "{{ sap_hypervisor_node_kubeconfig }}"
     state: present
     definition:
       apiVersion: hco.kubevirt.io/v1beta1
