@@ -4,6 +4,7 @@
     host: "{{ sap_hypervisor_node_preconfigure_ocp_endpoint }}"
     username: "{{ sap_hypervisor_node_preconfigure_ocp_admin_username }}"
     password: "{{ sap_hypervisor_node_preconfigure_ocp_admin_password }}"
+    validate_certs: false
   register: __sap_hypervisor_node_preconfigure_register_openshift_auth_results
 
 # Previous task provides the token/api_key, while all other parameters
