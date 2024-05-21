@@ -50,7 +50,7 @@
       google.cloud.gcp_compute_health_check:
         state: present
         project: "{{ sap_vm_provision_gcp_project }}"
-        name: "lb-probe-hc-vip-hana"
+        name: "{{ sap_vm_provision_ha_load_balancer_name_hana + '-probe-hc-vip' }}"
         type: TCP
         tcp_health_check:
           port: "{{ __sap_vm_provision_task_gcp_lb_healthcheck_hana }}"
@@ -70,7 +70,7 @@
       google.cloud.gcp_compute_health_check:
         state: present
         project: "{{ sap_vm_provision_gcp_project }}"
-        name: "lb-probe-hc-vip-anydb"
+        name: "{{ sap_vm_provision_ha_load_balancer_name_anydb + '-probe-hc-vip' }}"
         type: TCP
         tcp_health_check:
           port: 62700
@@ -90,7 +90,7 @@
       google.cloud.gcp_compute_health_check:
         state: present
         project: "{{ sap_vm_provision_gcp_project }}"
-        name: "lb-probe-hc-vip-nwas-ascs"
+        name: "{{ sap_vm_provision_ha_load_balancer_name_nwas + '-ascs-probe-hc-vip' }}"
         type: TCP
         tcp_health_check:
           port: "{{ __sap_vm_provision_task_gcp_lb_healthcheck_nwas_ascs }}"
@@ -110,7 +110,7 @@
       google.cloud.gcp_compute_health_check:
         state: present
         project: "{{ sap_vm_provision_gcp_project }}"
-        name: "lb-probe-hc-vip-nwas-ers"
+        name: "{{ sap_vm_provision_ha_load_balancer_name_nwas + '-ers-probe-hc-vip' }}"
         type: TCP
         tcp_health_check:
           port: "{{ __sap_vm_provision_task_gcp_lb_healthcheck_nwas_ers }}"
