@@ -75,7 +75,7 @@
       loop: "{{ ibmcloud_lbs_all_info }}"
       loop_control:
         label: "{{ item.name }}"
-      when: "('lb-sap-ha-hana' in item.name) or ('lb-sap-ha-anydb' in item.name) or ('lb-sap-ha-nwas-ascs' in item.name) or ('lb-sap-ha-nwas-ers' in item.name)"
+      when: "(sap_vm_provision_ha_load_balancer_name_hana in item.name) or (sap_vm_provision_ha_load_balancer_name_anydb in item.name) or (sap_vm_provision_ha_load_balancer_name_nwas + '-ascs' in item.name) or (sap_vm_provision_ha_load_balancer_name_nwas + '-ers' in item.name)"
 
     # - name: Identify IBM Cloud Load Balancer Back-end Pools
     #   no_log: "{{ __sap_vm_provision_no_log }}"
@@ -86,15 +86,15 @@
     #   loop: "{{ ibmcloud_lbs_all_info }}"
     #   loop_control:
     #     label: "{{ item.name }}"
-    #   when: "('lb-sap-ha-hana' in item.name) or ('lb-sap-ha-anydb' in item.name) or ('lb-sap-ha-nwas-ascs' in item.name) or ('lb-sap-ha-nwas-ers' in item.name)"
+    #   when: "(sap_vm_provision_ha_load_balancer_name_hana in item.name) or (sap_vm_provision_ha_load_balancer_name_anydb in item.name) or (sap_vm_provision_ha_load_balancer_name_nwas + '-ascs' in item.name) or (sap_vm_provision_ha_load_balancer_name_nwas + '-ers' in item.name)"
 
 
     - name: Update IBM Cloud Load Balancer Back-end Pool Health Check Port to Linux Pacemaker controlled listening port for SAP HANA - System DB SQL
       no_log: "{{ __sap_vm_provision_no_log }}"
       register: __sap_vm_provision_task_ibmcloud_lb_pool_hana1
       ibm.cloudcollection.ibm_is_lb_pool:
-        id: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', 'lb-sap-ha-hana'))[0].id }}/{{ ((ibmcloud_lbs_all_info | json_query('[*].pools') | flatten) | selectattr('name', '==', 'lb-sap-ha-hana-pool-sysdb-sql') | first).id }}"
-        name: lb-sap-ha-hana-pool-sysdb-sql
+        id: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', sap_vm_provision_ha_load_balancer_name_hana))[0].id }}/{{ ((ibmcloud_lbs_all_info | json_query('[*].pools') | flatten) | selectattr('name', '==', sap_vm_provision_ha_load_balancer_name_hana + '-pool-sysdb-sql') | first).id }}"
+        name: "{{ sap_vm_provision_ha_load_balancer_name_hana + '-pool-sysdb-sql' }}"
         # lb: # Do not use, will force create new resource
         algorithm: weighted_round_robin
         protocol: tcp
@@ -110,8 +110,8 @@
       no_log: "{{ __sap_vm_provision_no_log }}"
       register: __sap_vm_provision_task_ibmcloud_lb_pool_hana2
       ibm.cloudcollection.ibm_is_lb_pool:
-        id: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', 'lb-sap-ha-hana'))[0].id }}/{{ ((ibmcloud_lbs_all_info | json_query('[*].pools') | flatten) | selectattr('name', '==', 'lb-sap-ha-hana-pool-mdc1-sql') | first).id }}"
-        name: lb-sap-ha-hana-pool-mdc1-sql
+        id: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', sap_vm_provision_ha_load_balancer_name_hana))[0].id }}/{{ ((ibmcloud_lbs_all_info | json_query('[*].pools') | flatten) | selectattr('name', '==', sap_vm_provision_ha_load_balancer_name_hana + '-pool-mdc1-sql') | first).id }}"
+        name: "{{ sap_vm_provision_ha_load_balancer_name_hana + '-pool-mdc1-sql' }}"
         # lb: # Do not use, will force create new resource
         algorithm: weighted_round_robin
         protocol: tcp
@@ -127,8 +127,8 @@
       no_log: "{{ __sap_vm_provision_no_log }}"
       register: __sap_vm_provision_task_ibmcloud_lb_pool_hana3
       ibm.cloudcollection.ibm_is_lb_pool:
-        id: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', 'lb-sap-ha-hana'))[0].id }}/{{ ((ibmcloud_lbs_all_info | json_query('[*].pools') | flatten) | selectattr('name', '==', 'lb-sap-ha-hana-pool-startsrv-http') | first).id }}"
-        name: lb-sap-ha-hana-pool-startsrv-http
+        id: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', sap_vm_provision_ha_load_balancer_name_hana))[0].id }}/{{ ((ibmcloud_lbs_all_info | json_query('[*].pools') | flatten) | selectattr('name', '==', sap_vm_provision_ha_load_balancer_name_hana + '-pool-startsrv-http') | first).id }}"
+        name: "{{ sap_vm_provision_ha_load_balancer_name_hana + '-pool-startsrv-http' }}"
         # lb: # Do not use, will force create new resource
         algorithm: weighted_round_robin
         protocol: tcp
@@ -144,8 +144,8 @@
       no_log: "{{ __sap_vm_provision_no_log }}"
       register: __sap_vm_provision_task_ibmcloud_lb_pool_hana4
       ibm.cloudcollection.ibm_is_lb_pool:
-        id: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', 'lb-sap-ha-hana'))[0].id }}/{{ ((ibmcloud_lbs_all_info | json_query('[*].pools') | flatten) | selectattr('name', '==', 'lb-sap-ha-hana-pool-startsrv-https') | first).id }}"
-        name: lb-sap-ha-hana-pool-startsrv-https
+        id: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', sap_vm_provision_ha_load_balancer_name_hana))[0].id }}/{{ ((ibmcloud_lbs_all_info | json_query('[*].pools') | flatten) | selectattr('name', '==', sap_vm_provision_ha_load_balancer_name_hana + '-pool-startsrv-https') | first).id }}"
+        name: "{{ sap_vm_provision_ha_load_balancer_name_hana + '-pool-startsrv-https' }}"
         # lb: # Do not use, will force create new resource
         algorithm: weighted_round_robin
         protocol: tcp
@@ -160,8 +160,8 @@
     - name: Update IBM Cloud Load Balancer Back-end Pool Health Check Port to Linux Pacemaker controlled listening port for SAP AnyDB - IBM Db2 Communication Port
       no_log: "{{ __sap_vm_provision_no_log }}"
       ibm.cloudcollection.ibm_is_lb_pool:
-        id: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', 'lb-sap-ha-anydb'))[0].id }}/{{ ((ibmcloud_lbs_all_info | json_query('[*].pools') | flatten) | selectattr('name', '==', 'lb-sap-ha-anydb-pool-ibmdb2') | first).id }}"
-        name: lb-sap-ha-anydb-pool-ibmdb2
+        id: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', sap_vm_provision_ha_load_balancer_name_anydb))[0].id }}/{{ ((ibmcloud_lbs_all_info | json_query('[*].pools') | flatten) | selectattr('name', '==', sap_vm_provision_ha_load_balancer_name_anydb + '-anydb-pool-ibmdb2') | first).id }}"
+        name: "{{ sap_vm_provision_ha_load_balancer_name_anydb + '-ibmdb2' }}"
         # lb: # Do not use, will force create new resource
         algorithm: weighted_round_robin
         protocol: tcp
@@ -177,8 +177,8 @@
       no_log: "{{ __sap_vm_provision_no_log }}"
       register: __sap_vm_provision_task_ibmcloud_lb_pool_nwas_ascs1
       ibm.cloudcollection.ibm_is_lb_pool:
-        id: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', 'lb-sap-ha-nwas-ascs'))[0].id }}/{{ ((ibmcloud_lbs_all_info | json_query('[*].pools') | flatten) | selectattr('name', '==', 'lb-sap-ha-nwas-ascs-pool-dp') | first).id }}"
-        name: lb-sap-ha-nwas-ascs-pool-dp
+        id: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', sap_vm_provision_ha_load_balancer_name_nwas + '-ascs'))[0].id }}/{{ ((ibmcloud_lbs_all_info | json_query('[*].pools') | flatten) | selectattr('name', '==', sap_vm_provision_ha_load_balancer_name_nwas + '-ascs-pool-dp') | first).id }}"
+        name: "{{ sap_vm_provision_ha_load_balancer_name_nwas + '-ascs-pool-dp' }}"
         # lb: # Do not use, will force create new resource
         algorithm: weighted_round_robin
         protocol: tcp
@@ -194,8 +194,8 @@
       no_log: "{{ __sap_vm_provision_no_log }}"
       register: __sap_vm_provision_task_ibmcloud_lb_pool_nwas_ascs2
       ibm.cloudcollection.ibm_is_lb_pool:
-        id: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', 'lb-sap-ha-nwas-ascs'))[0].id }}/{{ ((ibmcloud_lbs_all_info | json_query('[*].pools') | flatten) | selectattr('name', '==', 'lb-sap-ha-nwas-ascs-pool-ms') | first).id }}"
-        name: lb-sap-ha-nwas-ascs-pool-ms
+        id: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', sap_vm_provision_ha_load_balancer_name_nwas + '-ascs'))[0].id }}/{{ ((ibmcloud_lbs_all_info | json_query('[*].pools') | flatten) | selectattr('name', '==', sap_vm_provision_ha_load_balancer_name_nwas + '-ascs-pool-ms') | first).id }}"
+        name: "{{ sap_vm_provision_ha_load_balancer_name_nwas + '-ascs-pool-ms' }}"
         # lb: # Do not use, will force create new resource
         algorithm: weighted_round_robin
         protocol: tcp
@@ -211,8 +211,8 @@
       no_log: "{{ __sap_vm_provision_no_log }}"
       register: __sap_vm_provision_task_ibmcloud_lb_pool_nwas_ascs3
       ibm.cloudcollection.ibm_is_lb_pool:
-        id: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', 'lb-sap-ha-nwas-ascs'))[0].id }}/{{ ((ibmcloud_lbs_all_info | json_query('[*].pools') | flatten) | selectattr('name', '==', 'lb-sap-ha-nwas-ascs-pool-enq') | first).id }}"
-        name: lb-sap-ha-nwas-ascs-pool-enq
+        id: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', sap_vm_provision_ha_load_balancer_name_nwas + '-ascs'))[0].id }}/{{ ((ibmcloud_lbs_all_info | json_query('[*].pools') | flatten) | selectattr('name', '==', sap_vm_provision_ha_load_balancer_name_nwas + '-ascs-pool-enq') | first).id }}"
+        name: "{{ sap_vm_provision_ha_load_balancer_name_nwas + '-ascs-pool-enq' }}"
         # lb: # Do not use, will force create new resource
         algorithm: weighted_round_robin
         protocol: tcp
@@ -228,8 +228,8 @@
       no_log: "{{ __sap_vm_provision_no_log }}"
       register: __sap_vm_provision_task_ibmcloud_lb_pool_nwas_ascs4
       ibm.cloudcollection.ibm_is_lb_pool:
-        id: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', 'lb-sap-ha-nwas-ascs'))[0].id }}/{{ ((ibmcloud_lbs_all_info | json_query('[*].pools') | flatten) | selectattr('name', '==', 'lb-sap-ha-nwas-ascs-pool-sapctrl') | first).id }}"
-        name: lb-sap-ha-nwas-ascs-pool-sapctrl
+        id: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', sap_vm_provision_ha_load_balancer_name_nwas + '-ascs'))[0].id }}/{{ ((ibmcloud_lbs_all_info | json_query('[*].pools') | flatten) | selectattr('name', '==', sap_vm_provision_ha_load_balancer_name_nwas + '-ascs-pool-sapctrl') | first).id }}"
+        name: "{{ sap_vm_provision_ha_load_balancer_name_nwas + '-ascs-pool-sapctrl' }}"
         # lb: # Do not use, will force create new resource
         algorithm: weighted_round_robin
         protocol: tcp
@@ -245,8 +245,8 @@
       no_log: "{{ __sap_vm_provision_no_log }}"
       register: __sap_vm_provision_task_ibmcloud_lb_pool_nwas_ascs5
       ibm.cloudcollection.ibm_is_lb_pool:
-        id: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', 'lb-sap-ha-nwas-ascs'))[0].id }}/{{ ((ibmcloud_lbs_all_info | json_query('[*].pools') | flatten) | selectattr('name', '==', 'lb-sap-ha-nwas-ascs-pool-sapctrls') | first).id }}"
-        name: lb-sap-ha-nwas-ascs-pool-sapctrls
+        id: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', sap_vm_provision_ha_load_balancer_name_nwas + '-ascs'))[0].id }}/{{ ((ibmcloud_lbs_all_info | json_query('[*].pools') | flatten) | selectattr('name', '==', sap_vm_provision_ha_load_balancer_name_nwas + '-ascs-pool-sapctrls') | first).id }}"
+        name: "{{ sap_vm_provision_ha_load_balancer_name_nwas + '-ascs-pool-sapctrls' }}"
         # lb: # Do not use, will force create new resource
         algorithm: weighted_round_robin
         protocol: tcp
@@ -262,8 +262,8 @@
     #   no_log: "{{ __sap_vm_provision_no_log }}"
     #   register: __sap_vm_provision_task_ibmcloud_lb_pool_nwas_ers1
     #   ibm.cloudcollection.ibm_is_lb_pool:
-    #     id: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', 'lb-sap-ha-nwas-ers'))[0].id }}/{{ ((ibmcloud_lbs_all_info | json_query('[*].pools') | flatten) | selectattr('name', '==', 'lb-sap-ha-nwas-ers-pool-dp') | first).id }}"
-    #     name: lb-sap-ha-nwas-ers-pool-dp
+    #     id: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', sap_vm_provision_ha_load_balancer_name_nwas + '-ers'))[0].id }}/{{ ((ibmcloud_lbs_all_info | json_query('[*].pools') | flatten) | selectattr('name', '==', sap_vm_provision_ha_load_balancer_name_nwas + '-ers-pool-dp') | first).id }}"
+    #     name: name: "{{ sap_vm_provision_ha_load_balancer_name_nwas + '-ers-pool-dp' }}"
     #     # lb: # Do not use, will force create new resource
     #     algorithm: weighted_round_robin
     #     protocol: tcp
@@ -279,8 +279,8 @@
     #   no_log: "{{ __sap_vm_provision_no_log }}"
     #   register: __sap_vm_provision_task_ibmcloud_lb_pool_nwas_ers2
     #   ibm.cloudcollection.ibm_is_lb_pool:
-    #     id: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', 'lb-sap-ha-nwas-ers'))[0].id }}/{{ ((ibmcloud_lbs_all_info | json_query('[*].pools') | flatten) | selectattr('name', '==', 'lb-sap-ha-nwas-ers-pool-ms') | first).id }}"
-    #     name: lb-sap-ha-nwas-ers-pool-ms
+    #     id: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', sap_vm_provision_ha_load_balancer_name_nwas + '-ers'))[0].id }}/{{ ((ibmcloud_lbs_all_info | json_query('[*].pools') | flatten) | selectattr('name', '==', sap_vm_provision_ha_load_balancer_name_nwas + '-ers-pool-ms') | first).id }}"
+    #     name: name: "{{ sap_vm_provision_ha_load_balancer_name_nwas + '-ers-pool-ms' }}"
     #     # lb: # Do not use, will force create new resource
     #     algorithm: weighted_round_robin
     #     protocol: tcp
@@ -296,8 +296,8 @@
       no_log: "{{ __sap_vm_provision_no_log }}"
       register: __sap_vm_provision_task_ibmcloud_lb_pool_nwas_ers3
       ibm.cloudcollection.ibm_is_lb_pool:
-        id: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', 'lb-sap-ha-nwas-ers'))[0].id }}/{{ ((ibmcloud_lbs_all_info | json_query('[*].pools') | flatten) | selectattr('name', '==', 'lb-sap-ha-nwas-ers-pool-enqr') | first).id }}"
-        name: lb-sap-ha-nwas-ers-pool-enqr
+        id: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', sap_vm_provision_ha_load_balancer_name_nwas + '-ers'))[0].id }}/{{ ((ibmcloud_lbs_all_info | json_query('[*].pools') | flatten) | selectattr('name', '==', sap_vm_provision_ha_load_balancer_name_nwas + '-ers-pool-enqr') | first).id }}"
+        name: "{{ sap_vm_provision_ha_load_balancer_name_nwas + '-ers-pool-enqr' }}"
         # lb: # Do not use, will force create new resource
         algorithm: weighted_round_robin
         protocol: tcp
@@ -313,8 +313,8 @@
       no_log: "{{ __sap_vm_provision_no_log }}"
       register: __sap_vm_provision_task_ibmcloud_lb_pool_nwas_ers4
       ibm.cloudcollection.ibm_is_lb_pool:
-        id: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', 'lb-sap-ha-nwas-ers'))[0].id }}/{{ ((ibmcloud_lbs_all_info | json_query('[*].pools') | flatten) | selectattr('name', '==', 'lb-sap-ha-nwas-ers-pool-sapctrl') | first).id }}"
-        name: lb-sap-ha-nwas-ers-pool-sapctrl
+        id: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', sap_vm_provision_ha_load_balancer_name_nwas + '-ers'))[0].id }}/{{ ((ibmcloud_lbs_all_info | json_query('[*].pools') | flatten) | selectattr('name', '==', sap_vm_provision_ha_load_balancer_name_nwas + '-ers-pool-sapctrl') | first).id }}"
+        name: "{{ sap_vm_provision_ha_load_balancer_name_nwas + '-ers-pool-sapctrl' }}"
         # lb: # Do not use, will force create new resource
         algorithm: weighted_round_robin
         protocol: tcp
@@ -330,8 +330,8 @@
       no_log: "{{ __sap_vm_provision_no_log }}"
       register: __sap_vm_provision_task_ibmcloud_lb_pool_nwas_ers5
       ibm.cloudcollection.ibm_is_lb_pool:
-        id: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', 'lb-sap-ha-nwas-ers'))[0].id }}/{{ ((ibmcloud_lbs_all_info | json_query('[*].pools') | flatten) | selectattr('name', '==', 'lb-sap-ha-nwas-ers-pool-sapctrls') | first).id }}"
-        name: lb-sap-ha-nwas-ers-pool-sapctrls
+        id: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', sap_vm_provision_ha_load_balancer_name_nwas + '-ers'))[0].id }}/{{ ((ibmcloud_lbs_all_info | json_query('[*].pools') | flatten) | selectattr('name', '==', sap_vm_provision_ha_load_balancer_name_nwas + '-ers-pool-sapctrls') | first).id }}"
+        name: "{{ sap_vm_provision_ha_load_balancer_name_nwas + '-ers-pool-sapctrls' }}"
         # lb: # Do not use, will force create new resource
         algorithm: weighted_round_robin
         protocol: tcp
