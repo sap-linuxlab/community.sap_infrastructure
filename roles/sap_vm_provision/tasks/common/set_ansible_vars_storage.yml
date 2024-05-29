@@ -26,7 +26,7 @@
               'value': entry.value,
             }
           ]) %}
-        {%- elif not "disk_type" in entry.key %}
+        {%- elif (not "disk_type" in entry.key) and (not "disk_iops" in entry.key) %}
           {%- set add_entry = new_element.extend([
             {
               'key': entry.key,

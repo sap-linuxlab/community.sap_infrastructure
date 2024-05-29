@@ -65,7 +65,8 @@
                 'definition_key': storage_item.name,
                 'name': storage_item.name + idx|string,
                 'size': storage_item.disk_size | default(0),
-                'type': storage_item.disk_type | default('general-purpose')
+                'type': storage_item.disk_type | default('general-purpose'),
+                'iops': storage_item.disk_iops | default(omit)
               }
               ]) %}
             {%- endif %}
@@ -83,6 +84,7 @@
     name: "{{ inventory_hostname + '-vol-' + vol_item.name | replace('_', '-')}}"
     profile: "{{ vol_item.type }}"
     capacity: "{{ vol_item.size }}"
+    iops: "{{ vol_item.iops | default(omit) }}"
     ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
   loop: "{{ storage_disks_map }}"
   loop_control:
