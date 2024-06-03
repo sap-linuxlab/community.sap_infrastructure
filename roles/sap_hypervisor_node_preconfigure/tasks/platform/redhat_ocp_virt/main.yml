@@ -49,7 +49,7 @@
     password: "{{ sap_hypervisor_node_preconfigure_ocp_admin_password }}"
     validate_certs: false
     api_key: "{{ __sap_hypervisor_node_preconfigure_register_openshift_auth_results.openshift_auth.api_key }}"
-#    kubeconfig: "{{ sap_hypervisor_node_kubeconfig }}"
+    kubeconfig: "{{ sap_hypervisor_node_kubeconfig }}"
     kind: Node
   register: __sap_hypervisor_node_preconfigure_register_node_list
 
