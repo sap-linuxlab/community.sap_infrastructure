@@ -1,6 +1,11 @@
 ---
 - name: Set cluster master nodes unscheduable
   kubernetes.core.k8s:
+    host: "{{ sap_hypervisor_node_preconfigure_ocp_endpoint }}"
+    validate_certs: false
+    api_key: "{{ __sap_hypervisor_node_preconfigure_register_openshift_auth_results.openshift_auth.api_key }}"
+    kubeconfig: "{{ sap_hypervisor_node_kubeconfig }}"
+
     state: patched
     definition:
       apiVersion: config.openshift.io/v1
