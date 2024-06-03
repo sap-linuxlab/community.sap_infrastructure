@@ -54,6 +54,7 @@
 
 
 - name: Enable unsupported NICs for SRIOV usage
+  when: sap_hypervisor_node_preconfigure_sriov_enable_unsupported_nics
   kubernetes.core.k8s:
     host: "{{ sap_hypervisor_node_preconfigure_ocp_endpoint }}"
     validate_certs: false
@@ -61,11 +62,10 @@
     kubeconfig: "{{ sap_hypervisor_node_kubeconfig }}"
     state: patched
     definition:
-      apiVersion: config.openshift.io/v1
-      kind: sriovoperatorconfig
+      apiVersion: sriovnetwork.openshift.io/v1
+      kind: SriovOperatorConfig
       spec:
         enableOperatorWebhook: false
-
 
 #oc patch sriovoperatorconfig default --type=merge  -n openshift-sriov-network-operator  --patch '{ "spec": { "enableOperatorWebhook": false } }'
 
