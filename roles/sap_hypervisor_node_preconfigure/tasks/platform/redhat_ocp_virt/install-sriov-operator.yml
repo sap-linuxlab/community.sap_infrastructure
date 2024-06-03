@@ -2,9 +2,9 @@
 - name: Create the SRIOV Operator namespace
   kubernetes.core.k8s:
     host: "{{ sap_hypervisor_node_preconfigure_ocp_endpoint }}"
-    validate_certs: false
+    ca_cert: "{{ sap_hypervisor_node_preconfigure_ca_cert}}"
     api_key: "{{ __sap_hypervisor_node_preconfigure_register_openshift_auth_results.openshift_auth.api_key }}"
-    kubeconfig: "{{ sap_hypervisor_node_kubeconfig }}"
+    kubeconfig: "{{ sap_hypervisor_node_preconfigure_kubeconfig }}"
     state: present
     definition:
       apiVersion: v1
@@ -15,9 +15,9 @@
 - name: Create the SRIOV Operator namespace
   kubernetes.core.k8s:
     host: "{{ sap_hypervisor_node_preconfigure_ocp_endpoint }}"
-    validate_certs: false
+    ca_cert: "{{ sap_hypervisor_node_preconfigure_ca_cert}}"
     api_key: "{{ __sap_hypervisor_node_preconfigure_register_openshift_auth_results.openshift_auth.api_key }}"
-    kubeconfig: "{{ sap_hypervisor_node_kubeconfig }}"
+    kubeconfig: "{{ sap_hypervisor_node_preconfigure_kubeconfig }}"
     state: present
     definition:
       apiVersion: operators.coreos.com/v1
@@ -32,9 +32,9 @@
 - name: Create the SRIOV Operator namespace
   kubernetes.core.k8s:
     host: "{{ sap_hypervisor_node_preconfigure_ocp_endpoint }}"
-    validate_certs: false
+    ca_cert: "{{ sap_hypervisor_node_preconfigure_ca_cert}}"
     api_key: "{{ __sap_hypervisor_node_preconfigure_register_openshift_auth_results.openshift_auth.api_key }}"
-    kubeconfig: "{{ sap_hypervisor_node_kubeconfig }}"
+    kubeconfig: "{{ sap_hypervisor_node_preconfigure_kubeconfig }}"
     state: present
     definition:
       apiVersion: operators.coreos.com/v1alpha1
@@ -48,37 +48,21 @@
         name: sriov-network-operator
         channel: "stable"
 
-#- name: Pause to give operator a chance to install
-#  ansible.builtin.pause:
-#    minutes: 3
+- name: Pause to give operator a chance to install
+  ansible.builtin.pause:
+    minutes: 3
 
 
 - name: Enable unsupported NICs for SRIOV usage
   when: sap_hypervisor_node_preconfigure_sriov_enable_unsupported_nics
   kubernetes.core.k8s:
     host: "{{ sap_hypervisor_node_preconfigure_ocp_endpoint }}"
-    validate_certs: false
+    ca_cert: "{{ sap_hypervisor_node_preconfigure_ca_cert}}"
     api_key: "{{ __sap_hypervisor_node_preconfigure_register_openshift_auth_results.openshift_auth.api_key }}"
-    kubeconfig: "{{ sap_hypervisor_node_kubeconfig }}"
+    kubeconfig: "{{ sap_hypervisor_node_preconfigure_kubeconfig }}"
     state: patched
     definition:
       apiVersion: sriovnetwork.openshift.io/v1
       kind: SriovOperatorConfig
       spec:
         enableOperatorWebhook: false
-
-#oc patch sriovoperatorconfig default --type=merge  -n openshift-sriov-network-operator  --patch '{ "spec": { "enableOperatorWebhook": false } }'
-
-
-#- name: Copy patch to enable unsupported NICs
-#  ansible.builtin.copy:
-#    src: sriov-enabled-unsupported-nics.sh
-#    dest: "{{ __sap_hypervisor_node_preconfigure_register_tmpdir.path }}/sriov-enabled-unsupported-nics.sh"
-#    mode: "0755"
-#  when: sap_hypervisor_node_preconfigure_sriov_enable_unsupported_nics
-#
-#- name: Enable unsupported NICs
-#  ansible.builtin.command: "{{ __sap_hypervisor_node_preconfigure_register_tmpdir.path }}/sriov-enabled-unsupported-nics.sh"
-#  when: sap_hypervisor_node_preconfigure_sriov_enable_unsupported_nics
-#  register: __sap_hypervisor_node_preconfigure_register_enable_unsupported_nics
-#  changed_when: __sap_hypervisor_node_preconfigure_register_enable_unsupported_nics.rc != 0

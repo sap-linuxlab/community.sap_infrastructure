@@ -2,9 +2,9 @@
 - name: Create systemd files for local storage handling
   kubernetes.core.k8s:
     host: "{{ sap_hypervisor_node_preconfigure_ocp_endpoint }}"
-    validate_certs: false
+    ca_cert: "{{ sap_hypervisor_node_preconfigure_ca_cert}}"
     api_key: "{{ __sap_hypervisor_node_preconfigure_register_openshift_auth_results.openshift_auth.api_key }}"
-    kubeconfig: "{{ sap_hypervisor_node_kubeconfig }}"
+    kubeconfig: "{{ sap_hypervisor_node_preconfigure_kubeconfig }}"
     state: present
     definition:
       apiVersion: machineconfiguration.openshift.io/v1
@@ -61,9 +61,9 @@
 - name: Create hostpath provisioner (HPP)
   kubernetes.core.k8s:
     host: "{{ sap_hypervisor_node_preconfigure_ocp_endpoint }}"
-    validate_certs: false
+    ca_cert: "{{ sap_hypervisor_node_preconfigure_ca_cert}}"
     api_key: "{{ __sap_hypervisor_node_preconfigure_register_openshift_auth_results.openshift_auth.api_key }}"
-    kubeconfig: "{{ sap_hypervisor_node_kubeconfig }}"
+    kubeconfig: "{{ sap_hypervisor_node_preconfigure_kubeconfig }}"
     state: present
     definition:
       apiVersion: hostpathprovisioner.kubevirt.io/v1beta1
@@ -83,9 +83,9 @@
 - name: Create storage class for HPP
   kubernetes.core.k8s:
     host: "{{ sap_hypervisor_node_preconfigure_ocp_endpoint }}"
-    validate_certs: false
+    ca_cert: "{{ sap_hypervisor_node_preconfigure_ca_cert}}"
     api_key: "{{ __sap_hypervisor_node_preconfigure_register_openshift_auth_results.openshift_auth.api_key }}"
-    kubeconfig: "{{ sap_hypervisor_node_kubeconfig }}"
+    kubeconfig: "{{ sap_hypervisor_node_preconfigure_kubeconfig }}"
     state: present
     definition:
       apiVersion: storage.k8s.io/v1
