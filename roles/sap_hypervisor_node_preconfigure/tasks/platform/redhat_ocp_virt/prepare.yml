@@ -13,8 +13,9 @@
     host: "{{ sap_hypervisor_node_preconfigure_ocp_endpoint }}"
     username: "{{ sap_hypervisor_node_preconfigure_ocp_admin_username }}"
     password: "{{ sap_hypervisor_node_preconfigure_ocp_admin_password }}"
-#    validate_certs: false
+    validate_certs: false
     api_key: "{{ __sap_hypervisor_node_preconfigure_register_openshift_auth_results.openshift_auth.api_key }}"
+    kubeconfig: "{{ sap_hypervisor_node_kubeconfig }}"
     name: "{{ sap_hypervisor_node_preconfigure_cluster_config.vm_namespace }}"
     api_version: v1
     kind: Namespace
