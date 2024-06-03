@@ -39,3 +39,6 @@ collections:
   - name: community.okd
     type: galaxy
     version: 3.0.1
+  - name: community.general
+    type: galaxy
+    version: 9.0.1
