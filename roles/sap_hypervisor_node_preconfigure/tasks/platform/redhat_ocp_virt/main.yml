@@ -44,7 +44,7 @@
 
 - name: Get a list of all nodes from any namespace
   kubernetes.core.k8s_info:
-#    host: "{{ sap_hypervisor_node_preconfigure_ocp_endpoint }}"
+    host: "{{ sap_hypervisor_node_preconfigure_ocp_endpoint }}"
 #    username: "{{ sap_hypervisor_node_preconfigure_ocp_admin_username }}"
 #    password: "{{ sap_hypervisor_node_preconfigure_ocp_admin_password }}"
     validate_certs: false
