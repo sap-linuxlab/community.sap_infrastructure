@@ -8,7 +8,6 @@
 - name: Get and extract virtctl
 #  become: yes
   ansible.builtin.unarchive:
-    ca_cert: "{{ sap_hypervisor_node_preconfigure_ca_cert}}"
     remote_src: true
     src: "https://hyperconverged-cluster-cli-download-openshift-cnv.apps.\
           {{ sap_hypervisor_node_preconfigure_cluster_config.cluster_url }}/amd64/linux/virtctl.tar.gz"
