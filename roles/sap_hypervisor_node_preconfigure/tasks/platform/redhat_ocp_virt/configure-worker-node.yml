@@ -11,6 +11,10 @@
 # How to wait for node to be scheduleable? (NodeSchedulable)
 - name: Wait for all k8s nodes to be ready
   kubernetes.core.k8s_info:
+    host: "{{ sap_hypervisor_node_preconfigure_ocp_endpoint }}"
+    validate_certs: false
+    api_key: "{{ __sap_hypervisor_node_preconfigure_register_openshift_auth_results.openshift_auth.api_key }}"
+    kubeconfig: "{{ sap_hypervisor_node_kubeconfig }}"
     kind: Node
   register: __sap_hypervisor_node_preconfigure_register_nodes
   until: __sap_hypervisor_node_preconfigure_register_nodes.resources | json_query('[?status.conditions[?type==`Ready` && status==`True`]].metadata.name') | length == __sap_hypervisor_node_preconfigure_register_nodes.resources | length

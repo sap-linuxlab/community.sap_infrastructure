@@ -8,6 +8,10 @@
 
 - name: Enable CPU Manager by patching MCP worker
   kubernetes.core.k8s:
+    host: "{{ sap_hypervisor_node_preconfigure_ocp_endpoint }}"
+    validate_certs: false
+    api_key: "{{ __sap_hypervisor_node_preconfigure_register_openshift_auth_results.openshift_auth.api_key }}"
+    kubeconfig: "{{ sap_hypervisor_node_kubeconfig }}"
     state: patched
     definition:
       apiVersion: machineconfiguration.openshift.io/v1
@@ -19,6 +23,10 @@
 
 - name: Delete kubletconfig for cpumanager
   kubernetes.core.k8s:
+    host: "{{ sap_hypervisor_node_preconfigure_ocp_endpoint }}"
+    validate_certs: false
+    api_key: "{{ __sap_hypervisor_node_preconfigure_register_openshift_auth_results.openshift_auth.api_key }}"
+    kubeconfig: "{{ sap_hypervisor_node_kubeconfig }}"
     state: absent
     definition:
       apiVersion: machineconfiguration.openshift.io/v1
@@ -36,6 +44,10 @@
 - name: Create kubletconfig for cpumanager worker with CPUs reserved for kubernetes
   when: sap_hypervisor_node_preconfigure_cluster_config.worker_kubernetes_reserved_cpus is defined
   kubernetes.core.k8s:
+    host: "{{ sap_hypervisor_node_preconfigure_ocp_endpoint }}"
+    validate_certs: false
+    api_key: "{{ __sap_hypervisor_node_preconfigure_register_openshift_auth_results.openshift_auth.api_key }}"
+    kubeconfig: "{{ sap_hypervisor_node_kubeconfig }}"
     state: present
     definition:
       apiVersion: machineconfiguration.openshift.io/v1
@@ -54,6 +66,10 @@
 - name: Create kubletconfig for cpumanager worker
   when: sap_hypervisor_node_preconfigure_cluster_config.worker_kubernetes_reserved_cpus is not defined
   kubernetes.core.k8s:
+    host: "{{ sap_hypervisor_node_preconfigure_ocp_endpoint }}"
+    validate_certs: false
+    api_key: "{{ __sap_hypervisor_node_preconfigure_register_openshift_auth_results.openshift_auth.api_key }}"
+    kubeconfig: "{{ sap_hypervisor_node_kubeconfig }}"
     state: present
     definition:
       apiVersion: machineconfiguration.openshift.io/v1

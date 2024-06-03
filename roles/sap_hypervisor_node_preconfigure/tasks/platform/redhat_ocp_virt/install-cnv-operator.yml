@@ -1,6 +1,10 @@
 ---
 - name: Create the CNV Operator namespace
   kubernetes.core.k8s:
+    host: "{{ sap_hypervisor_node_preconfigure_ocp_endpoint }}"
+    validate_certs: false
+    api_key: "{{ __sap_hypervisor_node_preconfigure_register_openshift_auth_results.openshift_auth.api_key }}"
+    kubeconfig: "{{ sap_hypervisor_node_kubeconfig }}"
     state: present
     definition:
       apiVersion: v1
@@ -10,8 +14,11 @@
 
 - name: Create CNV OperatorGroup kubevirt-hyperconverged-group
   kubernetes.core.k8s:
+    host: "{{ sap_hypervisor_node_preconfigure_ocp_endpoint }}"
+    validate_certs: false
+    api_key: "{{ __sap_hypervisor_node_preconfigure_register_openshift_auth_results.openshift_auth.api_key }}"
+    kubeconfig: "{{ sap_hypervisor_node_kubeconfig }}"
     state: present
-
     definition:
       apiVersion: operators.coreos.com/v1
       kind: OperatorGroup
@@ -24,6 +31,10 @@
 
 - name: Create CNV Subscription
   kubernetes.core.k8s:
+    host: "{{ sap_hypervisor_node_preconfigure_ocp_endpoint }}"
+    validate_certs: false
+    api_key: "{{ __sap_hypervisor_node_preconfigure_register_openshift_auth_results.openshift_auth.api_key }}"
+    kubeconfig: "{{ sap_hypervisor_node_kubeconfig }}"
     state: present
     definition:
       apiVersion: operators.coreos.com/v1alpha1
@@ -44,6 +55,10 @@
   retries: 10
   delay: 10
   kubernetes.core.k8s_info:
+    host: "{{ sap_hypervisor_node_preconfigure_ocp_endpoint }}"
+    validate_certs: false
+    api_key: "{{ __sap_hypervisor_node_preconfigure_register_openshift_auth_results.openshift_auth.api_key }}"
+    kubeconfig: "{{ sap_hypervisor_node_kubeconfig }}"
     api_version: operators.coreos.com/v1alpha1
     kind: Subscription
     name: hco-operatorhub
@@ -64,6 +79,10 @@
   block:
     - name: Get Install Plan details
       kubernetes.core.k8s_info:
+        host: "{{ sap_hypervisor_node_preconfigure_ocp_endpoint }}"
+        validate_certs: false
+        api_key: "{{ __sap_hypervisor_node_preconfigure_register_openshift_auth_results.openshift_auth.api_key }}"
+        kubeconfig: "{{ sap_hypervisor_node_kubeconfig }}"
         api_version: operators.coreos.com/v1alpha1
         kind: InstallPlan
         name: "{{ install_plan_name }}"
@@ -85,6 +104,8 @@
 
 - name: Create CNV HyperConverged
   kubernetes.core.k8s:
+    host: "{{ sap_hypervisor_node_preconfigure_ocp_endpoint }}"
+    validate_certs: false
     api_key: "{{ __sap_hypervisor_node_preconfigure_register_openshift_auth_results.openshift_auth.api_key }}"
     kubeconfig: "{{ sap_hypervisor_node_kubeconfig }}"
     state: present

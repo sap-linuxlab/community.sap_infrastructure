@@ -7,6 +7,10 @@
          {{ __sap_hypervisor_node_preconfigure_register_worker_network.name }} on \
          {{ __sap_hypervisor_node_preconfigure_register_worker.name }}"
   kubernetes.core.k8s:
+    host: "{{ sap_hypervisor_node_preconfigure_ocp_endpoint }}"
+    validate_certs: false
+    api_key: "{{ __sap_hypervisor_node_preconfigure_register_openshift_auth_results.openshift_auth.api_key }}"
+    kubeconfig: "{{ sap_hypervisor_node_kubeconfig }}"
     state: present
     definition:
       apiVersion: nmstate.io/v1
@@ -23,6 +27,10 @@
 
 - name: "Create NetworkAttachmentDefinition {{ __sap_hypervisor_node_preconfigure_register_worker_network.name }}"
   kubernetes.core.k8s:
+    host: "{{ sap_hypervisor_node_preconfigure_ocp_endpoint }}"
+    validate_certs: false
+    api_key: "{{ __sap_hypervisor_node_preconfigure_register_openshift_auth_results.openshift_auth.api_key }}"
+    kubeconfig: "{{ sap_hypervisor_node_kubeconfig }}"
     state: present
     definition:
       apiVersion: "k8s.cni.cncf.io/v1"
@@ -44,6 +52,10 @@
 
 - name: Label the node with feature.node.kubernetes.io/network-sriov.capable=true
   kubernetes.core.k8s:
+    host: "{{ sap_hypervisor_node_preconfigure_ocp_endpoint }}"
+    validate_certs: false
+    api_key: "{{ __sap_hypervisor_node_preconfigure_register_openshift_auth_results.openshift_auth.api_key }}"
+    kubeconfig: "{{ sap_hypervisor_node_kubeconfig }}"
     definition:
       apiVersion: v1
       kind: Node
@@ -58,6 +70,10 @@
          {{ __sap_hypervisor_node_preconfigure_register_worker_network.name }} on \
          {{ __sap_hypervisor_node_preconfigure_register_worker.name }}"
   kubernetes.core.k8s:
+    host: "{{ sap_hypervisor_node_preconfigure_ocp_endpoint }}"
+    validate_certs: false
+    api_key: "{{ __sap_hypervisor_node_preconfigure_register_openshift_auth_results.openshift_auth.api_key }}"
+    kubeconfig: "{{ sap_hypervisor_node_kubeconfig }}"
     state: present
     definition:
       apiVersion: sriovnetwork.openshift.io/v1
@@ -81,6 +97,10 @@
 
 - name: "Create SriovNetwork Attachment Definition {{ __sap_hypervisor_node_preconfigure_register_worker_network.name }}"
   kubernetes.core.k8s:
+    host: "{{ sap_hypervisor_node_preconfigure_ocp_endpoint }}"
+    validate_certs: false
+    api_key: "{{ __sap_hypervisor_node_preconfigure_register_openshift_auth_results.openshift_auth.api_key }}"
+    kubeconfig: "{{ sap_hypervisor_node_kubeconfig }}"
     state: present
     definition:
       apiVersion: sriovnetwork.openshift.io/v1

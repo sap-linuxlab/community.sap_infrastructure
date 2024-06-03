@@ -1,6 +1,10 @@
 ---
 - name: Create the nmstate operator namespace
   kubernetes.core.k8s:
+    host: "{{ sap_hypervisor_node_preconfigure_ocp_endpoint }}"
+    validate_certs: false
+    api_key: "{{ __sap_hypervisor_node_preconfigure_register_openshift_auth_results.openshift_auth.api_key }}"
+    kubeconfig: "{{ sap_hypervisor_node_kubeconfig }}"
     state: present
     definition:
       apiVersion: v1
@@ -16,6 +20,10 @@
 
 - name: Create the OperatorGroup
   kubernetes.core.k8s:
+    host: "{{ sap_hypervisor_node_preconfigure_ocp_endpoint }}"
+    validate_certs: false
+    api_key: "{{ __sap_hypervisor_node_preconfigure_register_openshift_auth_results.openshift_auth.api_key }}"
+    kubeconfig: "{{ sap_hypervisor_node_kubeconfig }}"
     state: present
     definition:
       apiVersion: operators.coreos.com/v1
@@ -36,6 +44,10 @@
 
 - name: Subscribe to the nmstate Operator
   kubernetes.core.k8s:
+    host: "{{ sap_hypervisor_node_preconfigure_ocp_endpoint }}"
+    validate_certs: false
+    api_key: "{{ __sap_hypervisor_node_preconfigure_register_openshift_auth_results.openshift_auth.api_key }}"
+    kubeconfig: "{{ sap_hypervisor_node_kubeconfig }}"
     state: present
     definition:
       apiVersion: operators.coreos.com/v1alpha1
@@ -58,6 +70,10 @@
 
 - name: Create instance of the nmstate operator
   kubernetes.core.k8s:
+    host: "{{ sap_hypervisor_node_preconfigure_ocp_endpoint }}"
+    validate_certs: false
+    api_key: "{{ __sap_hypervisor_node_preconfigure_register_openshift_auth_results.openshift_auth.api_key }}"
+    kubeconfig: "{{ sap_hypervisor_node_kubeconfig }}"
     state: present
     definition:
       apiVersion: nmstate.io/v1
