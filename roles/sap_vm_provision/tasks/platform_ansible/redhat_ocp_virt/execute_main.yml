@@ -32,7 +32,22 @@
 #     client_key: "{{ default(lookup('env', 'K8S_AUTH_KEY_FILE')) | default(omit) }}"
 #     context: "{{ default(lookup('env', 'K8S_AUTH_CONTEXT')) | default(omit) }}"
 
-- name: Provision hosts to KubeVirt
+- name: Log in (obtain access token)
+  community.okd.openshift_auth:
+    host: "{{ sap_vm_provision_ocp_endpoint }}"
+    username: "{{ sap_vm_provision_ocp_admin_username }}"
+    password: "{{ sap_vm_provision_ocp_admin_password }}"
+    ca_cert: "{{ sap_vm_provision_ca_cert}}"
+  register: __sap_vm_provision_register_openshift_auth_results
+
+- name: Get a list of all nodes from any namespace
+  kubernetes.core.k8s_info:
+    host: "{{ sap_vm_provision_ocp_endpoint }}"
+    api_key: "{{ __sap_vm_provision_register_openshift_auth_results.openshift_auth.api_key }}"
+    kubeconfig: "{{ sap_vm_provision_kubeconfig }}"
+    ca_cert: "{{ sap_vm_provision_ca_cert}}"
+
+- name: Provision hosts to OpenShift
   register: register_provisioned_hosts
   ansible.builtin.include_tasks:
     file: "{{ 'platform_' + sap_vm_provision_iac_type }}/{{ sap_vm_provision_iac_platform }}/execute_provision.yml"

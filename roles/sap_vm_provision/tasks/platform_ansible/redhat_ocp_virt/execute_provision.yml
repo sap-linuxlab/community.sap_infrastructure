@@ -317,8 +317,8 @@
 - debug: var=K8S_AUTH_USERNAME
 - debug: var=K8S_AUTH_PASSWORD
 
-- name: XXX TBR Login to ocp
-  shell: "oc login -u {{K8S_AUTH_USERNAME}} -p {{K8S_AUTH_PASSWORD}} --server=https://api.hybrid.ocp.sap:6443"
+#- name: XXX TBR Login to ocp
+#  shell: "oc login -u {{K8S_AUTH_USERNAME}} -p {{K8S_AUTH_PASSWORD}} --server=https://api.hybrid.ocp.sap:6443"
 
 
 - name: Set fact for VM deploy config
@@ -372,11 +372,15 @@
 
 - name: Delete VMs using Kubernetes module
   kubernetes.core.k8s:
-    verify_ssl: false
+- name: Log in (obtain access token)
+  community.okd.openshift_auth:
+    host: "{{ sap_vm_provision_ocp_endpoint }}"
+    api_key: "{{ __sap_vm_provision_register_openshift_auth_results.openshift_auth.api_key }}"
     kubeconfig: "{{ sap_vm_provision_kubeconfig }}"
-#    host: api.hybrid.ocp.sap
-    username: "{{K8S_AUTH_USERNAME}}"
-    password: "{{K8S_AUTH_PASSWORD}}"
+    ca_cert: "{{ sap_vm_provision_ca_cert}}"
+
+#    username: "{{K8S_AUTH_USERNAME}}"
+#    password: "{{K8S_AUTH_PASSWORD}}"
     namespace: "{{ sap_vm_provision_kubevirt_target_namespace }}"
     kind: "VirtualMachine"
     name: "{{ __sap_vm_provision_register_vm_name }}"
@@ -385,7 +389,10 @@
 # delete pvcs
 - name: Delete PVCs associated with the VM
   kubernetes.core.k8s:
+    host: "{{ sap_vm_provision_ocp_endpoint }}"
+    api_key: "{{ __sap_vm_provision_register_openshift_auth_results.openshift_auth.api_key }}"
     kubeconfig: "{{ sap_vm_provision_kubeconfig }}"
+    ca_cert: "{{ sap_vm_provision_ca_cert}}"
     state: absent
     definition:
       apiVersion: v1
@@ -398,24 +405,12 @@
 
 - name: Provision KubeVirt Virtual Machine
   kubevirt.core.kubevirt_vm:
-    api_version: "{{ api_version | default(omit) }}"
-    validate_certs: false #"{{ validate_certs | default(omit) | bool }}"
-    persist_config: "{{ persist_config | default(omit) }}"
-    host: "{{ host | default(omit) }}" # Target Hypervisor Node
-
-#    kubeconfig: "{{ kubeconfig | default(omit) }}"
-#    api_key: "{{ api_key | default(omit) }}"
-#    username: "{{ username | default(omit) }}"
-#    password: "{{ password | default(omit) }}"
-
+    host: "{{ sap_vm_provision_ocp_endpoint }}"
+    api_key: "{{ __sap_vm_provision_register_openshift_auth_results.openshift_auth.api_key }}"
     kubeconfig: "{{ sap_vm_provision_kubeconfig }}"
-    username: "{{K8S_AUTH_USERNAME}}"
-    password: "{{K8S_AUTH_PASSWORD}}"
-
-    # ca_cert: "{{ ca_cert | default(omit) }}"
-    # client_cert: "{{ client_cert | default(omit) }}"
-    # client_key: "{{ client_key | default(omit) }}"
-    # context: "{{ context | default(omit) }}"
+    ca_cert: "{{ sap_vm_provision_ca_cert}}"
+    api_version: "{{ api_version | default(omit) }}"
+    persist_config: "{{ persist_config | default(omit) }}"
 
     ## Virtual Machine target Hypervisor definition
     namespace: "{{ sap_vm_provision_kubevirt_target_namespace }}" # Target namespace
