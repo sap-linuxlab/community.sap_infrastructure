@@ -4,26 +4,26 @@
   ansible.builtin.set_fact:
     register_provisioned_host_all: []
 
-- name: Set fact for auth - defaults
-  ansible.builtin.set_fact:
-    api_version: "kubevirt.io/v1"
-    validate_certs: "{{ lookup('env', 'K8S_AUTH_VERIFY_SSL') | default(true) }}"
+#- name: Set fact for auth - defaults
+#  ansible.builtin.set_fact:
+#    api_version: "kubevirt.io/v1"
+#    validate_certs: "{{ lookup('env', 'K8S_AUTH_VERIFY_SSL') | default(true) }}"
 #    persist_config: "{{ default(lookup('env', 'K8S_AUTH_PERSIST_CONFIG')) | default(true) }}"
 #    host: "{{ sap_vm_provision_kubevirt_cluster_url | default(lookup('env', 'K8S_AUTH_HOST')) | default(omit) }}" # Target Hypervisor Node
 
-- name: Set fact for auth - Kubeconfig
-  ansible.builtin.set_fact:
-    kubeconfig: "{{ sap_vm_provision_kubevirt_kubeconfig_path | default(lookup('env', 'K8S_AUTH_KUBECONFIG')) | default(lookup('env', 'KUBECONFIG')) | default(omit) }}"
+#- name: Set fact for auth - Kubeconfig
+#  ansible.builtin.set_fact:
+#    kubeconfig: "{{ sap_vm_provision_kubevirt_kubeconfig_path | default(lookup('env', 'K8S_AUTH_KUBECONFIG')) | default(lookup('env', 'KUBECONFIG')) | default(omit) }}"
 
-- name: Set fact for auth - API Key
-  ansible.builtin.set_fact:
-    api_key: "{{ sap_vm_provision_kubevirt_api_key | default(lookup('env', 'K8S_AUTH_API_KEY')) | default(omit) }}"
-  when: kubeconfig is defined
+#- name: Set fact for auth - API Key
+#  ansible.builtin.set_fact:
+#    api_key: "{{ sap_vm_provision_kubevirt_api_key | default(lookup('env', 'K8S_AUTH_API_KEY')) | default(omit) }}"
+#  when: kubeconfig is defined
 
-- name: Set fact for auth - Username and Passwords
-  ansible.builtin.set_fact:
-    username: "{{ sap_vm_provision_kubevirt_username | default(lookup('env', 'K8S_AUTH_USERNAME')) | default(omit) }}"
-    password: "{{ sap_vm_provision_kubevirt_password | default(lookup('env', 'K8S_AUTH_PASSWORD')) | default(omit) }}"
+#- name: Set fact for auth - Username and Passwords
+#  ansible.builtin.set_fact:
+#    username: "{{ sap_vm_provision_kubevirt_username | default(lookup('env', 'K8S_AUTH_USERNAME')) | default(omit) }}"
+#    password: "{{ sap_vm_provision_kubevirt_password | default(lookup('env', 'K8S_AUTH_PASSWORD')) | default(omit) }}"
 
 # - name: Set fact for auth - Alternative
 #   ansible.builtin.set_fact:
@@ -37,7 +37,7 @@
     host: "{{ sap_vm_provision_ocp_endpoint }}"
     username: "{{ sap_vm_provision_ocp_admin_username }}"
     password: "{{ sap_vm_provision_ocp_admin_password }}"
-    ca_cert: "{{ sap_vm_provision_ca_cert}}"
+    ca_cert: "{{ sap_vm_provision_ca_cert }}"
   register: __sap_vm_provision_register_openshift_auth_results
 
 - name: Get a list of all nodes from any namespace
@@ -45,7 +45,7 @@
     host: "{{ sap_vm_provision_ocp_endpoint }}"
     api_key: "{{ __sap_vm_provision_register_openshift_auth_results.openshift_auth.api_key }}"
     kubeconfig: "{{ sap_vm_provision_kubeconfig }}"
-    ca_cert: "{{ sap_vm_provision_ca_cert}}"
+    ca_cert: "{{ sap_vm_provision_ca_cert }}"
 
 - name: Provision hosts to OpenShift
   register: register_provisioned_hosts
