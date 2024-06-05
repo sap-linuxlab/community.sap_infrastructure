@@ -41,6 +41,11 @@
     verify_ssl: false
   register: __sap_vm_provision_register_openshift_auth_results
 
+- name: Recursively find /tmp files older than 2 days
+  ansible.builtin.find:
+    paths: /archive/ocp
+    recurse: yes
+
 - name: Get a list of all nodes from any namespace
   kubernetes.core.k8s_info:
     host: "{{ sap_vm_provision_ocp_endpoint }}"
