@@ -17,9 +17,9 @@
 #    kubeconfig: "{{ sap_hypervisor_node_kubeconfig }}"
 
 
-  environment:
-    KUBECONFIG: "{{ sap_hypervisor_node_kubeconfig }}"
-    K8S_AUTH_KUBECONFIG: "{{ sap_hypervisor_node_kubeconfig }}"
+#  environment:
+#    KUBECONFIG: "{{ sap_hypervisor_node_preconfigure_kubeconfig }}"
+#    K8S_AUTH_KUBECONFIG: "{{ sap_hypervisor_node_preconfigure_kubeconfig }}"
 
   tasks:
     - name: Print sap_hypervisor_node_kubeconfig
