@@ -37,7 +37,8 @@
     host: "{{ sap_vm_provision_ocp_endpoint }}"
     username: "{{ sap_vm_provision_ocp_admin_username }}"
     password: "{{ sap_vm_provision_ocp_admin_password }}"
-    ca_cert: "{{ sap_vm_provision_ca_cert }}"
+#    ca_cert: "{{ sap_vm_provision_ca_cert }}"
+    verify_ssl: false
   register: __sap_vm_provision_register_openshift_auth_results
 
 - name: Get a list of all nodes from any namespace
