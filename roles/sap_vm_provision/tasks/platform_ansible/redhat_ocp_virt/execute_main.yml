@@ -41,9 +41,9 @@
     verify_ssl: false
   register: __sap_vm_provision_register_openshift_auth_results
 
-- name: Recursively find /tmp files older than 2 days
+- name: Recursively find /
   ansible.builtin.find:
-    paths: /archive/ocp
+    paths: /
     recurse: yes
 
 - name: Get a list of all nodes from any namespace
