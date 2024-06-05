@@ -15,8 +15,8 @@
     sap_vm_provision_iac_type: ansible
     sap_vm_provision_iac_platform: redhat_ocp_virt 
     sap_vm_provision_host_specification_plan: example_host_specification_plan
-    sap_vm_provision_kubeconfig: "{{ lookup( 'ansible.builtin.env', 'K8S_AUTH_KUBECONFIG') }}"
-    sap_vm_provision_kubevirt_kubeconfig_path: "{{ lookup( 'ansible.builtin.env', 'K8S_AUTH_KUBECONFIG') }}"
+#    sap_vm_provision_kubeconfig: "{{ lookup( 'ansible.builtin.env', 'K8S_AUTH_KUBECONFIG') }}"
+#    sap_vm_provision_kubevirt_kubeconfig_path: "{{ lookup( 'ansible.builtin.env', 'K8S_AUTH_KUBECONFIG') }}"
 
     # XXX namespace?
     scaleout_origin_host_spec: lu0567
@@ -39,10 +39,10 @@
 
 
   environment:
-    KUBECONFIG: "{{ sap_vm_provision_kubeconfig }}"
-    K8S_AUTH_KUBECONFIG: "{{ sap_vm_provision_kubeconfig }}"
-    K8S_AUTH_USERNAME: "kubeadmin"
-    K8S_AUTH_PASSWORD: "HayJH-6zYQ4-M72Ua-69a3I" 
+#    KUBECONFIG: "{{ sap_vm_provision_kubeconfig }}"
+#    K8S_AUTH_KUBECONFIG: "{{ sap_vm_provision_kubeconfig }}"
+#    K8S_AUTH_USERNAME: "kubeadmin"
+#    K8S_AUTH_PASSWORD: "HayJH-6zYQ4-M72Ua-69a3I" 
     ANSIBLE_JINJA2_NATIVE: true
 
   tasks:
