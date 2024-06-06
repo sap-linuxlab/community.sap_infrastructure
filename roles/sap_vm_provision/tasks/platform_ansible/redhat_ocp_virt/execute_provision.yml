@@ -368,12 +368,11 @@
           hugepages:
             pageSize: 1Gi
 
-
+- debug: var=sap_vm_provision_kubeconfig
+- debug: var=__sap_vm_provision_register_openshift_auth_results
 
 - name: Delete VMs using Kubernetes module
   kubernetes.core.k8s:
-- name: Log in (obtain access token)
-  community.okd.openshift_auth:
     host: "{{ sap_vm_provision_ocp_endpoint }}"
     api_key: "{{ __sap_vm_provision_register_openshift_auth_results.openshift_auth.api_key }}"
     kubeconfig: "{{ sap_vm_provision_kubeconfig }}"
