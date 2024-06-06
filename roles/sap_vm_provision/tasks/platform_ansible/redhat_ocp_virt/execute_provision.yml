@@ -82,7 +82,6 @@
               'accessModes': ['ReadWriteMany'],
               'resources': {
                 'requests': {
-                  'storage': '25Gi'
                 }
               }
             }
