@@ -9,7 +9,7 @@ sap_hypervisor_node_preconfigure_install_hpp: false
 sap_hypervisor_node_preconfigure_install_trident: false
 
 # URL of the trident installer package to use
-sap_hypervisor_node_preconfigure_install_trident_url: https://github.com/NetApp/trident/releases/download/v23.10.0/trident-installer-23.10.0.tar.gz
+sap_hypervisor_node_preconfigure_install_trident_url: https://github.com/NetApp/trident/releases/download/v24.02.0/trident-installer-24.02.0.tar.gz
 
 # should SRIOV be enabled for unsupported NICs
 sap_hypervisor_node_preconfigure_sriov_enable_unsupported_nics: true

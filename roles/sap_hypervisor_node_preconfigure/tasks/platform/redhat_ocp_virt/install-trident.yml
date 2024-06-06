@@ -12,7 +12,7 @@
   changed_when: __sap_hypervisor_node_preconfigure_register_uninstall_trident.rc != 0
 
 - name: Install trident
-  ansible.builtin.command: "{{ __sap_hypervisor_node_preconfigure_register_tmpdir.path }}/trident-installer/tridentctl install -n trident"
+  ansible.builtin.command: "KUBECONFIG={{ sap_hypervisor_node_preconfigure_kubeconfig }} {{ __sap_hypervisor_node_preconfigure_register_tmpdir.path }}/trident-installer/tridentctl install -n trident"
   register: __sap_hypervisor_node_preconfigure_register_install_trident
   changed_when: __sap_hypervisor_node_preconfigure_register_install_trident.rc != 0
 
@@ -23,7 +23,8 @@
     mode: "0644"
 
 - name: Create trident backend
-  ansible.builtin.command: "{{ __sap_hypervisor_node_preconfigure_register_tmpdir.path }}\
+  ansible.builtin.command: "KUBECONFIG={{ sap_hypervisor_node_preconfigure_kubeconfig }}\ 
+                            {{ __sap_hypervisor_node_preconfigure_register_tmpdir.path }}\
                             /trident-installer/tridentctl -n trident create backend -f\
                             {{ __sap_hypervisor_node_preconfigure_register_tmpdir.path }}\
                             /trident-backend.json"
