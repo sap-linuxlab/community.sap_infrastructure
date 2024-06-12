@@ -56,6 +56,7 @@
     - name: Identify Resource Group info
       no_log: "{{ __sap_vm_provision_no_log }}"
       register: __sap_vm_provision_task_ibmcloud_resource_group
+      run_once: true
       ibm.cloudcollection.ibm_resource_group_info:
         name: "{{ sap_vm_provision_ibmcloud_resource_group_name }}"
         ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
@@ -65,6 +66,7 @@
     - name: Identify Resource Group info for IBM Cloud Private DNS
       no_log: "{{ __sap_vm_provision_no_log }}"
       register: __sap_vm_provision_task_ibmcloud_resource_group_dns
+      run_once: true
       ibm.cloudcollection.ibm_resource_group_info:
         name: "{{ sap_vm_provision_ibmcloud_private_dns_resource_group_name }}"
         ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
@@ -73,6 +75,7 @@
     - name: Identify IBM Power Infrastructure Workspace
       no_log: "{{ __sap_vm_provision_no_log }}"
       register: __sap_vm_provision_task_ibmcloud_pi_workspace_service_instance
+      run_once: true
       ibm.cloudcollection.ibm_resource_instance_info:
         resource_group_id: "{{ __sap_vm_provision_task_ibmcloud_resource_group.resource.id }}"
         location: "{{ sap_vm_provision_ibmcloud_powervs_location }}"
@@ -83,6 +86,7 @@
     - name: Identify pre-loaded IBM Power Infrastructure SSH Public Key info
       no_log: "{{ __sap_vm_provision_no_log }}"
       register: __sap_vm_provision_task_ibmcloud_pi_ssh_public_key
+      run_once: true
       environment:
         IC_REGION: "{{ sap_vm_provision_ibmcloud_powervs_region }}"
       ibm.cloudcollection.ibm_pi_key_info:
@@ -93,6 +97,7 @@
     - name: Identify IBM Power Infrastructure VLAN Subnet info
       no_log: "{{ __sap_vm_provision_no_log }}"
       register: __sap_vm_provision_task_ibmcloud_pi_subnet
+      run_once: true
       environment:
         IC_REGION: "{{ sap_vm_provision_ibmcloud_powervs_region }}"
       ibm.cloudcollection.ibm_pi_network_info:
@@ -115,6 +120,7 @@
     - name: Identify IBM Cloud Private DNS instance
       no_log: "{{ __sap_vm_provision_no_log }}"
       register: __sap_vm_provision_task_ibmcloud_pdns_service_instance
+      run_once: true
       ibm.cloudcollection.ibm_resource_instance_info:
         resource_group_id: "{{ __sap_vm_provision_task_ibmcloud_resource_group.resource.id if __sap_vm_provision_task_ibmcloud_resource_group_dns is skipped else __sap_vm_provision_task_ibmcloud_resource_group_dns.resource.id }}"
         location: global
@@ -125,6 +131,7 @@
     - name: Identify IBM Cloud Private DNS Zone info
       no_log: "{{ __sap_vm_provision_no_log }}"
       register: __sap_vm_provision_task_ibmcloud_pdns
+      run_once: true
       ibm.cloudcollection.ibm_dns_zones_info:
         instance_id: "{{ __sap_vm_provision_task_ibmcloud_pdns_service_instance.resource.guid }}"
         ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
@@ -132,6 +139,7 @@
     - name: Identify IBM Power Infrastructure OS Catalog Stock Image list
       no_log: "{{ __sap_vm_provision_no_log }}"
       register: __sap_vm_provision_task_ibmcloud_pi_os_image_list
+      run_once: true
       environment:
         IC_REGION: "{{ sap_vm_provision_ibmcloud_powervs_region }}"
       ibm.cloudcollection.ibm_pi_catalog_images_info:
@@ -146,6 +154,7 @@
     - name: Import Boot Image to current IBM Power Infrastructure Workspace from the IBM Power Infrastructure OS Catalog Stock Image
       no_log: "{{ __sap_vm_provision_no_log }}"
       register: __sap_vm_provision_task_ibmcloud_pi_os_image_provisioned
+      run_once: true
       environment:
         IC_REGION: "{{ sap_vm_provision_ibmcloud_powervs_region }}"
       ibm.cloudcollection.ibm_pi_image:
@@ -154,11 +163,11 @@
         pi_image_name: "{{ sap_vm_provision_ibmcloud_powervs_host_os_image }}-boot"
         ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
       failed_when: not __sap_vm_provision_task_ibmcloud_pi_os_image_provisioned.rc == 0 and not 'already exists' in __sap_vm_provision_task_ibmcloud_pi_os_image_provisioned.stderr
-      run_once: true
 
     - name: Identify IBM Power Infrastructure Workspace imported OS Image list
       no_log: "{{ __sap_vm_provision_no_log }}"
       register: __sap_vm_provision_task_ibmcloud_pi_imported_os_image_list
+      run_once: true
       environment:
         IC_REGION: "{{ sap_vm_provision_ibmcloud_powervs_region }}"
       ibm.cloudcollection.ibm_pi_images_info:
@@ -173,13 +182,13 @@
     - name: Check for existing Boot Image imported already from IBM Power Infrastructure OS Catalog Stock Image
       no_log: "{{ __sap_vm_provision_no_log }}"
       register: __sap_vm_provision_task_ibmcloud_pi_os_image_existing
+      run_once: true
       environment:
         IC_REGION: "{{ sap_vm_provision_ibmcloud_powervs_region }}"
       ibm.cloudcollection.ibm_pi_image_info:
         pi_cloud_instance_id: "{{ __sap_vm_provision_task_ibmcloud_pi_workspace_service_instance.resource.guid }}" # must be GUID, not CRN
         pi_image_name: "{{ register_ibmcloud_pi_imported_os_image_selected.name }}"
         ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
-      run_once: true
 
     - name: Set fact to hold loop variables from include_tasks
       ansible.builtin.set_fact:
@@ -215,7 +224,7 @@
 
     - name: Set fact to hold all inventory hosts in all groups
       ansible.builtin.set_fact:
-        groups_merged_list: "{{ [ [ groups['hana_primary'] | default([]) ] , [ groups['hana_secondary'] | default([]) ] , [ groups['nwas_ascs'] | default([]) ] , [ groups['nwas_ers'] | default([]) ] , [ groups['nwas_pas'] | default([]) ] , [ groups['nwas_aas'] | default([]) ] ] | flatten | select() }}"
+        groups_merged_list: "{{ [ [ groups['hana_primary'] | default([]) ] , [ groups['hana_secondary'] | default([]) ] , [ groups['anydb_primary'] | default([]) ] , [ groups['anydb_secondary'] | default([]) ] , [ groups['nwas_ascs'] | default([]) ] , [ groups['nwas_ers'] | default([]) ] , [ groups['nwas_pas'] | default([]) ] , [ groups['nwas_aas'] | default([]) ] ] | flatten | select() }}"
 
     - name: Set Ansible Vars
       register: __sap_vm_provision_task_ansible_vars_set
