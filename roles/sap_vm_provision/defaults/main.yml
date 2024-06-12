@@ -1,5 +1,12 @@
 ---
 
+### WIP
+
+sap_vm_provision_ibmcloud_placement_resource_name: "sap-placement-spread"
+sap_vm_provision_ibmcloud_placement_strategy_spread: false
+
+
+
 ####
 # VM Provision selection
 ####

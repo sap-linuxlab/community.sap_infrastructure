@@ -347,3 +347,18 @@ When VMware vCenter and vSphere clusters with VMware NSX virtualized network ove
 N.B. When VMware vCenter and vSphere clusters with direct network subnet IP allocations to the VMXNet network adapter (no VMware NSX network overlays), the above actions may not be required.
 
 </details>
+
+
+## Notice regarding SAP High Availability and hardware placement strategies
+
+Each Hyperscaler Cloud Service Provider provides a different approach to the placement strategy of a Virtual Machine to the physical/hardware Hypervisor node it runs atop.
+
+The `sap_vm_provision` Ansible Role enforces scope control for this capability, only providing a "spread" placement strategy for the High Availability scenarios. As such the variable used is `sap_vm_provision_<<infrastructure_platform>>_placement_strategy_spread: true/false`.
+
+The following are the equivalent Placement Strategies, commonly referenced as 'Anti-Affinity', in each Infrastructure Platform:
+
+- **AWS EC2 VS Placement Group, Spread (Rack level)** - each VS on different hosts, in different racks with distinct network source and power supply
+- **GCP CE VM Placement Policy, Spread** - each VM on different hosts, in different racks with distinct power supply (dual redundancy from different sources)
+- **IBM Cloud VS Placement Group Strategy, Power Spread** - each VS on different hosts, in different racks with distinct network source and power supplies (dual redundancy from different sources)
+- **IBM Cloud, IBM Power VS Placement Group Colocation Policy, Different Server Spread** - each VS on different hosts, in different racks with distinct network source and power supplies (dual redundancy from different sources)
+- **MS Azure VM Availability Set, Fault Domain Spread** - each VM on different hosts, in different racks with distinct network source and power supply

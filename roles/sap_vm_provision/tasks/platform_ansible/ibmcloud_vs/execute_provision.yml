@@ -51,6 +51,17 @@
         protocol: https
         response_hop_limit: 5
 
+    placement_group: "{{ (
+      (__sap_vm_provision_task_ibmcloud_placement_group.results | selectattr('item','==','hana'))[0].resource.id
+      if ('hana_primary' in target_provision_host_spec.sap_host_type or 'hana_secondary' in target_provision_host_spec.sap_host_type)
+      else
+      (__sap_vm_provision_task_ibmcloud_placement_group.results | selectattr('item','==','anydb'))[0].resource.id
+      if ('anydb_primary' in target_provision_host_spec.sap_host_type or 'anydb_secondary' in target_provision_host_spec.sap_host_type)
+      else
+      (__sap_vm_provision_task_ibmcloud_placement_group.results | selectattr('item','==','nwas'))[0].resource.id
+      if ('nwas_ascs' in target_provision_host_spec.sap_host_type or 'nwas_ers' in target_provision_host_spec.sap_host_type)
+      ) | default(omit) }}"
+
     ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
 
 

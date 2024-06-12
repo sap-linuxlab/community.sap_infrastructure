@@ -39,9 +39,9 @@
     logging: true # For ALB L7, not NLB L4
     #profile: network-fixed / dynamic # For NLB L4, not ALB L7
     #route_mode: false # For NLB L4, not ALB L7
-    # dns: # Unsupported by legacy Ansible Collection, use IBM Cloud CLI as workaround
-    #   instance_crn: "{{ __sap_vm_provision_task_ibmcloud_pdns_service_instance.resource.resource_crn }}"
-    #   zone_id: "{{ (__sap_vm_provision_task_ibmcloud_pdns.resource.dns_zones | selectattr('name', '==', sap_vm_provision_dns_root_domain) | first).zone_id }}"
+    dns:
+      instance_crn: "{{ __sap_vm_provision_task_ibmcloud_pdns_service_instance.resource.resource_crn }}"
+      zone_id: "{{ (__sap_vm_provision_task_ibmcloud_pdns.resource.dns_zones | selectattr('name', '==', sap_vm_provision_dns_root_domain) | first).zone_id }}"
     ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
   loop:
     - "{{ sap_vm_provision_ha_load_balancer_name_hana if (groups['hana_secondary'] is defined and (groups['hana_secondary'] | length>0)) else '' }}"
@@ -65,20 +65,20 @@
   # failed_when: not __sap_vm_provision_task_ibmcloud_lb_provision_parallel_async_status.rc == 0
 
 # Workaround to missing Ansible Module functionality in legacy Ansible Collection
-- name: IBM Cloud CLI append DNS to Load Balancer
-  no_log: "{{ __sap_vm_provision_no_log }}"
-  register: __sap_vm_provision_task_ibmcloud_lb_update_dns
-  ansible.builtin.shell: |
-    ibmcloud config --quiet --check-version false && ibmcloud login --apikey="{{ sap_vm_provision_ibmcloud_api_key }}" -g {{ sap_vm_provision_ibmcloud_resource_group_name }} -r {{ sap_vm_provision_ibmcloud_region }} --quiet
-    ibmcloud plugin install infrastructure-service -f --quiet
-    ibmcloud is load-balancer-update "{{ item }}" --dns-instance-crn "{{ __sap_vm_provision_task_ibmcloud_pdns_service_instance.resource.resource_crn }}" --dns-zone-id "{{ (__sap_vm_provision_task_ibmcloud_pdns.resource.dns_zones | selectattr('name', '==', sap_vm_provision_dns_root_domain) | first).zone_id }}"
-  loop:
-    - "{{ sap_vm_provision_ha_load_balancer_name_hana if (groups['hana_secondary'] is defined and (groups['hana_secondary'] | length>0)) else '' }}"
-    - "{{ sap_vm_provision_ha_load_balancer_name_anydb if (groups['anydb_secondary'] is defined and (groups['anydb_secondary'] | length>0)) else '' }}"
-    - "{{ sap_vm_provision_ha_load_balancer_name_nwas + '-ascs' if (groups['nwas_ers'] is defined and (groups['nwas_ers'] | length>0)) else '' }}"
-    - "{{ sap_vm_provision_ha_load_balancer_name_nwas + '-ers' if (groups['nwas_ers'] is defined and (groups['nwas_ers'] | length>0)) else '' }}"
-  when: not item == ''
-  failed_when: not __sap_vm_provision_task_ibmcloud_lb_update_dns.rc == 0 and not 'nothing to update the load balancer with' in __sap_vm_provision_task_ibmcloud_lb_update_dns.stderr
+# - name: IBM Cloud CLI append DNS to Load Balancer
+#   no_log: "{{ __sap_vm_provision_no_log }}"
+#   register: __sap_vm_provision_task_ibmcloud_lb_update_dns
+#   ansible.builtin.shell: |
+#     ibmcloud config --quiet --check-version false && ibmcloud login --apikey="{{ sap_vm_provision_ibmcloud_api_key }}" -g {{ sap_vm_provision_ibmcloud_resource_group_name }} -r {{ sap_vm_provision_ibmcloud_region }} --quiet
+#     ibmcloud plugin install infrastructure-service -f --quiet
+#     ibmcloud is load-balancer-update "{{ item }}" --dns-instance-crn "{{ __sap_vm_provision_task_ibmcloud_pdns_service_instance.resource.resource_crn }}" --dns-zone-id "{{ (__sap_vm_provision_task_ibmcloud_pdns.resource.dns_zones | selectattr('name', '==', sap_vm_provision_dns_root_domain) | first).zone_id }}"
+#   loop:
+#     - "{{ sap_vm_provision_ha_load_balancer_name_hana if (groups['hana_secondary'] is defined and (groups['hana_secondary'] | length>0)) else '' }}"
+#     - "{{ sap_vm_provision_ha_load_balancer_name_anydb if (groups['anydb_secondary'] is defined and (groups['anydb_secondary'] | length>0)) else '' }}"
+#     - "{{ sap_vm_provision_ha_load_balancer_name_nwas + '-ascs' if (groups['nwas_ers'] is defined and (groups['nwas_ers'] | length>0)) else '' }}"
+#     - "{{ sap_vm_provision_ha_load_balancer_name_nwas + '-ers' if (groups['nwas_ers'] is defined and (groups['nwas_ers'] | length>0)) else '' }}"
+#   when: not item == ''
+#   failed_when: not __sap_vm_provision_task_ibmcloud_lb_update_dns.rc == 0 and not 'nothing to update the load balancer with' in __sap_vm_provision_task_ibmcloud_lb_update_dns.stderr
 
 - name: Identify IBM Cloud Virtual Servers info
   no_log: "{{ __sap_vm_provision_no_log }}"
@@ -87,6 +87,11 @@
     vpc: "{{ __sap_vm_provision_task_ibmcloud_vpc_subnet.resource.vpc }}"
     ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
 
+# - name: Identify IBM Cloud Load Balancers info
+#   no_log: "{{ __sap_vm_provision_no_log }}"
+#   register: __sap_vm_provision_task_ibmcloud_lb_all_info
+#   ibm.cloudcollection.ibm_is_lbs_info:
+#     ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
 
 # Workaround for bug which populates region and ibmcloud_api_key as TF arguments for ibm_is_lbs_info Ansible Module in legacy Ansible Collection
 - name: IBM Cloud CLI execution to list Load Balancer/s info
@@ -177,7 +182,7 @@
 - name: Create IBM Cloud Load Balancer Back-end Pool for SAP AnyDB - IBM Db2 Communication Port
   no_log: "{{ __sap_vm_provision_no_log }}"
   ibm.cloudcollection.ibm_is_lb_pool:
-    name: "{{ sap_vm_provision_ha_load_balancer_name_anydb + '-ibmdb2' }}"
+    name: "{{ sap_vm_provision_ha_load_balancer_name_anydb + '-pool-ibmdb2' }}"
     lb: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', sap_vm_provision_ha_load_balancer_name_anydb))[0].id }}"
     algorithm: weighted_round_robin
     protocol: tcp
@@ -508,8 +513,8 @@
   no_log: "{{ __sap_vm_provision_no_log }}"
   register: __sap_vm_provision_task_ibmcloud_lb_pool_members_anydb1
   ibm.cloudcollection.ibm_is_lb_pool_member:
-    lb: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', sap_vm_provision_ha_load_balancer_name_anydb))[0].id }}"
-    pool: "{{ (__sap_vm_provision_task_ibmcloud_lb_pools.results | json_query('[*].resource.pools') | flatten | selectattr('name', '==', sap_vm_provision_ha_load_balancer_name_anydb + '-anydb-pool-ibmdb2'))[0].id }}"
+    lb: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', sap_vm_provision_ha_load_balancer_name_anydb))[0].id }}"  
+    pool: "{{ (__sap_vm_provision_task_ibmcloud_lb_pools.results | json_query('[*].resource.pools') | flatten | selectattr('name', '==', sap_vm_provision_ha_load_balancer_name_anydb + '-pool-ibmdb2'))[0].id }}"
     target_address: "{{ (__sap_vm_provision_task_ibmcloud_vs_all_info.resource.instances | selectattr('name', '==', host_node))[0].primary_network_interface[0].primary_ipv4_address }}"
     port: 5912
     weight: 100
@@ -526,7 +531,7 @@
   register: __sap_vm_provision_task_ibmcloud_lb_pool_members_anydb2
   ibm.cloudcollection.ibm_is_lb_pool_member:
     lb: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', sap_vm_provision_ha_load_balancer_name_anydb))[0].id }}"
-    pool: "{{ (__sap_vm_provision_task_ibmcloud_lb_pools.results | json_query('[*].resource.pools') | flatten | selectattr('name', '==', sap_vm_provision_ha_load_balancer_name_anydb + '-anydb-pool-ibmdb2'))[0].id }}"
+    pool: "{{ (__sap_vm_provision_task_ibmcloud_lb_pools.results | json_query('[*].resource.pools') | flatten | selectattr('name', '==', sap_vm_provision_ha_load_balancer_name_anydb + '-pool-ibmdb2'))[0].id }}"
     target_address: "{{ (__sap_vm_provision_task_ibmcloud_vs_all_info.resource.instances | selectattr('name', '==', host_node))[0].primary_network_interface[0].primary_ipv4_address }}"
     port: 5912
     weight: 1
@@ -890,6 +895,12 @@
 
 # Create IBM Cloud Load Balancer Front-end Listeners (open port for Virtual IPs)
 
+# When IBM Cloud Load Balancer, Application Load Balancer Type:
+# - Important to increase the Front-end Listener Idle Connection Timeout (sec),
+#   if the received-and-forwarded request becomes idle (no data received/sent sent/received)
+#   then the idle connection is closed by default/minimum after 50 seconds and maximum 7200 seconds (2 hours).
+# - This can impact SAP SWPM waiting for SAP HANA Data Load to complete, and other long-running actions.
+
 - name: Create IBM Cloud Load Balancer Front-end Listener for SAP HANA - System DB SQL
   no_log: "{{ __sap_vm_provision_no_log }}"
   register: __sap_vm_provision_task_ibmcloud_lb_frontend_listener_hana1
@@ -898,6 +909,7 @@
     default_pool: "{{ (__sap_vm_provision_task_ibmcloud_lb_pools.results | json_query('[*].resource.pools') | flatten | selectattr('name', '==', sap_vm_provision_ha_load_balancer_name_hana + '-pool-sysdb-sql'))[0].id }}"
     protocol: tcp
     port: "{{ ('3' + sap_system_hana_db_instance_nr + '13') | int }}"
+    idle_connection_timeout: 600 # 10 minutes
     ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
   when: (groups['hana_secondary'] is defined and (groups['hana_secondary'] | length>0))
   failed_when: not __sap_vm_provision_task_ibmcloud_lb_frontend_listener_hana1.rc == 0 and not 'listener_duplicate_port' in __sap_vm_provision_task_ibmcloud_lb_frontend_listener_hana1.stderr
@@ -910,6 +922,7 @@
     default_pool: "{{ (__sap_vm_provision_task_ibmcloud_lb_pools.results | json_query('[*].resource.pools') | flatten | selectattr('name', '==', sap_vm_provision_ha_load_balancer_name_hana + '-pool-mdc1-sql'))[0].id }}"
     protocol: tcp
     port: "{{ ('3' + sap_system_hana_db_instance_nr + '15') | int }}"
+    idle_connection_timeout: 600 # 10 minutes
     ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
   when: (groups['hana_secondary'] is defined and (groups['hana_secondary'] | length>0))
   failed_when: not __sap_vm_provision_task_ibmcloud_lb_frontend_listener_hana2.rc == 0 and not 'listener_duplicate_port' in __sap_vm_provision_task_ibmcloud_lb_frontend_listener_hana2.stderr
@@ -922,6 +935,7 @@
     default_pool: "{{ (__sap_vm_provision_task_ibmcloud_lb_pools.results | json_query('[*].resource.pools') | flatten | selectattr('name', '==', sap_vm_provision_ha_load_balancer_name_hana + '-pool-startsrv-http'))[0].id }}"
     protocol: tcp
     port: "{{ ('5' + sap_system_hana_db_instance_nr + '13') | int }}"
+    idle_connection_timeout: 600 # 10 minutes
     ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
   when: (groups['hana_secondary'] is defined and (groups['hana_secondary'] | length>0))
   failed_when: not __sap_vm_provision_task_ibmcloud_lb_frontend_listener_hana3.rc == 0 and not 'listener_duplicate_port' in __sap_vm_provision_task_ibmcloud_lb_frontend_listener_hana3.stderr
@@ -934,6 +948,7 @@
     default_pool: "{{ (__sap_vm_provision_task_ibmcloud_lb_pools.results | json_query('[*].resource.pools') | flatten | selectattr('name', '==', sap_vm_provision_ha_load_balancer_name_hana + '-pool-startsrv-https'))[0].id }}"
     protocol: tcp
     port: "{{ ('5' + sap_system_hana_db_instance_nr + '14') | int }}"
+    idle_connection_timeout: 600 # 10 minutes
     ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
   when: (groups['hana_secondary'] is defined and (groups['hana_secondary'] | length>0))
   failed_when: not __sap_vm_provision_task_ibmcloud_lb_frontend_listener_hana4.rc == 0 and not 'listener_duplicate_port' in __sap_vm_provision_task_ibmcloud_lb_frontend_listener_hana4.stderr
@@ -943,9 +958,10 @@
   register: __sap_vm_provision_task_ibmcloud_lb_frontend_listener_anydb1
   ibm.cloudcollection.ibm_is_lb_listener:
     lb: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', sap_vm_provision_ha_load_balancer_name_anydb))[0].id }}"
-    default_pool: "{{ (__sap_vm_provision_task_ibmcloud_lb_pools.results | json_query('[*].resource.pools') | flatten | selectattr('name', '==', sap_vm_provision_ha_load_balancer_name_anydb + '-anydb-pool-ibmdb2'))[0].id }}"
+    default_pool: "{{ (__sap_vm_provision_task_ibmcloud_lb_pools.results | json_query('[*].resource.pools') | flatten | selectattr('name', '==', sap_vm_provision_ha_load_balancer_name_anydb + '-pool-ibmdb2'))[0].id }}"
     protocol: tcp
     port: 5912
+    idle_connection_timeout: 600 # 10 minutes
     ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
   when: (groups['anydb_secondary'] is defined and (groups['anydb_secondary'] | length>0))
   failed_when: not __sap_vm_provision_task_ibmcloud_lb_frontend_listener_anydb1.rc == 0 and not 'listener_duplicate_port' in __sap_vm_provision_task_ibmcloud_lb_frontend_listener_anydb1.stderr
@@ -958,6 +974,7 @@
     default_pool: "{{ (__sap_vm_provision_task_ibmcloud_lb_pools.results | json_query('[*].resource.pools') | flatten | selectattr('name', '==', sap_vm_provision_ha_load_balancer_name_nwas + '-ascs-pool-dp'))[0].id }}"
     protocol: tcp
     port: "{{ ('32' + sap_system_nwas_abap_ascs_instance_nr) | int }}"
+    idle_connection_timeout: 600 # 10 minutes
     ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
   when: (groups['nwas_ers'] is defined and (groups['nwas_ers'] | length>0))
   failed_when: not __sap_vm_provision_task_ibmcloud_lb_frontend_listener_ascs1.rc == 0 and not 'listener_duplicate_port' in __sap_vm_provision_task_ibmcloud_lb_frontend_listener_ascs1.stderr
@@ -970,6 +987,7 @@
     default_pool: "{{ (__sap_vm_provision_task_ibmcloud_lb_pools.results | json_query('[*].resource.pools') | flatten | selectattr('name', '==', sap_vm_provision_ha_load_balancer_name_nwas + '-ascs-pool-ms'))[0].id }}"
     protocol: tcp
     port: "{{ ('36' + sap_system_nwas_abap_ascs_instance_nr) | int }}"
+    idle_connection_timeout: 600 # 10 minutes
     ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
   when: (groups['nwas_ers'] is defined and (groups['nwas_ers'] | length>0))
   failed_when: not __sap_vm_provision_task_ibmcloud_lb_frontend_listener_ascs2.rc == 0 and not 'listener_duplicate_port' in __sap_vm_provision_task_ibmcloud_lb_frontend_listener_ascs2.stderr
@@ -982,6 +1000,7 @@
     default_pool: "{{ (__sap_vm_provision_task_ibmcloud_lb_pools.results | json_query('[*].resource.pools') | flatten | selectattr('name', '==', sap_vm_provision_ha_load_balancer_name_nwas + '-ascs-pool-enq'))[0].id }}"
     protocol: tcp
     port: "{{ ('39' + sap_system_nwas_abap_ascs_instance_nr) | int }}"
+    idle_connection_timeout: 600 # 10 minutes
     ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
   when: (groups['nwas_ers'] is defined and (groups['nwas_ers'] | length>0))
   failed_when: not __sap_vm_provision_task_ibmcloud_lb_frontend_listener_ascs3.rc == 0 and not 'listener_duplicate_port' in __sap_vm_provision_task_ibmcloud_lb_frontend_listener_ascs3.stderr
@@ -994,6 +1013,7 @@
     default_pool: "{{ (__sap_vm_provision_task_ibmcloud_lb_pools.results | json_query('[*].resource.pools') | flatten | selectattr('name', '==', sap_vm_provision_ha_load_balancer_name_nwas + '-ascs-pool-sapctrl'))[0].id }}"
     protocol: tcp
     port: "{{ ('5' + sap_system_nwas_abap_ascs_instance_nr + '13') | int }}"
+    idle_connection_timeout: 600 # 10 minutes
     ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
   when: (groups['nwas_ers'] is defined and (groups['nwas_ers'] | length>0))
   failed_when: not __sap_vm_provision_task_ibmcloud_lb_frontend_listener_ascs4.rc == 0 and not 'listener_duplicate_port' in __sap_vm_provision_task_ibmcloud_lb_frontend_listener_ascs4.stderr
@@ -1006,6 +1026,7 @@
     default_pool: "{{ (__sap_vm_provision_task_ibmcloud_lb_pools.results | json_query('[*].resource.pools') | flatten | selectattr('name', '==', sap_vm_provision_ha_load_balancer_name_nwas + '-ascs-pool-sapctrls'))[0].id }}"
     protocol: tcp
     port: "{{ ('5' + sap_system_nwas_abap_ascs_instance_nr + '14') | int }}"
+    idle_connection_timeout: 600 # 10 minutes
     ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
   when: (groups['nwas_ers'] is defined and (groups['nwas_ers'] | length>0))
   failed_when: not __sap_vm_provision_task_ibmcloud_lb_frontend_listener_ascs5.rc == 0 and not 'listener_duplicate_port' in __sap_vm_provision_task_ibmcloud_lb_frontend_listener_ascs5.stderr
@@ -1018,6 +1039,7 @@
 #     default_pool: "{{ (__sap_vm_provision_task_ibmcloud_lb_pools.results | json_query('[*].resource.pools') | flatten | selectattr('name', '==', sap_vm_provision_ha_load_balancer_name_nwas + '-ers-pool-dp'))[0].id }}"
 #     protocol: tcp
 #     port: "{{ ('32' + sap_system_nwas_abap_ers_instance_nr) | int }}"
+#     idle_connection_timeout: 600 # 10 minutes
 #     ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
 #   when: (groups['nwas_ers'] is defined and (groups['nwas_ers'] | length>0))
 #   failed_when: not __sap_vm_provision_task_ibmcloud_lb_frontend_listener_ers1.rc == 0 and not 'listener_duplicate_port' in __sap_vm_provision_task_ibmcloud_lb_frontend_listener_ers1.stderr
@@ -1030,6 +1052,7 @@
 #     default_pool: "{{ (__sap_vm_provision_task_ibmcloud_lb_pools.results | json_query('[*].resource.pools') | flatten | selectattr('name', '==', sap_vm_provision_ha_load_balancer_name_nwas + '-ers-pool-ms'))[0].id }}"
 #     protocol: tcp
 #     port: "{{ ('36' + sap_system_nwas_abap_ers_instance_nr) | int }}"
+#     idle_connection_timeout: 600 # 10 minutes
 #     ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
 #   when: (groups['nwas_ers'] is defined and (groups['nwas_ers'] | length>0))
 #   failed_when: not __sap_vm_provision_task_ibmcloud_lb_frontend_listener_ers2.rc == 0 and not 'listener_duplicate_port' in __sap_vm_provision_task_ibmcloud_lb_frontend_listener_ers2.stderr
@@ -1042,6 +1065,7 @@
     default_pool: "{{ (__sap_vm_provision_task_ibmcloud_lb_pools.results | json_query('[*].resource.pools') | flatten | selectattr('name', '==', sap_vm_provision_ha_load_balancer_name_nwas + '-ers-pool-enqr'))[0].id }}"
     protocol: tcp
     port: "{{ ('39' + sap_system_nwas_abap_ers_instance_nr) | int }}"
+    idle_connection_timeout: 600 # 10 minutes
     ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
   when: (groups['nwas_ers'] is defined and (groups['nwas_ers'] | length>0))
   failed_when: not __sap_vm_provision_task_ibmcloud_lb_frontend_listener_ers3.rc == 0 and not 'listener_duplicate_port' in __sap_vm_provision_task_ibmcloud_lb_frontend_listener_ers3.stderr
@@ -1054,6 +1078,7 @@
     default_pool: "{{ (__sap_vm_provision_task_ibmcloud_lb_pools.results | json_query('[*].resource.pools') | flatten | selectattr('name', '==', sap_vm_provision_ha_load_balancer_name_nwas + '-ers-pool-sapctrl'))[0].id }}"
     protocol: tcp
     port: "{{ ('5' + sap_system_nwas_abap_ers_instance_nr + '13') | int }}"
+    idle_connection_timeout: 600 # 10 minutes
     ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
   when: (groups['nwas_ers'] is defined and (groups['nwas_ers'] | length>0))
   failed_when: not __sap_vm_provision_task_ibmcloud_lb_frontend_listener_ers4.rc == 0 and not 'listener_duplicate_port' in __sap_vm_provision_task_ibmcloud_lb_frontend_listener_ers4.stderr
@@ -1066,6 +1091,7 @@
     default_pool: "{{ (__sap_vm_provision_task_ibmcloud_lb_pools.results | json_query('[*].resource.pools') | flatten | selectattr('name', '==', sap_vm_provision_ha_load_balancer_name_nwas + '-ers-pool-sapctrls'))[0].id }}"
     protocol: tcp
     port: "{{ ('5' + sap_system_nwas_abap_ers_instance_nr + '14') | int }}"
+    idle_connection_timeout: 600 # 10 minutes
     ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
   when: (groups['nwas_ers'] is defined and (groups['nwas_ers'] | length>0))
   failed_when: not __sap_vm_provision_task_ibmcloud_lb_frontend_listener_ers5.rc == 0 and not 'listener_duplicate_port' in __sap_vm_provision_task_ibmcloud_lb_frontend_listener_ers5.stderr
@@ -1146,26 +1172,33 @@
     - groups["nwas_ers"] is defined and (groups["nwas_ers"]|length>0)
 
 
-- name: Set facts for all hosts - use facts from IBM Cloud Load Balancer - SAP HANA
+- name: Set facts for all hosts - use facts from localhost - HA/DR - IBM Cloud Load Balancer - SAP HANA
   ansible.builtin.set_fact:
     sap_ha_pacemaker_cluster_vip_hana_primary_ip_address: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', sap_vm_provision_ha_load_balancer_name_hana))[0].private_ips[0].address }}"
   when:
     - sap_ha_pacemaker_cluster_ibmcloud_region is defined
     - groups["hana_secondary"] is defined and (groups["hana_secondary"]|length>0)
+  delegate_to: "{{ item }}"
+  delegate_facts: true
+  loop: "{{ groups_merged_list }}"
 
-
-- name: Set facts for all hosts - use facts from IBM Cloud Load Balancer - SAP AnyDB
+- name: Set facts for all hosts - use facts from localhost - HA/DR - IBM Cloud Load Balancer - SAP AnyDB
   ansible.builtin.set_fact:
     sap_vm_temp_vip_anydb_primary: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', sap_vm_provision_ha_load_balancer_name_anydb))[0].private_ips[0].address }}"
   when:
     - sap_ha_pacemaker_cluster_ibmcloud_region is defined
     - groups["anydb_secondary"] is defined and (groups["anydb_secondary"]|length>0)
+  delegate_to: "{{ item }}"
+  delegate_facts: true
+  loop: "{{ groups_merged_list }}"
 
-
-- name: Set facts for all hosts - use facts from IBM Cloud Load Balancer - SAP NetWeaver
+- name: Set facts for all hosts - use facts from localhost - HA/DR - IBM Cloud Load Balancer - SAP NetWeaver
   ansible.builtin.set_fact:
     sap_ha_pacemaker_cluster_vip_nwas_abap_ascs_ip_address: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', sap_vm_provision_ha_load_balancer_name_nwas + '-ascs'))[0].private_ips[0].address }}"
     sap_ha_pacemaker_cluster_vip_nwas_abap_ers_ip_address: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', sap_vm_provision_ha_load_balancer_name_nwas + '-ers'))[0].private_ips[0].address }}"
   when:
     - sap_ha_pacemaker_cluster_ibmcloud_region is defined
     - groups["nwas_ers"] is defined and (groups["nwas_ers"]|length>0)
+  delegate_to: "{{ item }}"
+  delegate_facts: true
+  loop: "{{ groups_merged_list }}"

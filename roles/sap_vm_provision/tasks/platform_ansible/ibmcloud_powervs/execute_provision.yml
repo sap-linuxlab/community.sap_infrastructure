@@ -43,6 +43,17 @@
     pi_pin_policy: none
     pi_health_status: OK
 
+    pi_placement_group_id: "{{ (
+      (__sap_vm_provision_task_ibmcloud_placement_groups_list.resource.placement_groups | selectattr('name','search','hana'))[0].id
+      if ('hana_primary' in target_provision_host_spec.sap_host_type or 'hana_secondary' in target_provision_host_spec.sap_host_type)
+      else
+      (__sap_vm_provision_task_ibmcloud_placement_groups_list.resource.placement_groups | selectattr('name','search','anydb'))[0].id
+      if ('anydb_primary' in target_provision_host_spec.sap_host_type or 'anydb_secondary' in target_provision_host_spec.sap_host_type)
+      else
+      (__sap_vm_provision_task_ibmcloud_placement_groups_list.resource.placement_groups | selectattr('name','search','nwas'))[0].id
+      if ('nwas_ascs' in target_provision_host_spec.sap_host_type or 'nwas_ers' in target_provision_host_spec.sap_host_type)
+      ) | default(omit) }}"
+
     ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
 
 # Use check to avoid idempotency issues with legacy ibm.cloudcollection Ansible Collection (until ibm.cloud Ansible Collection is out of beta)
