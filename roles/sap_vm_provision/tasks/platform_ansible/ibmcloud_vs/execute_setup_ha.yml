@@ -513,7 +513,7 @@
   no_log: "{{ __sap_vm_provision_no_log }}"
   register: __sap_vm_provision_task_ibmcloud_lb_pool_members_anydb1
   ibm.cloudcollection.ibm_is_lb_pool_member:
-    lb: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', sap_vm_provision_ha_load_balancer_name_anydb))[0].id }}"  
+    lb: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', sap_vm_provision_ha_load_balancer_name_anydb))[0].id }}"
     pool: "{{ (__sap_vm_provision_task_ibmcloud_lb_pools.results | json_query('[*].resource.pools') | flatten | selectattr('name', '==', sap_vm_provision_ha_load_balancer_name_anydb + '-pool-ibmdb2'))[0].id }}"
     target_address: "{{ (__sap_vm_provision_task_ibmcloud_vs_all_info.resource.instances | selectattr('name', '==', host_node))[0].primary_network_interface[0].primary_ipv4_address }}"
     port: 5912
