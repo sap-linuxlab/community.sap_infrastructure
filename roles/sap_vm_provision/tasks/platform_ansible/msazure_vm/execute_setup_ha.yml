@@ -258,7 +258,7 @@
   ignore_errors: true
 
   # Second attempt to create Role with last segment of Subscription ID
-- name: MS Azure IAM Role - Definition Subcription specific
+- name: MS Azure IAM Role - Definition Subscription specific
   when:
     - __sap_vm_provision_task_msazure_iam_role_fencing is defined
     - __sap_vm_provision_task_msazure_iam_role_fencing.failed
