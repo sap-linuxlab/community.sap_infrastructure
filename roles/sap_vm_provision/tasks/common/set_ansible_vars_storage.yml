@@ -6,7 +6,7 @@
     host_node_scaleout_origin_spec: "{{ ansible_hostname | regex_replace('^(.+?)\\d*$', '\\1') }}"
   when:
     - sap_vm_provision_calculate_sap_hana_scaleout_active_coordinator is defined
-    - not inventory_hostname in vars[ansible_prompt_iac_platform_choice + '_host_specifications_dictionary'][sap_vm_provision_host_specification_plan].keys()
+    - not inventory_hostname in lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan]
 
 # Use inventory_hostname_short to retrieve host specification from the dictionary. While ansible_hostname will work for Ansible only, using Ansible>Terraform may see ansible_hostname as 'localhost' and fail
 # For end user ease of use, the host specifications dictionary uses disk_count to indicate how many disks will be provisioned

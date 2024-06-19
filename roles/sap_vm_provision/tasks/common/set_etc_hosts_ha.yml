@@ -87,8 +87,8 @@
 #        - "{{ sap_vm_provision_dynamic_inventory_nw_pas_ip }}\t{{ sap_vm_provision_dynamic_inventory_nw_pas_hostname }}.{{ ansible_domain }}\t{{ sap_vm_provision_dynamic_inventory_nw_pas_hostname }}"
         # Allows to build ASCS ERS cluster without PAS if PAS details are not provided
         - "{{ sap_vm_provision_dynamic_inventory_nw_pas_ip | string + '\t' + sap_vm_provision_dynamic_inventory_nw_pas_hostname + '.' + ansible_domain + '\t' + sap_vm_provision_dynamic_inventory_nw_pas_hostname
-           if (sap_vm_provision_dynamic_inventory_nw_pas_hostname is defined and sap_vm_provision_dynamic_inventory_nw_pas_hostname | length > 0 )
-           and (sap_vm_provision_dynamic_inventory_nw_pas_ip is defined and sap_vm_provision_dynamic_inventory_nw_pas_ip | length > 0) else ''}}"
+            if (sap_vm_provision_dynamic_inventory_nw_pas_hostname is defined and sap_vm_provision_dynamic_inventory_nw_pas_hostname | length > 0 )
+            and (sap_vm_provision_dynamic_inventory_nw_pas_ip is defined and sap_vm_provision_dynamic_inventory_nw_pas_ip | length > 0) else ''}}"
       when:
         - (groups["nwas_ers"] is defined and (groups["nwas_ers"] | length>0))
         - item != ''

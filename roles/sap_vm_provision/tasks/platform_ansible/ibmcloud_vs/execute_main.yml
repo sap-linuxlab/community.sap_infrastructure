@@ -12,6 +12,7 @@
     - name: Identify Resource Group info
       no_log: "{{ __sap_vm_provision_no_log }}"
       register: __sap_vm_provision_task_ibmcloud_resource_group
+      run_once: true
       ibm.cloudcollection.ibm_resource_group_info:
         name: "{{ sap_vm_provision_ibmcloud_resource_group_name }}"
         ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
@@ -21,6 +22,7 @@
     - name: Identify Resource Group info for Private DNS
       no_log: "{{ __sap_vm_provision_no_log }}"
       register: __sap_vm_provision_task_ibmcloud_resource_group_dns
+      run_once: true
       ibm.cloudcollection.ibm_resource_group_info:
         name: "{{ sap_vm_provision_ibmcloud_private_dns_resource_group_name }}"
         ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
@@ -29,6 +31,7 @@
     - name: Identify pre-loaded SSH Public Key info
       no_log: "{{ __sap_vm_provision_no_log }}"
       register: __sap_vm_provision_task_ibmcloud_ssh_public_key
+      run_once: true
       ibm.cloudcollection.ibm_is_ssh_key_info:
         name: "{{ sap_vm_provision_ibmcloud_key_pair_name_ssh_host_public_key }}"
         ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
@@ -36,6 +39,7 @@
     - name: Identify VPC Subnet info
       no_log: "{{ __sap_vm_provision_no_log }}"
       register: __sap_vm_provision_task_ibmcloud_vpc_subnet
+      run_once: true
       ibm.cloudcollection.ibm_is_subnet_info:
         name: "{{ sap_vm_provision_ibmcloud_vpc_subnet_name }}"
         ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
@@ -43,6 +47,7 @@
     - name: Identify VPC Security Group info
       no_log: "{{ __sap_vm_provision_no_log }}"
       register: __sap_vm_provision_task_ibmcloud_vpc_sg
+      run_once: true
       ibm.cloudcollection.ibm_is_security_group_info:
         name: "{{ item }}"
         ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
@@ -51,6 +56,7 @@
     - name: Identify Private DNS instance
       no_log: "{{ __sap_vm_provision_no_log }}"
       register: __sap_vm_provision_task_ibmcloud_pdns_service_instance
+      run_once: true
       ibm.cloudcollection.ibm_resource_instance_info:
         resource_group_id: "{{ __sap_vm_provision_task_ibmcloud_resource_group.resource.id }}"
         location: global
@@ -61,6 +67,7 @@
     - name: Identify Private DNS Zone info
       no_log: "{{ __sap_vm_provision_no_log }}"
       register: __sap_vm_provision_task_ibmcloud_pdns
+      run_once: true
       ibm.cloudcollection.ibm_dns_zones_info:
         instance_id: "{{ __sap_vm_provision_task_ibmcloud_pdns_service_instance.resource.guid }}"
         ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
@@ -68,9 +75,28 @@
     - name: Identify OS Image list
       no_log: "{{ __sap_vm_provision_no_log }}"
       register: __sap_vm_provision_task_ibmcloud_os_image_list
+      run_once: true
       ibm.cloudcollection.ibm_is_images_info:
         status: available
         ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
+
+    - name: Create Placement Groups when High Availability
+      no_log: "{{ __sap_vm_provision_no_log }}"
+      register: __sap_vm_provision_task_ibmcloud_placement_group
+      run_once: true
+      ibm.cloudcollection.ibm_is_placement_group:
+        resource_group: "{{ __sap_vm_provision_task_ibmcloud_resource_group.resource.id }}"
+        name: "{{ sap_vm_provision_ibmcloud_placement_resource_name }}-{{ item }}"
+        strategy: power_spread
+        ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
+      loop:
+        - "{{ 'hana'  if 'hana_secondary' in lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan] | json_query('*') | map(attribute='sap_host_type') else '' }}"
+        - "{{ 'anydb' if 'anydb_secondary' in lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan] | json_query('*') | map(attribute='sap_host_type') else '' }}"
+        - "{{ 'nwas'  if 'nwas_ers' in lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan] | json_query('*') | map(attribute='sap_host_type') else '' }}"
+      when:
+        - sap_vm_provision_ibmcloud_placement_resource_name is defined
+        - sap_vm_provision_ibmcloud_placement_strategy_spread
+        - not item == ''
 
     - name: Set fact to hold loop variables from include_tasks
       ansible.builtin.set_fact:
@@ -105,7 +131,7 @@
 
     - name: Set fact to hold all inventory hosts in all groups
       ansible.builtin.set_fact:
-        groups_merged_list: "{{ [ [ groups['hana_primary'] | default([]) ] , [ groups['hana_secondary'] | default([]) ] , [ groups['nwas_ascs'] | default([]) ] , [ groups['nwas_ers'] | default([]) ] , [ groups['nwas_pas'] | default([]) ] , [ groups['nwas_aas'] | default([]) ] ] | flatten | select() }}"
+        groups_merged_list: "{{ [ [ groups['hana_primary'] | default([]) ] , [ groups['hana_secondary'] | default([]) ] , [ groups['anydb_primary'] | default([]) ] , [ groups['anydb_secondary'] | default([]) ] , [ groups['nwas_ascs'] | default([]) ] , [ groups['nwas_ers'] | default([]) ] , [ groups['nwas_pas'] | default([]) ] , [ groups['nwas_aas'] | default([]) ] ] | flatten | select() }}"
 
     - name: Set Ansible Vars
       register: __sap_vm_provision_task_ansible_vars_set
