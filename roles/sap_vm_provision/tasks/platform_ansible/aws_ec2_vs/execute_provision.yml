@@ -171,8 +171,8 @@
       ansible.builtin.replace:
         path: /root/.ssh/authorized_keys
         backup: true
-        regexp: '(^.*ssh-rsa)'
-        replace: 'ssh-rsa'
+        regexp: '(^.*ssh-)'  # Added support for ssh-ed25519
+        replace: 'ssh-'
 
     - name: Permit root login
       register: __sap_vm_provision_task_os_sshd_config

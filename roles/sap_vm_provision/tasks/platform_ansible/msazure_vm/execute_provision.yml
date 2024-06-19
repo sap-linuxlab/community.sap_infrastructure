@@ -134,6 +134,9 @@
   vars:
     ansible_ssh_private_key_file: "{{ delegate_sap_vm_provision_ssh_host_private_key_file_path }}"
     ansible_ssh_common_args: -o ConnectTimeout=180 -o ControlMaster=auto -o ControlPersist=3600s -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ForwardX11=no -o ProxyCommand='ssh -W %h:%p {{ delegate_sap_vm_provision_bastion_user }}@{{ delegate_sap_vm_provision_bastion_public_ip }} -p {{ delegate_sap_vm_provision_bastion_ssh_port }} -i {{ delegate_sap_vm_provision_ssh_bastion_private_key_file_path }} -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null'
+  # Ensure that VM has enough time to start before connecting
+  retries: 60
+  delay: 10
 
 #- name: Output disks
 #  ansible.builtin.debug:
@@ -270,8 +273,8 @@
       ansible.builtin.replace:
         path: /root/.ssh/authorized_keys
         backup: true
-        regexp: '(^.*ssh-rsa)'
-        replace: 'ssh-rsa'
+        regexp: '(^.*ssh-)'  # Added support for ssh-ed25519
+        replace: 'ssh-'
 
     - name: Permit root login
       register: __sap_vm_provision_task_os_sshd_config

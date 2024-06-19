@@ -251,6 +251,39 @@
     tenant: "{{ sap_vm_provision_msazure_tenant_id }}"
     client_id: "{{ sap_vm_provision_msazure_app_client_id }}"
     secret: "{{ sap_vm_provision_msazure_app_client_secret }}"
+    state: present
+  # Custom Role can exist within different Subscriptions under same tenant
+  # Described in: https://github.com/Azure/azure-powershell/issues/4365#issuecomment-351171763
+  # Error is ignored and validated in next step
+  ignore_errors: true
+
+  # Second attempt to create Role with last segment of Subscription ID
+- name: MS Azure IAM Role - Definition Subscription specific
+  when:
+    - __sap_vm_provision_task_msazure_iam_role_fencing is defined
+    - __sap_vm_provision_task_msazure_iam_role_fencing.failed
+  no_log: "{{ __sap_vm_provision_no_log }}"
+  register: __sap_vm_provision_task_msazure_iam_role_fencing_sub
+  azure.azcollection.azure_rm_roledefinition:
+    name: "Linux Fence Agent Role {{ sap_vm_provision_msazure_subscription_id.split('-')[-1] }}"
+    description: "Allows to power-off and start virtual machines {{ sap_vm_provision_msazure_subscription_id.split('-')[-1] }}"
+    assignable_scopes:
+      - "/subscriptions/{{ sap_vm_provision_msazure_subscription_id }}"
+    permissions:
+      - actions:
+          - "Microsoft.Compute/*/read"
+          - "Microsoft.Compute/virtualMachines/powerOff/action"
+          - "Microsoft.Compute/virtualMachines/start/action"
+      # - data_actions:
+      # - not_actions:
+      # - not_data_actions:
+    # Azure credentials
+    subscription_id: "{{ sap_vm_provision_msazure_subscription_id }}"
+    tenant: "{{ sap_vm_provision_msazure_tenant_id }}"
+    client_id: "{{ sap_vm_provision_msazure_app_client_id }}"
+    secret: "{{ sap_vm_provision_msazure_app_client_secret }}"
+    state: present
+
 
 - name: MS Azure - GenericRestClient call to Virtual Machine API to identify Managed Service Identity (MSI)
   no_log: "{{ __sap_vm_provision_no_log }}"
@@ -275,7 +308,8 @@
   azure.azcollection.azure_rm_roleassignment:
     #auth_source: msi
     role_definition_id:
-      "{{ __sap_vm_provision_task_msazure_iam_role_fencing.id }}"
+      "{{ __sap_vm_provision_task_msazure_iam_role_fencing.id if __sap_vm_provision_task_msazure_iam_role_fencing.id is defined
+        else __sap_vm_provision_task_msazure_iam_role_fencing_sub.id }}"
     scope: "/subscriptions/{{ sap_vm_provision_msazure_subscription_id }}"
     assignee_object_id: "{{ host_node.response[0].identity.principalId | default(none) }}"
     # Azure credentials
@@ -439,7 +473,7 @@
         __probe_element:
           name: "{{ sap_vm_provision_ha_load_balancer_name_nwas + '-probe-hc-vip' + (sapinstance_index_nr | string) }}"
           protocol: Tcp
-          port: "{{ ('5555' + (sapinstance_index_nr + 1)) | string | int }}" # "{{ ('626' + sapinstance_item | string) | int }}"
+          port: "{{ ('5555' + (sapinstance_index_nr + 1) | string) | int }}" # "{{ ('626' + sapinstance_item | string) | int }}"
           interval: 5
           fail_count: 2
       when:

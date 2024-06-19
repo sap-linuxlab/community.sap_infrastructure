@@ -243,6 +243,51 @@ az role assignment create --assignee "$AZ_SERVICE_PRINCIPAL_ID" \
 az ad sp credential reset --name $AZ_CLIENT_ID
 ```
 
+It is recommended to create new Azure custom role with detailed actions to improve security.
+```json
+{
+    "properties": {
+        "roleName": "ansible-sap-automation",
+        "description": "Custom role for SAP LinuxLab ansible automation.",
+        "permissions": [
+            {
+                "actions": [
+                    "Microsoft.Authorization/roleAssignments/read",
+                    "Microsoft.Authorization/roleAssignments/write",
+                    "Microsoft.Authorization/roleDefinitions/read",
+                    "Microsoft.Authorization/roleDefinitions/write",
+                    "Microsoft.Compute/disks/read",
+                    "Microsoft.Compute/disks/write",
+                    "Microsoft.Compute/sshPublicKeys/read",
+                    "Microsoft.Compute/sshPublicKeys/write",
+                    "Microsoft.Compute/virtualMachines/instanceView/read",
+                    "Microsoft.Compute/virtualMachines/read",
+                    "Microsoft.Compute/virtualMachines/write",
+                    "Microsoft.Network/loadBalancers/backendAddressPools/join/action",
+                    "Microsoft.Network/loadBalancers/read",
+                    "Microsoft.Network/loadBalancers/write",
+                    "Microsoft.Network/networkInterfaces/join/action",
+                    "Microsoft.Network/networkInterfaces/read",
+                    "Microsoft.Network/networkInterfaces/write",
+                    "Microsoft.Network/networkSecurityGroups/read",
+                    "Microsoft.Network/privateDnsZones/A/read",
+                    "Microsoft.Network/privateDnsZones/A/write",
+                    "Microsoft.Network/privateDnsZones/read",
+                    "Microsoft.Network/privateDnsZones/virtualNetworkLinks/read",
+                    "Microsoft.Network/virtualNetworks/privateDnsZoneLinks/read",
+                    "Microsoft.Network/virtualNetworks/subnets/join/action",
+                    "Microsoft.Network/virtualNetworks/subnets/read",
+                    "Microsoft.Resources/subscriptions/resourceGroups/read",
+                ],
+                "notActions": [],
+                "dataActions": [],
+                "notDataActions": []
+            }
+        ]
+    }
+}
+```
+
 Note: MS Azure VMs provisioned will contain Hyper-V Hypervisor virtual interfaces using eth* on the OS, and when Accelerated Networking (AccelNet) is enabled for the MS Azure VM then the Mellanox SmartNIC/DPU SR-IOV Virtual Function (VF) may use enP* on the OS. For further information, see [MS Azure - How Accelerated Networking works](https://learn.microsoft.com/en-us/azure/virtual-network/accelerated-networking-how-it-works). During High Availability executions, failures may occur and may require additional variable 'sap_ha_pacemaker_cluster_vip_client_interface' to be defined.
 
 </details>
