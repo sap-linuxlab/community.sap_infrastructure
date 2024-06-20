@@ -1120,7 +1120,7 @@
     lb: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', sap_vm_provision_ha_load_balancer_name_nwas + '-ascs'))[0].id }}"
     default_pool: "{{ (__sap_vm_provision_task_ibmcloud_lb_pools.results | json_query('[*].resource.pools') | flatten | selectattr('name', '==', sap_vm_provision_ha_load_balancer_name_nwas + '-ascs-pool-ms-http'))[0].id }}"
     protocol: tcp
-    port: "{{ ('36' + sap_system_nwas_abap_ascs_instance_nr) | int }}"
+    port: "{{ ('81' + sap_system_nwas_abap_ascs_instance_nr) | int }}"
     idle_connection_timeout: 600 # 10 minutes
     ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
   when: (groups['nwas_ers'] is defined and (groups['nwas_ers'] | length>0))
@@ -1146,7 +1146,7 @@
     lb: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', sap_vm_provision_ha_load_balancer_name_nwas + '-ascs'))[0].id }}"
     default_pool: "{{ (__sap_vm_provision_task_ibmcloud_lb_pools.results | json_query('[*].resource.pools') | flatten | selectattr('name', '==', sap_vm_provision_ha_load_balancer_name_nwas + '-ascs-pool-enqrepl'))[0].id }}"
     protocol: tcp
-    port: "{{ ('39' + sap_system_nwas_abap_ascs_instance_nr) | int }}"
+    port: "{{ ('5' + sap_system_nwas_abap_ascs_instance_nr + '16') | int }}"
     idle_connection_timeout: 600 # 10 minutes
     ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
   when: (groups['nwas_ers'] is defined and (groups['nwas_ers'] | length>0))
