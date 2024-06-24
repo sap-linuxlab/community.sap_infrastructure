@@ -59,6 +59,54 @@
     - (sap_swpm_templates_install_dictionary is defined or sap_system_sid is defined) or hostvars[inventory_hostname].sap_swpm_templates_install_dictionary is defined
 
 
+- name: Set facts for all hosts - use facts from localhost - HA/DR - Virtual IP for SAP HANA Primary node
+  ansible.builtin.set_fact:
+    sap_vm_temp_vip_hana_primary: "{{ sap_vm_provision_ha_vip_hana_primary }}"
+    sap_ha_pacemaker_cluster_vip_hana_primary_ip_address: "{{ sap_vm_provision_ha_vip_hana_primary }}"
+  when:
+    - (sap_vm_provision_ha_vip_hana_primary | length > 0)
+  no_log: "{{ __sap_vm_provision_no_log }}"
+
+- name: Set facts for all hosts - use facts from localhost - HA/DR - Virtual IP for SAP AnyDB Primary node
+  ansible.builtin.set_fact:
+    sap_vm_temp_vip_anydb_primary: "{{ sap_vm_provision_ha_vip_anydb_primary }}"
+  when:
+    - (sap_vm_provision_ha_vip_anydb_primary | length > 0)
+  no_log: "{{ __sap_vm_provision_no_log }}"
+
+- name: Set facts for all hosts - use facts from localhost - HA/DR - Virtual IP for SAP NetWeaver ASCS
+  ansible.builtin.set_fact:
+    sap_vm_temp_vip_nwas_abap_ascs: "{{ sap_vm_provision_ha_vip_nwas_abap_ascs }}"
+    sap_ha_pacemaker_cluster_vip_nwas_abap_ascs_ip_address: "{{ sap_vm_provision_ha_vip_nwas_abap_ascs }}"
+  when:
+    - (sap_vm_provision_ha_vip_nwas_abap_ascs | length > 0)
+  no_log: "{{ __sap_vm_provision_no_log }}"
+
+- name: Set facts for all hosts - use facts from localhost - HA/DR - Virtual IP for SAP NetWeaver ERS
+  ansible.builtin.set_fact:
+    sap_vm_temp_vip_nwas_abap_ers: "{{ sap_vm_provision_ha_vip_nwas_abap_ers }}"
+    sap_ha_pacemaker_cluster_vip_nwas_abap_ers_ip_address: "{{ sap_vm_provision_ha_vip_nwas_abap_ers }}"
+  when:
+    - (sap_vm_provision_ha_vip_nwas_abap_ers | length > 0)
+  no_log: "{{ __sap_vm_provision_no_log }}"
+
+# - name: Set facts for all hosts - use facts from localhost - HA/DR - Virtual IP for SAP NetWeaver PAS
+#   ansible.builtin.set_fact:
+#     sap_vm_temp_vip_nwas_abap_pas: "{{ sap_vm_provision_ha_vip_nwas_abap_pas }}"
+#     sap_ha_pacemaker_cluster_vip_nwas_abap_pas_ip_address: "{{ sap_vm_provision_ha_vip_nwas_abap_pas }}"
+#   when:
+#     - (sap_vm_provision_ha_vip_nwas_abap_pas | length > 0)
+#   no_log: "{{ __sap_vm_provision_no_log }}"
+
+# - name: Set facts for all hosts - use facts from localhost - HA/DR - Virtual IP for SAP NetWeaver AAS
+#   ansible.builtin.set_fact:
+#     sap_vm_temp_vip_nwas_abap_aas: "{{ sap_vm_provision_ha_vip_nwas_abap_aas }}"
+#     sap_ha_pacemaker_cluster_vip_nwas_abap_aas_ip_address: "{{ sap_vm_provision_ha_vip_nwas_abap_aas }}"
+#   when:
+#     - (sap_vm_provision_ha_vip_nwas_abap_aas | length > 0)
+#   no_log: "{{ __sap_vm_provision_no_log }}"
+
+
 - name: Set facts for all hosts - use facts from localhost - HA/DR - AWS
   ansible.builtin.set_fact:
     sap_ha_pacemaker_cluster_aws_region: "{{ sap_ha_pacemaker_cluster_aws_region }}"

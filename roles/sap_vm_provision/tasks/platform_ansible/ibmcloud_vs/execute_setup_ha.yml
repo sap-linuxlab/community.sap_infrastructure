@@ -1319,9 +1319,10 @@
     - groups["nwas_ers"] is defined and (groups["nwas_ers"]|length>0)
 
 
-- name: Set facts for all hosts - use facts from localhost - HA/DR - IBM Cloud Load Balancer - SAP HANA
+- name: Set facts for all hosts - use facts from localhost - HA/DR - IBM Cloud Load Balancer - SAP HANA Primary node
   ansible.builtin.set_fact:
-    sap_vm_provision_ha_vip_hana_primary: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', sap_vm_provision_ha_load_balancer_name_hana))[0].private_ips[0].address }}"
+    sap_vm_temp_vip_hana_primary: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', sap_vm_provision_ha_load_balancer_name_hana))[0].private_ips[0].address }}"
+    sap_ha_pacemaker_cluster_vip_hana_primary_ip_address: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', sap_vm_provision_ha_load_balancer_name_hana))[0].private_ips[0].address }}"
   when:
     - sap_ha_pacemaker_cluster_ibmcloud_region is defined
     - groups["hana_secondary"] is defined and (groups["hana_secondary"]|length>0)
@@ -1329,9 +1330,9 @@
   delegate_facts: true
   loop: "{{ groups_merged_list }}"
 
-- name: Set facts for all hosts - use facts from localhost - HA/DR - IBM Cloud Load Balancer - SAP AnyDB
+- name: Set facts for all hosts - use facts from localhost - HA/DR - IBM Cloud Load Balancer - SAP AnyDB Primary node
   ansible.builtin.set_fact:
-    sap_vm_provision_ha_vip_anydb_primary: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', sap_vm_provision_ha_load_balancer_name_anydb))[0].private_ips[0].address }}"
+    sap_vm_temp_vip_anydb_primary: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', sap_vm_provision_ha_load_balancer_name_anydb))[0].private_ips[0].address }}"
   when:
     - sap_ha_pacemaker_cluster_ibmcloud_region is defined
     - groups["anydb_secondary"] is defined and (groups["anydb_secondary"]|length>0)
@@ -1339,13 +1340,28 @@
   delegate_facts: true
   loop: "{{ groups_merged_list }}"
 
-- name: Set facts for all hosts - use facts from localhost - HA/DR - IBM Cloud Load Balancer - SAP NetWeaver
+- name: Set facts for all hosts - use facts from localhost - HA/DR - IBM Cloud Load Balancer - SAP NetWeaver ASCS and ERS
   ansible.builtin.set_fact:
-    sap_vm_provision_ha_vip_nwas_abap_ascs: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', sap_vm_provision_ha_load_balancer_name_nwas + '-ascs'))[0].private_ips[0].address }}"
-    sap_vm_provision_ha_vip_nwas_abap_ers: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', sap_vm_provision_ha_load_balancer_name_nwas + '-ers'))[0].private_ips[0].address }}"
+    sap_vm_temp_vip_nwas_abap_ascs: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', sap_vm_provision_ha_load_balancer_name_nwas + '-ascs'))[0].private_ips[0].address }}"
+    sap_ha_pacemaker_cluster_vip_nwas_abap_ascs_ip_address: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', sap_vm_provision_ha_load_balancer_name_nwas + '-ascs'))[0].private_ips[0].address }}"
+    sap_vm_temp_vip_nwas_abap_ers: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', sap_vm_provision_ha_load_balancer_name_nwas + '-ers'))[0].private_ips[0].address }}"
+    sap_ha_pacemaker_cluster_vip_nwas_abap_ers_ip_address: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', sap_vm_provision_ha_load_balancer_name_nwas + '-ers'))[0].private_ips[0].address }}"
   when:
     - sap_ha_pacemaker_cluster_ibmcloud_region is defined
     - groups["nwas_ers"] is defined and (groups["nwas_ers"]|length>0)
   delegate_to: "{{ item }}"
   delegate_facts: true
   loop: "{{ groups_merged_list }}"
+
+# - name: Set facts for all hosts - use facts from localhost - HA/DR - IBM Cloud Load Balancer - SAP NetWeaver PAS and AAS
+#   ansible.builtin.set_fact:
+#     sap_vm_temp_vip_nwas_abap_pas: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', sap_vm_provision_ha_load_balancer_name_nwas + '-pas'))[0].private_ips[0].address }}"
+#     sap_ha_pacemaker_cluster_vip_nwas_abap_pas_ip_address: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', sap_vm_provision_ha_load_balancer_name_nwas + '-pas'))[0].private_ips[0].address }}"
+#     sap_vm_temp_vip_nwas_abap_aas: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', sap_vm_provision_ha_load_balancer_name_nwas + '-aas'))[0].private_ips[0].address }}"
+#     sap_ha_pacemaker_cluster_vip_nwas_abap_aas_ip_address: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', sap_vm_provision_ha_load_balancer_name_nwas + '-aas'))[0].private_ips[0].address }}"
+#   when:
+#     - sap_ha_pacemaker_cluster_ibmcloud_region is defined
+#     - groups["nwas_aas"] is defined and (groups["nwas_aas"]|length>0)
+#   delegate_to: "{{ item }}"
+#   delegate_facts: true
+#   loop: "{{ groups_merged_list }}"
