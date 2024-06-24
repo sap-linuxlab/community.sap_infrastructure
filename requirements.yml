@@ -35,3 +35,7 @@ collections:
   - name: cloud.common
     type: galaxy
     version: 3.0.0
+# For OpenShift
+  - name: community.okd
+    type: galaxy
+    version: 3.0.1

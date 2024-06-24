@@ -1,6 +1,6 @@
 ---
 - name: Include configure worker
-  ansible.builtin.include_tasks: "platform/{{ sap_hypervisor_node_platform }}/configure-worker-node.yml"
+  ansible.builtin.include_tasks: "platform/{{ sap_hypervisor_node_preconfigure_platform }}/configure-worker-node.yml"
   with_items: "{{ sap_hypervisor_node_preconfigure_cluster_config.workers }}"
   loop_control:
     loop_var: __sap_hypervisor_node_preconfigure_register_worker
@@ -72,10 +72,10 @@
 - name: Render template
   ansible.builtin.template:
     src: 99-kargs-worker.yml.j2
-    dest: "{{ __sap_hypervisor_node_preconfigure_register_tmpdir.path }}/99-kargs-worker.yml"
+    dest: "{{ __sap_hypervisor_node_preconfigure_register_tmpdir_role.path }}/99-kargs-worker.yml"
     mode: "0644"
 
 - name: Enable hugepages
   kubernetes.core.k8s:
     state: present
-    src: "{{ __sap_hypervisor_node_preconfigure_register_tmpdir.path }}/99-kargs-worker.yml"
+    src: "{{ __sap_hypervisor_node_preconfigure_register_tmpdir_role.path }}/99-kargs-worker.yml"
