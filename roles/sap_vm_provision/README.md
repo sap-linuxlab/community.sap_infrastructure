@@ -167,6 +167,7 @@ This required structure will:
 - For Hyperscaler Cloud Service Providers that use Resource Groups (IBM Cloud, Microsoft Azure):
     - Virtual Machine and associated resources (Disks, Network Interfaces, Load Balancer etc.) will be provisioned to the same Resource Group as the targeted network/subnet.
     - Optional: Private DNS may be allocated to another Resource Group, and an optional variable is provided for this.
+- Virtual Disk with defined IOPS is only possible on AWS, Google Cloud, IBM Cloud
 
 ### Tags to control execution
 

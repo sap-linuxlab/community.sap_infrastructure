@@ -57,7 +57,7 @@ sap_vm_provision_dns_root_domain: ""
 
 
 ####
-# VM Provision - Generic configuration - Hypervsior or Cloud Hyperscaler OS Images with Bring-Your-Own-Subscription (BYOS)
+# VM Provision - Generic configuration - Hypervisor or Cloud Hyperscaler OS Images with Bring-Your-Own-Subscription (BYOS)
 ####
 
 # Register to OS Vendor online subscription to package repositories
@@ -70,7 +70,7 @@ sap_vm_provision_dns_root_domain: ""
 
 
 ####
-# VM Provision - Generic configuration - Hypervsior
+# VM Provision - Generic configuration - Hypervisor
 ####
 
 # Proxy - Web Forward, when SNAT not available for Hypervisor VMs
@@ -139,7 +139,7 @@ sap_vm_provision_aws_vpc_subnet_id: "" # if ansible_to_terraform, use "new"
 sap_vm_provision_aws_vpc_subnet_create_boolean: "{{ true | default(false) if sap_vm_provision_aws_vpc_subnet_id == 'new' else false }}"
 sap_vm_provision_aws_vpc_sg_names: "" # comma-separated, if ansible_to_terraform then ignore this variable
 sap_vm_provision_aws_key_pair_name_ssh_host_public_key: ""
-sap_vm_provision_aws_placement_resource_name: "sap-placement-spread"
+sap_vm_provision_aws_placement_resource_name: "sap-placement-group-spread"
 sap_vm_provision_aws_placement_strategy_spread: false
 
 # Google Cloud
@@ -149,7 +149,7 @@ sap_vm_provision_gcp_region: "{{ sap_vm_provision_gcp_region_zone[:-2] }}"
 sap_vm_provision_gcp_region_zone: ""
 sap_vm_provision_gcp_vpc_name: ""
 sap_vm_provision_gcp_vpc_subnet_name: ""
-sap_vm_provision_gcp_placement_resource_name: "sap-placement-spread"
+sap_vm_provision_gcp_placement_resource_name: "sap-placement-policy-spread"
 sap_vm_provision_gcp_placement_strategy_spread: false
 
 # IBM Cloud
@@ -163,7 +163,7 @@ sap_vm_provision_ibmcloud_vpc_name: ""
 sap_vm_provision_ibmcloud_vpc_subnet_name: ""
 sap_vm_provision_ibmcloud_vpc_sg_names: "" # comma-separated, if ansible_to_terraform then ignore this variable
 sap_vm_provision_ibmcloud_key_pair_name_ssh_host_public_key: ""
-sap_vm_provision_ibmcloud_placement_resource_name: "sap-placement-spread"
+sap_vm_provision_ibmcloud_placement_resource_name: "sap-placement-group-spread"
 sap_vm_provision_ibmcloud_placement_strategy_spread: false
 
 # IBM Cloud, addendum for IBM Power VS
@@ -184,7 +184,7 @@ sap_vm_provision_msazure_location_availability_zone_no: 1
 sap_vm_provision_msazure_vnet_name: ""
 sap_vm_provision_msazure_vnet_subnet_name: ""
 sap_vm_provision_msazure_key_pair_name_ssh_host_public_key: ""
-sap_vm_provision_msazure_placement_resource_name: "sap-placement-spread"
+sap_vm_provision_msazure_placement_resource_name: "sap-availability-set-spread"
 sap_vm_provision_msazure_placement_strategy_spread: false
 
 ####
@@ -212,6 +212,8 @@ sap_vm_provision_ibmpowervm_network_name: ""
 sap_vm_provision_ibmpowervm_network_vnic_type: "normal" # 'direct' == SR-IOV, 'normal' == Shared Ethernet Adapter (SEA)
 sap_vm_provision_ibmpowervm_storage_template_name: "" # aka. Openstack Cinder Volume Type
 sap_vm_provision_ibmpowervm_key_pair_name_ssh_host_public_key: ""
+sap_vm_provision_ibmpowervm_placement_resource_name: "sap-collocation-rule-spread"
+sap_vm_provision_ibmpowervm_placement_strategy_spread: false
 
 # Kubevirt
 sap_vm_provision_kubevirt_api_key: ""

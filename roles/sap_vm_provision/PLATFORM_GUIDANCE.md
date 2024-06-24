@@ -402,8 +402,13 @@ The `sap_vm_provision` Ansible Role enforces scope control for this capability, 
 
 The following are the equivalent Placement Strategies, commonly referenced as 'Anti-Affinity', in each Infrastructure Platform:
 
-- **AWS EC2 VS Placement Group, Spread (Rack level)** - each VS on different hosts, in different racks with distinct network source and power supply
-- **GCP CE VM Placement Policy, Spread** - each VM on different hosts, in different racks with distinct power supply (dual redundancy from different sources)
-- **IBM Cloud VS Placement Group Strategy, Power Spread** - each VS on different hosts, in different racks with distinct network source and power supplies (dual redundancy from different sources)
-- **IBM Cloud, IBM Power VS Placement Group Colocation Policy, Different Server Spread** - each VS on different hosts, in different racks with distinct network source and power supplies (dual redundancy from different sources)
-- **MS Azure VM Availability Set, Fault Domain Spread** - each VM on different hosts, in different racks with distinct network source and power supply
+- **AWS EC2 VS Placement Group, Rack-level Spread strategy** - each VS on different hosts, in different racks with distinct network source and power supply. See [AWS EC2 Networking - Placement Strategies documentation](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/placement-strategies.html#placement-groups-spread)
+- <s> **GCP CE VM Resource Policy (type: Group Placement Policy), Availability Domain Spread strategy** - each VM on different hosts, in different racks with distinct power supply (dual redundancy from different sources). See [GCP CE 'Spread Group Placement Policy' documentation](https://cloud.google.com/compute/docs/instances/use-spread-placement-policies#create-spread-policy) </s> Not provided due to [google.cloud Ansible Collection issue 323](https://github.com/ansible-collections/google.cloud/issues/323)
+- **IBM Cloud VS Placement Group Strategy, Power Spread strategy** - each VS on different hosts, in different racks with distinct network source and power supplies (dual redundancy from different sources). See [IBM Cloud Infrastructure Services Placement Groups documentation](https://cloud.ibm.com/docs/vpc?topic=vpc-about-placement-groups-for-vpc)
+- **IBM Cloud, IBM Power VS Placement Group Collocation Policy, Server Anti-Affinity (aka. Different Server) Spread strategy** - each VS on different hosts, in different racks with distinct network source and power supplies (dual redundancy from different sources). See [IBM Cloud, IBM Power VS Placement Group Collocation Policy documentation](https://cloud.ibm.com/docs/power-iaas?topic=power-iaas-managing-placement-groups) and the associated [FAQ for IBM Power VS related to Anti-Affinity Rules](https://cloud.ibm.com/docs/power-iaas?topic=power-iaas-powervs-faqs#affinity)
+- **MS Azure Availability Set, Fault Domain Spread strategy** - each VM on different hosts, in different racks with distinct network source and power supply. See [MS Azure 'Availability Set' documentation](https://learn.microsoft.com/en-us/azure/virtual-machines/availability-set-overview); not to be confused with [MS Azure 'VM Scale Set' (VMSS)](https://learn.microsoft.com/en-us/azure/virtual-machine-scale-sets/virtual-machine-scale-sets-manage-fault-domains)
+- **IBM PowerVM Collocation Rule, Anti-Affinity Spread strategy** - each VM (aka. LPAR) on different hosts. See [IBM PowerVC Collocation Rules documentation](www.ibm.com/docs/en/powervc/latest?topic=powervc-collocation-rules)
+- TBD:
+    - KubeVirt VM
+    - OVirt VM
+    - VMware VM

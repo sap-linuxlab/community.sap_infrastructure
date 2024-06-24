@@ -12,10 +12,6 @@
     # AZURE_SECRET: "{{ sap_vm_provision_msazure_app_client_secret }}"
   block:
 
-    - name: Set fact to hold loop variables from include_tasks
-      ansible.builtin.set_fact:
-        register_provisioned_host_all: []
-
     # Ansible Module name parameter, requires resource_group parameter
     # We cannot assume Resource Group if the SSH Public Key is managed by Administrators
     # Therefore use without any parameter to retrieve list of all SSH Public Keys and filter in Ansible
@@ -49,6 +45,31 @@
     - name: Set boolean fact for Auto Registration of DNS Records from Private DNS Zone Virtual Network Link
       ansible.builtin.set_fact:
         __sap_vm_provision_task_msazure_private_dns_auto_register_records: "{{ (__sap_vm_provision_task_msazure_private_dns_virtual_network_links.virtualnetworklinks | selectattr('virtual_network.id', 'search', sap_vm_provision_msazure_vnet_name))[0].registration_enabled }}"
+
+    # Alternative to MS Azure Availability Set, is MS Azure VM Scale Set using azure.azcollection.azure_rm_virtualmachinescaleset
+    - name: Create Placement Sets when High Availability
+      no_log: "{{ __sap_vm_provision_no_log }}"
+      register: __sap_vm_provision_task_msazure_availability_set
+      run_once: true
+      azure.azcollection.azure_rm_availabilityset:
+        resource_group: "{{ sap_vm_provision_msazure_resource_group_name }}"
+        location: "{{ sap_vm_provision_msazure_location_region }}"
+        name: "{{ sap_vm_provision_aws_placement_resource_name }}-{{ item }}"
+        # VM instances (HA Pairs) in the Availability Set spread across up to 3 Fault Domains (different racks)
+        platform_fault_domain_count: 3
+        sku: Aligned # do not use Classic/ASM
+      loop:
+        - "{{ 'hana'  if 'hana_secondary' in lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan] | json_query('*') | map(attribute='sap_host_type') else '' }}"
+        - "{{ 'anydb' if 'anydb_secondary' in lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan] | json_query('*') | map(attribute='sap_host_type') else '' }}"
+        - "{{ 'nwas'  if 'nwas_ers' in lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan] | json_query('*') | map(attribute='sap_host_type') else '' }}"
+      when:
+        - sap_vm_provision_aws_placement_resource_name is defined
+        - sap_vm_provision_aws_placement_strategy_spread
+        - not item == ''
+
+    - name: Set fact to hold loop variables from include_tasks
+      ansible.builtin.set_fact:
+        register_provisioned_host_all: []
 
     - name: Provision hosts to MS Azure
       register: __sap_vm_provision_task_provision_host_all_run
