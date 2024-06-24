@@ -19,7 +19,7 @@
 #     resource_group: "{{ sap_vm_provision_msazure_resource_group_name }}"
 #     route_table_name: "{{ __sap_vm_provision_task_msazure_vnet_subnet_rt_info.route_tables[0].id }}"
 #     name: "{{ sap_swpm_db_host }}-rt"
-#     address_prefix: "{{ sap_ha_pacemaker_cluster_vip_hana_primary_ip_address | default('192.168.1.90/32') }}"
+#     address_prefix: "{{ sap_vm_provision_ha_vip_hana_primary }}"
 #     next_hop_type: "virtual_appliance"
 #     next_hop_ip_address: "{{ hostvars[host_node].ansible_host }}"
 #     # Azure credentials
@@ -42,7 +42,7 @@
     relative_name: "{{ sap_swpm_db_host }}"
     record_type: A
     records:
-      - entry: "{{ (sap_ha_pacemaker_cluster_vip_hana_primary_ip_address | default('192.168.1.90/32')) | regex_replace('/.*', '') }}"
+      - entry: "{{ sap_vm_provision_ha_vip_hana_primary | regex_replace('/.*', '') }}"
     # Azure credentials
     subscription_id: "{{ sap_vm_provision_msazure_subscription_id }}"
     tenant: "{{ sap_vm_provision_msazure_tenant_id }}"
@@ -62,7 +62,7 @@
 #     resource_group: "{{ sap_vm_provision_msazure_resource_group_name }}"
 #     route_table_name: "{{ __sap_vm_provision_task_msazure_vnet_subnet_rt_info.route_tables[0].id }}"
 #     name: "{{ sap_swpm_ascs_instance_hostname }}-rt"
-#     address_prefix: "{{ sap_ha_pacemaker_cluster_vip_nwas_abap_ascs_ip_address | default('192.168.2.10/32') }}"
+#     address_prefix: "{{ sap_vm_provision_ha_vip_nwas_abap_ascs }}"
 #     next_hop_type: "virtual_appliance"
 #     next_hop_ip_address: "{{ hostvars[host_node].ansible_host }}"
 #     # Azure credentials
@@ -85,7 +85,7 @@
     relative_name: "{{ sap_swpm_ascs_instance_hostname }}"
     record_type: A
     records:
-      - entry: "{{ (sap_ha_pacemaker_cluster_vip_nwas_abap_ascs_ip_address | default('192.168.2.10/32')) | regex_replace('/.*', '') }}"
+      - entry: "{{ sap_vm_provision_ha_vip_nwas_abap_ascs | regex_replace('/.*', '') }}"
     # Azure credentials
     subscription_id: "{{ sap_vm_provision_msazure_subscription_id }}"
     tenant: "{{ sap_vm_provision_msazure_tenant_id }}"
@@ -105,7 +105,7 @@
 #     resource_group: "{{ sap_vm_provision_msazure_resource_group_name }}"
 #     route_table_name: "{{ __sap_vm_provision_task_msazure_vnet_subnet_rt_info.route_tables[0].id }}"
 #     name: "{{ sap_swpm_ers_instance_hostname }}-rt"
-#     address_prefix: "{{ sap_ha_pacemaker_cluster_vip_nwas_abap_ers_ip_address | default('192.168.2.11/32') }}"
+#     address_prefix: "{{ sap_vm_provision_ha_vip_nwas_abap_ers }}"
 #     next_hop_type: "virtual_appliance"
 #     next_hop_ip_address: "{{ hostvars[host_node].ansible_host }}"
 #     # Azure credentials
@@ -128,7 +128,7 @@
     relative_name: "{{ sap_swpm_ers_instance_hostname }}"
     record_type: A
     records:
-      - entry: "{{ (sap_ha_pacemaker_cluster_vip_nwas_abap_ers_ip_address | default('192.168.2.11/32')) | regex_replace('/.*', '') }}"
+      - entry: "{{ sap_vm_provision_ha_vip_nwas_abap_ers | regex_replace('/.*', '') }}"
     # Azure credentials
     subscription_id: "{{ sap_vm_provision_msazure_subscription_id }}"
     tenant: "{{ sap_vm_provision_msazure_tenant_id }}"
@@ -150,7 +150,7 @@
 #     resource_group: "{{ sap_vm_provision_msazure_resource_group_name }}"
 #     route_table_name: "{{ __sap_vm_provision_task_msazure_vnet_subnet_rt_info.route_tables[0].id }}"
 #     name: "{{ sap_swpm_pas_instance_hostname }}-rt"
-#     address_prefix: "{{ sap_ha_pacemaker_cluster_vip_nwas_abap_pas_ip_address | default('192.168.2.12/32') }}"
+#     address_prefix: "{{ sap_vm_provision_ha_vip_nwas_abap_pas }}"
 #     next_hop_type: "virtual_appliance"
 #     next_hop_ip_address: "{{ hostvars[host_node].ansible_host }}"
 #     # Azure credentials
@@ -173,7 +173,7 @@
 #     relative_name: "{{ sap_swpm_pas_instance_hostname }}"
 #     record_type: A
 #     records:
-#       - entry: "{{ (sap_ha_pacemaker_cluster_vip_nwas_abap_pas_ip_address | default('192.168.2.12/32')) | regex_replace('/.*', '') }}"
+#       - entry: "{{ sap_vm_provision_ha_vip_nwas_abap_pas | regex_replace('/.*', '') }}"
 #     # Azure credentials
 #     subscription_id: "{{ sap_vm_provision_msazure_subscription_id }}"
 #     tenant: "{{ sap_vm_provision_msazure_tenant_id }}"
@@ -193,7 +193,7 @@
 #     resource_group: "{{ sap_vm_provision_msazure_resource_group_name }}"
 #     route_table_name: "{{ __sap_vm_provision_task_msazure_vnet_subnet_rt_info.route_tables[0].id }}"
 #     name: "{{ sap_swpm_aas_instance_hostname }}-rt"
-#     address_prefix: "{{ sap_ha_pacemaker_cluster_vip_nwas_abap_aas_ip_address | default('192.168.2.13/32') }}"
+#     address_prefix: "{{ sap_vm_provision_ha_vip_nwas_abap_aas }}"
 #     next_hop_type: "virtual_appliance"
 #     next_hop_ip_address: "{{ hostvars[host_node].ansible_host }}"
 #     # Azure credentials
@@ -216,7 +216,7 @@
 #     relative_name: "{{ sap_swpm_aas_instance_hostname }}"
 #     record_type: A
 #     records:
-#       - entry: "{{ (sap_ha_pacemaker_cluster_vip_nwas_abap_aas_ip_address | default('192.168.2.13/32')) | regex_replace('/.*', '') }}"
+#       - entry: "{{ sap_vm_provision_ha_vip_nwas_abap_aas | regex_replace('/.*', '') }}"
 #     # Azure credentials
 #     subscription_id: "{{ sap_vm_provision_msazure_subscription_id }}"
 #     tenant: "{{ sap_vm_provision_msazure_tenant_id }}"
@@ -389,7 +389,7 @@
         - vip_item | length > 0
         - groups["hana_secondary"] is defined and (groups["hana_secondary"]|length>0)
       loop:
-        - "{{ sap_ha_pacemaker_cluster_vip_hana_primary_ip_address | default() }}"
+        - "{{ sap_vm_provision_ha_vip_hana_primary }}"
       loop_control:
         index_var: vip_index_nr
         loop_var: vip_item
@@ -408,7 +408,7 @@
         - vip_item | length > 0
         - groups["anydb_secondary"] is defined and (groups["anydb_secondary"]|length>0)
       loop:
-        - "{{ sap_vm_temp_vip_anydb_primary | default() }}"
+        - "{{ sap_vm_provision_ha_vip_anydb_primary }}"
       loop_control:
         index_var: vip_index_nr
         loop_var: vip_item
@@ -427,8 +427,8 @@
         - vip_item | length > 0
         - groups["nwas_ers"] is defined and (groups["nwas_ers"]|length>0)
       loop:
-        - "{{ sap_ha_pacemaker_cluster_vip_nwas_abap_ascs_ip_address | default() }}"
-        - "{{ sap_ha_pacemaker_cluster_vip_nwas_abap_ers_ip_address | default() }}"
+        - "{{ sap_vm_provision_ha_vip_nwas_abap_ascs }}"
+        - "{{ sap_vm_provision_ha_vip_nwas_abap_ers }}"
       loop_control:
         index_var: vip_index_nr
         loop_var: vip_item
@@ -506,7 +506,7 @@
         - rule_item | length > 0
         - groups["hana_secondary"] is defined and (groups["hana_secondary"]|length>0)
       loop:
-        - "{{ sap_ha_pacemaker_cluster_vip_hana_primary_ip_address | default() }}"
+        - "{{ sap_vm_provision_ha_vip_hana_primary }}"
       loop_control:
         index_var: rule_index_nr
         loop_var: rule_item
@@ -530,7 +530,7 @@
         - rule_item | length > 0
         - groups["anydb_secondary"] is defined and (groups["anydb_secondary"]|length>0)
       loop:
-        - "{{ sap_vm_temp_vip_anydb_primary | default() }}"
+        - "{{ sap_vm_provision_ha_vip_anydb_primary }}"
       loop_control:
         index_var: rule_index_nr
         loop_var: rule_item
@@ -554,8 +554,8 @@
         - rule_item | length > 0
         - groups["nwas_ers"] is defined and (groups["nwas_ers"]|length>0)
       loop:
-        - "{{ sap_ha_pacemaker_cluster_vip_nwas_abap_ascs_ip_address | default() }}"
-        - "{{ sap_ha_pacemaker_cluster_vip_nwas_abap_ers_ip_address | default() }}"
+        - "{{ sap_vm_provision_ha_vip_nwas_abap_ascs }}"
+        - "{{ sap_vm_provision_ha_vip_nwas_abap_ers }}"
       loop_control:
         index_var: rule_index_nr
         loop_var: rule_item

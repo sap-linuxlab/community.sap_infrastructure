@@ -187,6 +187,7 @@ sap_vm_provision_msazure_key_pair_name_ssh_host_public_key: ""
 sap_vm_provision_msazure_placement_resource_name: "sap-availability-set-spread"
 sap_vm_provision_msazure_placement_strategy_spread: false
 
+
 ####
 # Infrastructure Platform - Cloud Hyperscaler - High Availability resources
 ####
@@ -195,6 +196,28 @@ sap_vm_provision_msazure_placement_strategy_spread: false
 sap_vm_provision_ha_load_balancer_name_hana: "lb-sap-ha-hana"
 sap_vm_provision_ha_load_balancer_name_anydb: "lb-sap-ha-anydb"
 sap_vm_provision_ha_load_balancer_name_nwas: "lb-sap-ha-nwas"
+
+
+####
+# Infrastructure Platform - Cloud Hyperscaler - High Availability Virtual IPs (VIPs)
+#
+# AWS:                  the VIP must be **outside** of any VPC Subnet ranges
+# GCP:                  the VIP must be within the VPC Subnetwork range attached to GCP Backend Service for the Internal passthrough Network Load Balancer
+# IBM Cloud:            the VIP is within the VPC Subnet range and is statically defined by the IBM Cloud Load Balancer (NLB L4 or ALB L7)
+# IBM Cloud, Power VS:  the VIP must be within the IBM Power Infrastructure VLAN Subnet range
+# MS Azure:             the VIP must be within the VNet Subnet range attached to the Azure Load Balancer (NLB L4)
+# IBM PowerVM:          the VIP must be within the VLAN Subnet range
+# OVirt KVM:            the VIP must be within the VLAN Subnet range
+# KubeVirt:             the VIP must be within the VLAN Subnet range
+####
+
+# Blank defaults for High Availability Virtual IPs (VIPs), with CIDR
+sap_vm_provision_ha_vip_hana_primary: "" # e.g. 192.168.1.90/32
+sap_vm_provision_ha_vip_anydb_primary: "" # e.g. 192.168.1.90/32
+sap_vm_provision_ha_vip_nwas_abap_ascs: "" # e.g. 192.168.2.10/32
+sap_vm_provision_ha_vip_nwas_abap_ers: "" # e.g. 192.168.2.11/32
+# sap_vm_provision_ha_vip_nwas_abap_pas: # not implemented
+# sap_vm_provision_ha_vip_nwas_abap_aas: # not implemented
 
 
 ####
