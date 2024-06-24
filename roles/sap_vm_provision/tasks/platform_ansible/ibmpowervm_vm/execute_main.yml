@@ -52,6 +52,25 @@
         auth: "{{ __sap_vm_provision_task_ibmpowervm_openstack_auth }}"
       throttle: 1
 
+    - name: Create Collocation Rules when High Availability
+      no_log: "{{ __sap_vm_provision_no_log }}"
+      register: __sap_vm_provision_task_ibmpowervm_collocation_rule
+      run_once: true
+      openstack.cloud.server_group:
+        name: "{{ sap_vm_provision_ibmpowervm_placement_resource_name }}-{{ item }}"
+        policy: anti-affinity
+        #region_name: "RegionOne"
+        validate_certs: false # Allow Self-Signed Certificate
+        auth: "{{ __sap_vm_provision_task_ibmpowervm_openstack_auth }}"
+      loop:
+        - "{{ 'hana'  if 'hana_secondary' in lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan] | json_query('*') | map(attribute='sap_host_type') else '' }}"
+        - "{{ 'anydb' if 'anydb_secondary' in lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan] | json_query('*') | map(attribute='sap_host_type') else '' }}"
+        - "{{ 'nwas'  if 'nwas_ers' in lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan] | json_query('*') | map(attribute='sap_host_type') else '' }}"
+      when:
+        - sap_vm_provision_ibmpowervm_placement_resource_name is defined
+        - sap_vm_provision_ibmpowervm_placement_strategy_spread
+        - not item == ''
+
     - name: Provision hosts to IBM PowerVM
       register: __sap_vm_provision_task_provision_host_all_run
       ansible.builtin.include_tasks:

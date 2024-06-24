@@ -20,6 +20,25 @@
         access_key: "{{ sap_vm_provision_aws_access_key }}"
         secret_key: "{{ sap_vm_provision_aws_secret_access_key }}"
 
+    - name: Create Placement Groups when High Availability
+      no_log: "{{ __sap_vm_provision_no_log }}"
+      register: __sap_vm_provision_task_aws_placement_group
+      run_once: true
+      community.aws.ec2_placement_group:
+        name: "{{ sap_vm_provision_aws_placement_resource_name }}-{{ item }}"
+        state: present
+        strategy: spread
+        access_key: "{{ sap_vm_provision_aws_access_key }}"
+        secret_key: "{{ sap_vm_provision_aws_secret_access_key }}"
+      loop:
+        - "{{ 'hana'  if 'hana_secondary' in lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan] | json_query('*') | map(attribute='sap_host_type') else '' }}"
+        - "{{ 'anydb' if 'anydb_secondary' in lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan] | json_query('*') | map(attribute='sap_host_type') else '' }}"
+        - "{{ 'nwas'  if 'nwas_ers' in lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan] | json_query('*') | map(attribute='sap_host_type') else '' }}"
+      when:
+        - sap_vm_provision_aws_placement_resource_name is defined
+        - sap_vm_provision_aws_placement_strategy_spread
+        - not item == ''
+
     - name: Set fact to hold loop variables from include_tasks
       ansible.builtin.set_fact:
         register_provisioned_host_all: []

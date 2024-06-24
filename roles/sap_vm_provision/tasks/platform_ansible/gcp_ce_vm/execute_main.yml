@@ -44,6 +44,23 @@
         auth_kind: "serviceaccount"
         service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
 
+    # - name: Create Placement Policies when High Availability
+    #   no_log: "{{ __sap_vm_provision_no_log }}"
+    #   register: __sap_vm_provision_task_gcp_availability_policy
+    #   run_once: true
+    #   google.cloud.gcp_compute_resource_policy:
+    #     project: "{{ sap_vm_provision_gcp_project }}"
+    #     region: "{{ sap_vm_provision_gcp_region }}"
+    #     name: "{{ sap_vm_provision_aws_placement_resource_name }}-{{ item }}"
+    #     description: "Spread Placement Policy created by Ansible Playbooks for SAP"
+    #     # VM instances (HA Pairs) spread across up to 3 Availability Domains (different racks)
+    #     group_placement_policy:
+    #       availability_domain_count: 3 # Set Placement Policy to Spread
+    #       # collocation: COLLOCATED    # Set Placement Policy to Collocated, not used
+    #       # vm_count: 0  # Use when bulk-create of VMs, not used
+    #     auth_kind: "serviceaccount"
+    #     service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
+
     - name: Set fact to hold loop variables from include_tasks
       ansible.builtin.set_fact:
         register_provisioned_host_all: []
