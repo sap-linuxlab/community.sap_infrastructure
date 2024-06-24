@@ -52,6 +52,7 @@
       when:
         - (groups["hana_secondary"] is defined and (groups["hana_secondary"] | length>0))
         - (not ansible_product_name == "Google Compute Engine" and not ansible_chassis_vendor == "Microsoft Corporation" and not ansible_chassis_asset_tag == 'ibmcloud') or ( (ansible_product_name == "Google Compute Engine" or ansible_chassis_vendor == "Microsoft Corporation" or ansible_chassis_asset_tag == 'ibmcloud') and (not inventory_hostname in groups["hana_primary"] or not inventory_hostname in groups["hana_secondary"]) )
+        - (sap_vm_provision_ha_vip_hana_primary | length) > 0
 
 
     - name: Update /etc/hosts file for SAP AnyDB HA
@@ -74,6 +75,7 @@
         - "{{ sap_vm_provision_ha_vip_anydb_primary | regex_replace('/.*', '') }}\t{{ sap_swpm_db_host }}.{{ ansible_domain }}\t{{ sap_swpm_db_host }}"
       when:
         - (groups["anydb_secondary"] is defined and (groups["anydb_secondary"] | length>0))
+        - (sap_vm_provision_ha_vip_anydb_primary | length) > 0
 
 
     - name: Update /etc/hosts file for SAP NetWeaver HA
@@ -104,6 +106,8 @@
       when:
         - (groups["nwas_ers"] is defined and (groups["nwas_ers"] | length>0))
         - not ansible_chassis_asset_tag == 'ibmcloud' or ((not inventory_hostname_short in groups['nwas_ascs'] and not inventory_hostname_short in groups['nwas_ers']) and ansible_chassis_asset_tag == 'ibmcloud')
+        - (sap_vm_provision_ha_vip_nwas_abap_ascs | length) > 0
+        - (sap_vm_provision_ha_vip_nwas_abap_ers | length) > 0
 
     # - name: Update /etc/hosts file with Virtual IPs for SAP NetWeaver HA - PAS / AAS
     #   ansible.builtin.lineinfile:
@@ -116,6 +120,8 @@
     #   when:
     #     - (groups["nwas_aas"] is defined and (groups["nwas_aas"] | length>0))
     #     - not ansible_chassis_asset_tag == 'ibmcloud' or ((not inventory_hostname_short in groups['nwas_pas'] and not inventory_hostname_short in groups['nwas_pas']) and ansible_chassis_asset_tag == 'ibmcloud')
+    #     - (sap_vm_provision_ha_vip_nwas_abap_pas | length) > 0
+    #     - (sap_vm_provision_ha_vip_nwas_abap_aas | length) > 0
 
     - name: Update /etc/hosts file for SAP NetWeaver AAS
       ansible.builtin.lineinfile:
@@ -153,6 +159,7 @@
         - (groups["nwas_ers"] is defined and (groups["nwas_ers"] | length>0))
         - ansible_chassis_asset_tag == 'ibmcloud'
         - inventory_hostname_short in groups['nwas_ascs']
+        - (sap_vm_provision_ha_vip_nwas_abap_ascs | length) > 0
 
     - name: Update /etc/hosts file with Virtual Hostname for SAP NetWeaver HA ERS on IBM Cloud
       ansible.builtin.lineinfile:
@@ -167,6 +174,7 @@
         - (groups["nwas_ers"] is defined and (groups["nwas_ers"] | length>0))
         - ansible_chassis_asset_tag == 'ibmcloud'
         - inventory_hostname_short in groups['nwas_ers']
+        - (sap_vm_provision_ha_vip_nwas_abap_ers | length) > 0
 
     # Remove /etc/hosts entries and then consolidate into one entry with aliases
     - name: Remove /etc/hosts multiple entries for SAP NetWeaver ASCS and ASCS HA Virtual Hostname
@@ -181,6 +189,7 @@
         - (groups["nwas_ers"] is defined and (groups["nwas_ers"] | length>0))
         - ansible_chassis_asset_tag == 'ibmcloud'
         - inventory_hostname_short in groups['nwas_ascs']
+        - (sap_vm_provision_ha_vip_nwas_abap_ascs | length) > 0
 
     # Remove /etc/hosts entries and then consolidate into one entry with aliases
     - name: Remove /etc/hosts multiple entries for SAP NetWeaver ERS and ERS HA Virtual Hostname
@@ -195,3 +204,4 @@
         - (groups["nwas_ers"] is defined and (groups["nwas_ers"] | length>0))
         - ansible_chassis_asset_tag == 'ibmcloud'
         - inventory_hostname_short in groups['nwas_ers']
+        - (sap_vm_provision_ha_vip_nwas_abap_ers | length) > 0
