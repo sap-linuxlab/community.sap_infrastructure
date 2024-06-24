@@ -10,7 +10,7 @@
 #     state: present
 #     project: "{{ sap_vm_provision_gcp_project }}"
 #     name: "{{ sap_swpm_db_host }}-vip"
-#     dest_range: "{{ (sap_ha_pacemaker_cluster_vip_hana_primary_ip_address | default('192.168.1.90/32')) | regex_replace('/.*', '') }}"
+#     dest_range: "{{ sap_vm_provision_ha_vip_hana_primary | regex_replace('/.*', '') }}"
 #     next_hop_instance:
 #       selfLink: "{{ __sap_vm_provision_task_provision_host_single_info | json_query('results[*].resources[?name==`' + host_node + '`].selfLink') | flatten | join(' ') }}"
 #     network:
@@ -33,7 +33,7 @@
       dnsName: "{{ hostvars[host_node].sap_vm_provision_dns_root_domain }}."
     name: "{{ sap_swpm_db_host }}.{{ hostvars[host_node].sap_vm_provision_dns_root_domain }}."
     target:
-      - "{{ (sap_ha_pacemaker_cluster_vip_hana_primary_ip_address | default('192.168.1.90/32')) | regex_replace('/.*', '') }}"
+      - "{{ sap_vm_provision_ha_vip_hana_primary | regex_replace('/.*', '') }}"
     type: A
     ttl: 7200
     auth_kind: "serviceaccount"
@@ -52,7 +52,7 @@
 #     state: present
 #     project: "{{ sap_vm_provision_gcp_project }}"
 #     name: "{{ sap_swpm_db_host }}-vip"
-#     dest_range: "{{ (sap_vm_temp_vip_anydb_primary | default('192.168.1.90/32')) | regex_replace('/.*', '') }}"
+#     dest_range: "{{ sap_vm_provision_ha_vip_anydb_primary | regex_replace('/.*', '') }}"
 #     next_hop_instance:
 #       selfLink: "{{ __sap_vm_provision_task_provision_host_single_info | json_query('results[*].resources[?name==`' + host_node + '`].selfLink') | flatten | join(' ') }}"
 #     network:
@@ -75,7 +75,7 @@
       dnsName: "{{ hostvars[host_node].sap_vm_provision_dns_root_domain }}."
     name: "{{ sap_swpm_db_host }}.{{ hostvars[host_node].sap_vm_provision_dns_root_domain }}."
     target:
-      - "{{ (sap_vm_temp_vip_anydb_primary | default('192.168.1.90/32')) | regex_replace('/.*', '') }}"
+      - "{{ sap_vm_provision_ha_vip_anydb_primary | regex_replace('/.*', '') }}"
     type: A
     ttl: 7200
     auth_kind: "serviceaccount"
@@ -94,7 +94,7 @@
 #     state: present
 #     project: "{{ sap_vm_provision_gcp_project }}"
 #     name: "{{ sap_swpm_ascs_instance_hostname }}-vip"
-#     dest_range: "{{ (sap_ha_pacemaker_cluster_vip_nwas_abap_ascs_ip_address | default('192.168.2.10/32')) | regex_replace('/.*', '') }}"
+#     dest_range: "{{ sap_vm_provision_ha_vip_nwas_abap_ascs | regex_replace('/.*', '') }}"
 #     next_hop_instance:
 #       selfLink: "{{ __sap_vm_provision_task_provision_host_single_info | json_query('results[*].resources[?name==`' + host_node + '`].selfLink') | flatten | join(' ') }}"
 #     network:
@@ -117,7 +117,7 @@
       dnsName: "{{ hostvars[host_node].sap_vm_provision_dns_root_domain }}."
     name: "{{ sap_swpm_ascs_instance_hostname }}.{{ hostvars[host_node].sap_vm_provision_dns_root_domain }}."
     target:
-      - "{{ (sap_ha_pacemaker_cluster_vip_nwas_abap_ascs_ip_address | default('192.168.2.10/32')) | regex_replace('/.*', '') }}"
+      - "{{ sap_vm_provision_ha_vip_nwas_abap_ascs | regex_replace('/.*', '') }}"
     type: A
     ttl: 7200
     auth_kind: "serviceaccount"
@@ -136,7 +136,7 @@
 #     state: present
 #     project: "{{ sap_vm_provision_gcp_project }}"
 #     name: "{{ sap_swpm_ers_instance_hostname }}-vip"
-#     dest_range: "{{ (sap_ha_pacemaker_cluster_vip_nwas_abap_ers_ip_address | default('192.168.2.11/32')) | regex_replace('/.*', '') }}"
+#     dest_range: "{{ sap_vm_provision_ha_vip_nwas_abap_ers | regex_replace('/.*', '') }}"
 #     next_hop_instance:
 #       selfLink: "{{ __sap_vm_provision_task_provision_host_single_info | json_query('results[*].resources[?name==`' + host_node + '`].selfLink') | flatten | join(' ') }}"
 #     network:
@@ -159,7 +159,7 @@
       dnsName: "{{ hostvars[host_node].sap_vm_provision_dns_root_domain }}."
     name: "{{ sap_swpm_ers_instance_hostname }}.{{ hostvars[host_node].sap_vm_provision_dns_root_domain }}."
     target:
-      - "{{ (sap_ha_pacemaker_cluster_vip_nwas_abap_ers_ip_address | default('192.168.2.11/32')) | regex_replace('/.*', '') }}"
+      - "{{ sap_vm_provision_ha_vip_nwas_abap_ers | regex_replace('/.*', '') }}"
     type: A
     ttl: 7200
     auth_kind: "serviceaccount"
@@ -180,7 +180,7 @@
 #     state: present
 #     project: "{{ sap_vm_provision_gcp_project }}"
 #     name: "{{ sap_swpm_pas_instance_hostname }}-vip"
-#     dest_range: "{{ (sap_ha_pacemaker_cluster_vip_nwas_abap_pas_ip_address | default('192.168.2.12/32')) | regex_replace('/.*', '') }}"
+#     dest_range: "{{ sap_vm_provision_ha_vip_nwas_abap_pas | regex_replace('/.*', '') }}"
 #     next_hop_instance:
 #       selfLink: "{{ __sap_vm_provision_task_provision_host_single_info | json_query('results[*].resources[?name==`' + host_node + '`].selfLink') | flatten | join(' ') }}"
 #     network:
@@ -203,7 +203,7 @@
 #       dnsName: "{{ hostvars[host_node].sap_vm_provision_dns_root_domain }}."
 #     name: "{{ sap_swpm_pas_instance_hostname }}.{{ hostvars[host_node].sap_vm_provision_dns_root_domain }}."
 #     target:
-#       - "{{ (sap_ha_pacemaker_cluster_vip_nwas_abap_pas_ip_address | default('192.168.2.12/32')) | regex_replace('/.*', '') }}"
+#       - "{{ sap_vm_provision_ha_vip_nwas_abap_pas | regex_replace('/.*', '') }}"
 #     type: A
 #     ttl: 7200
 #     auth_kind: "serviceaccount"
@@ -222,7 +222,7 @@
 #     state: present
 #     project: "{{ sap_vm_provision_gcp_project }}"
 #     name: "{{ sap_swpm_aas_instance_hostname }}-vip"
-#     dest_range: "{{ (sap_ha_pacemaker_cluster_vip_nwas_abap_aas_ip_address | default('192.168.2.13/32')) | regex_replace('/.*', '') }}"
+#     dest_range: "{{ sap_vm_provision_ha_vip_nwas_abap_aas | regex_replace('/.*', '') }}"
 #     next_hop_instance:
 #       selfLink: "{{ __sap_vm_provision_task_provision_host_single_info | json_query('results[*].resources[?name==`' + host_node + '`].selfLink') | flatten | join(' ') }}"
 #     network:
@@ -245,7 +245,7 @@
 #       dnsName: "{{ hostvars[host_node].sap_vm_provision_dns_root_domain }}."
 #     name: "{{ sap_swpm_aas_instance_hostname }}.{{ hostvars[host_node].sap_vm_provision_dns_root_domain }}."
 #     target:
-#       - "{{ (sap_ha_pacemaker_cluster_vip_nwas_abap_aas_ip_address | default('192.168.2.13/32')) | regex_replace('/.*', '') }}"
+#       - "{{ sap_vm_provision_ha_vip_nwas_abap_aas | regex_replace('/.*', '') }}"
 #     type: A
 #     ttl: 7200
 #     auth_kind: "serviceaccount"
@@ -291,7 +291,7 @@
     - vip_item | length > 0
     - groups["hana_secondary"] is defined and (groups["hana_secondary"]|length>0)
   loop:
-    - "{{ sap_ha_pacemaker_cluster_vip_hana_primary_ip_address | default('192.168.1.90/32') }}"
+    - "{{ sap_vm_provision_ha_vip_hana_primary }}"
   loop_control:
     index_var: vip_item_nr
     loop_var: vip_item
@@ -428,7 +428,7 @@
     - vip_item | length > 0
     - groups["hana_secondary"] is defined and (groups["hana_secondary"]|length>0)
   loop:
-    - "{{ sap_ha_pacemaker_cluster_vip_hana_primary_ip_address | default('192.168.1.90/32') }}"
+    - "{{ sap_vm_provision_ha_vip_hana_primary }}"
   loop_control:
     index_var: vip_item_nr
     loop_var: vip_item
@@ -466,7 +466,7 @@
     - vip_item | length > 0
     - groups["anydb_secondary"] is defined and (groups["anydb_secondary"]|length>0)
   loop:
-    - "{{ sap_vm_temp_vip_anydb_primary | default('192.168.1.90/32') }}"
+    - "{{ sap_vm_provision_ha_vip_anydb_primary }}"
   loop_control:
     index_var: vip_item_nr
     loop_var: vip_item
@@ -603,7 +603,7 @@
     - vip_item | length > 0
     - groups["anydb_secondary"] is defined and (groups["anydb_secondary"]|length>0)
   loop:
-    - "{{ sap_vm_temp_vip_anydb_primary | default('192.168.1.90/32') }}"
+    - "{{ sap_vm_provision_ha_vip_anydb_primary }}"
   loop_control:
     index_var: vip_item_nr
     loop_var: vip_item
@@ -632,7 +632,7 @@
     subnetwork: { "selfLink": "{{ __sap_vm_provision_task_gcp_vpc_subnet_info.resources[0].selfLink }}" }
     name: "{{ sap_vm_provision_ha_load_balancer_name_nwas + '-ascs-reserved-static-ip-vip' + (vip_item_nr | string) }}"
     address_type: internal
-    address: "{{ sap_ha_pacemaker_cluster_vip_nwas_abap_ascs_ip_address | regex_replace('/.*', '') }}"
+    address: "{{ sap_vm_provision_ha_vip_nwas_abap_ascs | regex_replace('/.*', '') }}"
     #network_tier: PREMIUM # An address with type INTERNAL cannot have a network tier
     purpose: GCE_ENDPOINT # GCE_ENDPOINT is for addresses used by VMs, alias IP ranges, and internal load balancers
     auth_kind: "serviceaccount"
@@ -650,7 +650,7 @@
     subnetwork: { "selfLink": "{{ __sap_vm_provision_task_gcp_vpc_subnet_info.resources[0].selfLink }}" }
     name: "{{ sap_vm_provision_ha_load_balancer_name_nwas + '-ers-reserved-static-ip-vip' + (vip_item_nr | string) }}"
     address_type: internal
-    address: "{{ sap_ha_pacemaker_cluster_vip_nwas_abap_ers_ip_address | regex_replace('/.*', '') }}"
+    address: "{{ sap_vm_provision_ha_vip_nwas_abap_ers | regex_replace('/.*', '') }}"
     #network_tier: PREMIUM # An address with type INTERNAL cannot have a network tier
     purpose: GCE_ENDPOINT # GCE_ENDPOINT is for addresses used by VMs, alias IP ranges, and internal load balancers
     auth_kind: "serviceaccount"
@@ -827,7 +827,7 @@
     region: "{{ sap_vm_provision_gcp_region }}"
     name: "{{ sap_vm_provision_ha_load_balancer_name_nwas + '-ascs-fwd-rule' }}"
     #target: "{{ target_instance_group_pool }}"
-    ip_address: "{{ sap_ha_pacemaker_cluster_vip_nwas_abap_ascs_ip_address | regex_replace('/.*', '') }}"
+    ip_address: "{{ sap_vm_provision_ha_vip_nwas_abap_ascs | regex_replace('/.*', '') }}"
     all_ports: true # For internal network load balancing, allow any ports to be forwarded to the backend service (can not be set if ports are defined)
     allow_global_access: false # Only for use if access to the SAP NetWeaver Database Server is required from outside of the GCP Region
     backend_service: { "selfLink": "{{ __sap_vm_provision_task_gcp_lb_backend_service_regional_ascs.selfLink }}" } # Mandatory, otherwise error "Invalid value for field 'resource.target'"
@@ -849,7 +849,7 @@
     region: "{{ sap_vm_provision_gcp_region }}"
     name: "{{ sap_vm_provision_ha_load_balancer_name_nwas + '-ers-fwd-rule' }}"
     #target: "{{ target_instance_group_pool }}"
-    ip_address: "{{ sap_ha_pacemaker_cluster_vip_nwas_abap_ers_ip_address | regex_replace('/.*', '') }}"
+    ip_address: "{{ sap_vm_provision_ha_vip_nwas_abap_ers | regex_replace('/.*', '') }}"
     all_ports: true # For internal network load balancing, allow any ports to be forwarded to the backend service (can not be set if ports are defined)
     allow_global_access: false # Only for use if access to the SAP NetWeaver Database Server is required from outside of the GCP Region
     backend_service: { "selfLink": "{{ __sap_vm_provision_task_gcp_lb_backend_service_regional_ascs.selfLink }}" } # Mandatory, otherwise error "Invalid value for field 'resource.target'"

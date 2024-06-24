@@ -48,7 +48,7 @@
         line: "{{ item }}"
         state: present
       loop:
-        - "{{ (sap_ha_pacemaker_cluster_vip_hana_primary_ip_address | default('192.168.1.90/32')) | regex_replace('/.*', '') }}\t{{ sap_swpm_db_host }}.{{ ansible_domain }}\t{{ sap_swpm_db_host }}"
+        - "{{ sap_vm_provision_ha_vip_hana_primary | regex_replace('/.*', '') }}\t{{ sap_swpm_db_host }}.{{ ansible_domain }}\t{{ sap_swpm_db_host }}"
       when:
         - (groups["hana_secondary"] is defined and (groups["hana_secondary"] | length>0))
         - (not ansible_product_name == "Google Compute Engine" and not ansible_chassis_vendor == "Microsoft Corporation" and not ansible_chassis_asset_tag == 'ibmcloud') or ( (ansible_product_name == "Google Compute Engine" or ansible_chassis_vendor == "Microsoft Corporation" or ansible_chassis_asset_tag == 'ibmcloud') and (not inventory_hostname in groups["hana_primary"] or not inventory_hostname in groups["hana_secondary"]) )
@@ -71,7 +71,7 @@
         line: "{{ item }}"
         state: present
       loop:
-        - "{{ (sap_vm_temp_vip_anydb_primary | default('192.168.1.90/32')) | regex_replace('/.*', '') }}\t{{ sap_swpm_db_host }}.{{ ansible_domain }}\t{{ sap_swpm_db_host }}"
+        - "{{ sap_vm_provision_ha_vip_anydb_primary | regex_replace('/.*', '') }}\t{{ sap_swpm_db_host }}.{{ ansible_domain }}\t{{ sap_swpm_db_host }}"
       when:
         - (groups["anydb_secondary"] is defined and (groups["anydb_secondary"] | length>0))
 
@@ -99,8 +99,8 @@
         line: "{{ item }}"
         state: present
       loop:
-        - "{{ (sap_ha_pacemaker_cluster_vip_nwas_abap_ascs_ip_address | default('192.168.2.10/32')) | regex_replace('/.*', '') }}\t{{ sap_swpm_ascs_instance_hostname }}.{{ ansible_domain }}\t{{ sap_swpm_ascs_instance_hostname }}"
-        - "{{ (sap_ha_pacemaker_cluster_vip_nwas_abap_ers_ip_address | default('192.168.2.11/32')) | regex_replace('/.*', '') }}\t{{ sap_swpm_ers_instance_hostname }}.{{ ansible_domain }}\t{{ sap_swpm_ers_instance_hostname }}"
+        - "{{ sap_vm_provision_ha_vip_nwas_abap_ascs | regex_replace('/.*', '') }}\t{{ sap_swpm_ascs_instance_hostname }}.{{ ansible_domain }}\t{{ sap_swpm_ascs_instance_hostname }}"
+        - "{{ sap_vm_provision_ha_vip_nwas_abap_ers | regex_replace('/.*', '') }}\t{{ sap_swpm_ers_instance_hostname }}.{{ ansible_domain }}\t{{ sap_swpm_ers_instance_hostname }}"
       when:
         - (groups["nwas_ers"] is defined and (groups["nwas_ers"] | length>0))
         - not ansible_chassis_asset_tag == 'ibmcloud' or ((not inventory_hostname_short in groups['nwas_ascs'] and not inventory_hostname_short in groups['nwas_ers']) and ansible_chassis_asset_tag == 'ibmcloud')
@@ -111,8 +111,8 @@
     #     line: "{{ item }}"
     #     state: present
     #   loop:
-    #     - "{{ (sap_ha_pacemaker_cluster_vip_nwas_abap_pas_ip_address | default('192.168.2.12/32')) | regex_replace('/.*', '') }}\t{{ sap_swpm_pas_instance_hostname }}.{{ ansible_domain }}\t{{ sap_swpm_pas_instance_hostname }}"
-    #     - "{{ (sap_ha_pacemaker_cluster_vip_nwas_abap_aas_ip_address | default('192.168.2.13/32')) | regex_replace('/.*', '') }}\t{{ .sap_swpm_aas_instance_hostname }}.{{ ansible_domain }}\t{{ sap_swpm_aas_instance_hostname }}"
+    #     - "{{ sap_vm_provision_ha_vip_nwas_abap_pas | regex_replace('/.*', '') }}\t{{ sap_swpm_pas_instance_hostname }}.{{ ansible_domain }}\t{{ sap_swpm_pas_instance_hostname }}"
+    #     - "{{ sap_vm_provision_ha_vip_nwas_abap_aas | regex_replace('/.*', '') }}\t{{ .sap_swpm_aas_instance_hostname }}.{{ ansible_domain }}\t{{ sap_swpm_aas_instance_hostname }}"
     #   when:
     #     - (groups["nwas_aas"] is defined and (groups["nwas_aas"] | length>0))
     #     - not ansible_chassis_asset_tag == 'ibmcloud' or ((not inventory_hostname_short in groups['nwas_pas'] and not inventory_hostname_short in groups['nwas_pas']) and ansible_chassis_asset_tag == 'ibmcloud')
@@ -148,7 +148,7 @@
       loop:
         - "{{ sap_vm_provision_dynamic_inventory_nw_ascs_ip }}\t{{ sap_vm_provision_dynamic_inventory_nw_ascs_hostname }}.{{ ansible_domain }}\t{{ sap_vm_provision_dynamic_inventory_nw_ascs_hostname }}\t{{ sap_swpm_ascs_instance_hostname }}.{{ ansible_domain }}\t{{ sap_swpm_ascs_instance_hostname }}"
         - "{{ sap_vm_provision_dynamic_inventory_nw_ers_ip }}\t{{ sap_vm_provision_dynamic_inventory_nw_ers_hostname }}.{{ ansible_domain }}\t{{ sap_vm_provision_dynamic_inventory_nw_ers_hostname }}"
-        - "{{ (sap_ha_pacemaker_cluster_vip_nwas_abap_ers_ip_address | default('192.168.2.11/32')) | regex_replace('/.*', '') }}\t{{ sap_swpm_ers_instance_hostname }}.{{ ansible_domain }}\t{{ sap_swpm_ers_instance_hostname }}"
+        - "{{ sap_vm_provision_ha_vip_nwas_abap_ers | regex_replace('/.*', '') }}\t{{ sap_swpm_ers_instance_hostname }}.{{ ansible_domain }}\t{{ sap_swpm_ers_instance_hostname }}"
       when:
         - (groups["nwas_ers"] is defined and (groups["nwas_ers"] | length>0))
         - ansible_chassis_asset_tag == 'ibmcloud'
@@ -162,7 +162,7 @@
       loop:
         - "{{ sap_vm_provision_dynamic_inventory_nw_ascs_ip }}\t{{ sap_vm_provision_dynamic_inventory_nw_ascs_hostname }}.{{ ansible_domain }}\t{{ sap_vm_provision_dynamic_inventory_nw_ascs_hostname }}"
         - "{{ sap_vm_provision_dynamic_inventory_nw_ers_ip }}\t{{ sap_vm_provision_dynamic_inventory_nw_ers_hostname }}.{{ ansible_domain }}\t{{ sap_vm_provision_dynamic_inventory_nw_ers_hostname }}\t{{ sap_swpm_ers_instance_hostname }}.{{ ansible_domain }}\t{{ sap_swpm_ers_instance_hostname }}"
-        - "{{ (sap_ha_pacemaker_cluster_vip_nwas_abap_ascs_ip_address | default('192.168.2.10/32')) | regex_replace('/.*', '') }}\t{{ sap_swpm_ascs_instance_hostname }}.{{ ansible_domain }}\t{{ sap_swpm_ascs_instance_hostname }}"
+        - "{{ sap_vm_provision_ha_vip_nwas_abap_ascs | regex_replace('/.*', '') }}\t{{ sap_swpm_ascs_instance_hostname }}.{{ ansible_domain }}\t{{ sap_swpm_ascs_instance_hostname }}"
       when:
         - (groups["nwas_ers"] is defined and (groups["nwas_ers"] | length>0))
         - ansible_chassis_asset_tag == 'ibmcloud'
@@ -176,7 +176,7 @@
         state: absent
       loop:
         - "{{ sap_vm_provision_dynamic_inventory_nw_ascs_ip }}\t{{ sap_vm_provision_dynamic_inventory_nw_ascs_hostname }}.{{ ansible_domain }}\t{{ sap_vm_provision_dynamic_inventory_nw_ascs_hostname }}"
-        - "{{ (sap_ha_pacemaker_cluster_vip_nwas_abap_ascs_ip_address | default('192.168.2.10/32')) | regex_replace('/.*', '') }}\t{{ sap_swpm_ascs_instance_hostname }}.{{ ansible_domain }}\t{{ sap_swpm_ascs_instance_hostname }}"
+        - "{{ sap_vm_provision_ha_vip_nwas_abap_ascs | regex_replace('/.*', '') }}\t{{ sap_swpm_ascs_instance_hostname }}.{{ ansible_domain }}\t{{ sap_swpm_ascs_instance_hostname }}"
       when:
         - (groups["nwas_ers"] is defined and (groups["nwas_ers"] | length>0))
         - ansible_chassis_asset_tag == 'ibmcloud'
@@ -190,7 +190,7 @@
         state: absent
       loop:
         - "{{ sap_vm_provision_dynamic_inventory_nw_ers_ip }}\t{{ sap_vm_provision_dynamic_inventory_nw_ers_hostname }}.{{ ansible_domain }}\t{{ sap_vm_provision_dynamic_inventory_nw_ers_hostname }}"
-        - "{{ (sap_ha_pacemaker_cluster_vip_nwas_abap_ers_ip_address | default('192.168.2.11/32')) | regex_replace('/.*', '') }}\t{{ sap_swpm_ers_instance_hostname }}.{{ ansible_domain }}\t{{ sap_swpm_ers_instance_hostname }}"
+        - "{{ sap_vm_provision_ha_vip_nwas_abap_ers | regex_replace('/.*', '') }}\t{{ sap_swpm_ers_instance_hostname }}.{{ ansible_domain }}\t{{ sap_swpm_ers_instance_hostname }}"
       when:
         - (groups["nwas_ers"] is defined and (groups["nwas_ers"] | length>0))
         - ansible_chassis_asset_tag == 'ibmcloud'

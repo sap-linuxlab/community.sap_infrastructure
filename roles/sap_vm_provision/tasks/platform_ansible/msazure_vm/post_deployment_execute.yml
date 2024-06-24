@@ -73,7 +73,7 @@
         - vip_item | length > 0
         - groups["hana_secondary"] is defined and (groups["hana_secondary"]|length>0)
       loop:
-        - "{{ sap_ha_pacemaker_cluster_vip_hana_primary_ip_address | default() }}"
+        - "{{ sap_vm_provision_ha_vip_hana_primary }}"
       loop_control:
         index_var: vip_index_nr
         loop_var: vip_item
@@ -92,7 +92,7 @@
         - vip_item | length > 0
         - groups["anydb_secondary"] is defined and (groups["anydb_secondary"]|length>0)
       loop:
-        - "{{ sap_vm_temp_vip_anydb_primary | default() }}"
+        - "{{ sap_vm_provision_ha_vip_anydb_primary }}"
       loop_control:
         index_var: vip_index_nr
         loop_var: vip_item
@@ -111,8 +111,8 @@
         - vip_item | length > 0
         - groups["nwas_ers"] is defined and (groups["nwas_ers"]|length>0)
       loop:
-        - "{{ sap_ha_pacemaker_cluster_vip_nwas_abap_ascs_ip_address | default() }}"
-        - "{{ sap_ha_pacemaker_cluster_vip_nwas_abap_ers_ip_address | default() }}"
+        - "{{ sap_vm_provision_ha_vip_nwas_abap_ascs }}"
+        - "{{ sap_vm_provision_ha_vip_nwas_abap_ers }}"
       loop_control:
         index_var: vip_index_nr
         loop_var: vip_item
@@ -190,7 +190,7 @@
         - rule_item | length > 0
         - groups["hana_secondary"] is defined and (groups["hana_secondary"]|length>0)
       loop:
-        - "{{ sap_ha_pacemaker_cluster_vip_hana_primary_ip_address | default() }}"
+        - "{{ sap_vm_provision_ha_vip_hana_primary }}"
       loop_control:
         index_var: rule_index_nr
         loop_var: rule_item
@@ -214,7 +214,7 @@
         - rule_item | length > 0
         - groups["anydb_secondary"] is defined and (groups["anydb_secondary"]|length>0)
       loop:
-        - "{{ sap_vm_temp_vip_anydb_primary | default() }}"
+        - "{{ sap_vm_provision_ha_vip_anydb_primary }}"
       loop_control:
         index_var: rule_index_nr
         loop_var: rule_item
@@ -238,8 +238,8 @@
         - rule_item | length > 0
         - groups["nwas_ers"] is defined and (groups["nwas_ers"]|length>0)
       loop:
-        - "{{ sap_ha_pacemaker_cluster_vip_nwas_abap_ascs_ip_address | default() }}"
-        - "{{ sap_ha_pacemaker_cluster_vip_nwas_abap_ers_ip_address | default() }}"
+        - "{{ sap_vm_provision_ha_vip_nwas_abap_ascs }}"
+        - "{{ sap_vm_provision_ha_vip_nwas_abap_ers }}"
       loop_control:
         index_var: rule_index_nr
         loop_var: rule_item
