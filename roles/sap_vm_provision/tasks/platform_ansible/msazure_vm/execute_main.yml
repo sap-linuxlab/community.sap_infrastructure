@@ -58,6 +58,11 @@
         # VM instances (HA Pairs) in the Availability Set spread across up to 3 Fault Domains (different racks)
         platform_fault_domain_count: 3
         sku: Aligned # do not use Classic/ASM
+        # Azure credentials
+        subscription_id: "{{ sap_vm_provision_msazure_subscription_id }}"
+        tenant: "{{ sap_vm_provision_msazure_tenant_id }}"
+        client_id: "{{ sap_vm_provision_msazure_app_client_id }}"
+        secret: "{{ sap_vm_provision_msazure_app_client_secret }}"
       loop:
         - "{{ 'hana'  if 'hana_secondary' in lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan] | json_query('*') | map(attribute='sap_host_type') else '' }}"
         - "{{ 'anydb' if 'anydb_secondary' in lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan] | json_query('*') | map(attribute='sap_host_type') else '' }}"

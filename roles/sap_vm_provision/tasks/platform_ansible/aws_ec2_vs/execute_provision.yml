@@ -42,13 +42,13 @@
     placement:
       availability_zone: "{{ sap_vm_provision_aws_vpc_availability_zone }}"
       group_name: "{{ (
-        (__sap_vm_provision_task_aws_placement_group | selectattr('item','==','hana'))[0].name
+        (__sap_vm_provision_task_aws_placement_group.results | selectattr('item','==','hana'))[0].name
         if ('hana_primary' in target_provision_host_spec.sap_host_type or 'hana_secondary' in target_provision_host_spec.sap_host_type)
         else
-        (__sap_vm_provision_task_aws_placement_group | selectattr('item','==','anydb'))[0].name
+        (__sap_vm_provision_task_aws_placement_group.results | selectattr('item','==','anydb'))[0].name
         if ('anydb_primary' in target_provision_host_spec.sap_host_type or 'anydb_secondary' in target_provision_host_spec.sap_host_type)
         else
-        (__sap_vm_provision_task_aws_placement_group | selectattr('item','==','nwas'))[0].name
+        (__sap_vm_provision_task_aws_placement_group.results | selectattr('item','==','nwas'))[0].name
         if ('nwas_ascs' in target_provision_host_spec.sap_host_type or 'nwas_ers' in target_provision_host_spec.sap_host_type)
         ) | default(omit) }}"
       tenancy: default # default is shared tenancy

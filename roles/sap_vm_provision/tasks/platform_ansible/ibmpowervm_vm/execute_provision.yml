@@ -177,13 +177,13 @@
           # additional_properties:
           #   "drivers:multipath": "0"
           group: "{{ (
-            (__sap_vm_provision_task_ibmpowervm_collocation_rule | selectattr('item','==','hana'))[0].name
+            (__sap_vm_provision_task_ibmpowervm_collocation_rule.results | selectattr('item','==','hana'))[0].name
             if ('hana_primary' in target_provision_host_spec.sap_host_type or 'hana_secondary' in target_provision_host_spec.sap_host_type)
             else
-            (__sap_vm_provision_task_ibmpowervm_collocation_rule | selectattr('item','==','anydb'))[0].name
+            (__sap_vm_provision_task_ibmpowervm_collocation_rule.results | selectattr('item','==','anydb'))[0].name
             if ('anydb_primary' in target_provision_host_spec.sap_host_type or 'anydb_secondary' in target_provision_host_spec.sap_host_type)
             else
-            (__sap_vm_provision_task_ibmpowervm_collocation_rule | selectattr('item','==','nwas'))[0].name
+            (__sap_vm_provision_task_ibmpowervm_collocation_rule.results | selectattr('item','==','nwas'))[0].name
             if ('nwas_ascs' in target_provision_host_spec.sap_host_type or 'nwas_ers' in target_provision_host_spec.sap_host_type)
             ) | default(omit) }}"
 
@@ -329,13 +329,13 @@
       # additional_properties:
       #   "drivers:multipath": "0"
       group: "{{ (
-        (__sap_vm_provision_task_ibmpowervm_collocation_rule | selectattr('item','==','hana'))[0].name
+        (__sap_vm_provision_task_ibmpowervm_collocation_rule.results | selectattr('item','==','hana'))[0].name
         if ('hana_primary' in target_provision_host_spec.sap_host_type or 'hana_secondary' in target_provision_host_spec.sap_host_type)
         else
-        (__sap_vm_provision_task_ibmpowervm_collocation_rule | selectattr('item','==','anydb'))[0].name
+        (__sap_vm_provision_task_ibmpowervm_collocation_rule.results | selectattr('item','==','anydb'))[0].name
         if ('anydb_primary' in target_provision_host_spec.sap_host_type or 'anydb_secondary' in target_provision_host_spec.sap_host_type)
         else
-        (__sap_vm_provision_task_ibmpowervm_collocation_rule | selectattr('item','==','nwas'))[0].name
+        (__sap_vm_provision_task_ibmpowervm_collocation_rule.results | selectattr('item','==','nwas'))[0].name
         if ('nwas_ascs' in target_provision_host_spec.sap_host_type or 'nwas_ers' in target_provision_host_spec.sap_host_type)
         ) | default(omit) }}"
 
