@@ -14,10 +14,10 @@
 # Temporary listener for SAP NetWeaver ASCS used is 55551
 # Temporary listener for SAP NetWeaver ERS used is 55552; must be different to ASCS Health Check Port to avoid ASCS VIP distributing to ERS host
 
-- name: Start netcat temporary listen on port 55550 for SAP HANA or SAP AnyDB for 6 hours (until SAP installation complete) to respond to Load Balancer Health Check probe until Linux Pacemaker started
+- name: Start netcat temporary listen on port 55550 for SAP HANA or SAP AnyDB for 12 hours (until SAP installation complete) to respond to Load Balancer Health Check probe until Linux Pacemaker started
   ansible.builtin.shell: |
     if ! $(lsof -Pi :55550 -sTCP:LISTEN -t >/dev/null) ; then
-    nohup timeout 6h bash -c "while true; do nc -vvv -l -k 55550 ; done" </dev/null >/dev/null 2>&1 &
+    nohup timeout 12h bash -c "while true; do nc -vvv -l -k 55550 ; done" </dev/null >/dev/null 2>&1 &
     sleep 2
     fi
   when:
@@ -25,10 +25,10 @@
     - (groups["hana_secondary"] is defined and inventory_hostname in groups["hana_primary"]) or (groups["anydb_secondary"] is defined and inventory_hostname in groups["anydb_primary"])
     - (ansible_product_name == 'Google Compute Engine') or (ansible_chassis_asset_tag == 'ibmcloud') or (ansible_chassis_vendor == 'Microsoft Corporation' and ansible_product_name == 'Virtual Machine')
 
-- name: Start netcat temporary listen on port 55551 for SAP NetWeaver ASCS for 6 hours (until SAP installation complete) to respond to Load Balancer Health Check probe until Linux Pacemaker started
+- name: Start netcat temporary listen on port 55551 for SAP NetWeaver ASCS for 12 hours (until SAP installation complete) to respond to Load Balancer Health Check probe until Linux Pacemaker started
   ansible.builtin.shell: |
     if ! $(lsof -Pi :55551 -sTCP:LISTEN -t >/dev/null) ; then
-    nohup timeout 6h bash -c "while true; do nc -vvv -l -k 55551 ; done" </dev/null >/dev/null 2>&1 &
+    nohup timeout 12h bash -c "while true; do nc -vvv -l -k 55551 ; done" </dev/null >/dev/null 2>&1 &
     sleep 2
     fi
   when:
@@ -36,10 +36,10 @@
     - (groups["nwas_ers"] is defined and inventory_hostname in groups["nwas_ascs"])
     - (ansible_product_name == 'Google Compute Engine') or (ansible_chassis_asset_tag == 'ibmcloud') or (ansible_chassis_vendor == 'Microsoft Corporation' and ansible_product_name == 'Virtual Machine')
 
-- name: Start netcat temporary listen on port 55552 for SAP NetWeaver ERS for 6 hours (until SAP installation complete) to respond to Load Balancer Health Check probe until Linux Pacemaker started
+- name: Start netcat temporary listen on port 55552 for SAP NetWeaver ERS for 12 hours (until SAP installation complete) to respond to Load Balancer Health Check probe until Linux Pacemaker started
   ansible.builtin.shell: |
     if ! $(lsof -Pi :55552 -sTCP:LISTEN -t >/dev/null) ; then
-    nohup timeout 6h bash -c "while true; do nc -vvv -l -k 55552 ; done" </dev/null >/dev/null 2>&1 &
+    nohup timeout 12h bash -c "while true; do nc -vvv -l -k 55552 ; done" </dev/null >/dev/null 2>&1 &
     sleep 2
     fi
   when:
