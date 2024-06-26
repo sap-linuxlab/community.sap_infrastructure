@@ -29,7 +29,6 @@
     key_name: "{{ sap_vm_provision_aws_key_pair_name_ssh_host_public_key }}"
     security_groups: "{{ sap_vm_provision_aws_vpc_sg_names }}"
     vpc_subnet_id: "{{ sap_vm_provision_aws_vpc_subnet_id }}"
-    tenancy: default
     metadata_options:
       http_endpoint: enabled
 #        http_put_response_hop_limit: 8
@@ -38,8 +37,12 @@
     network:
       assign_public_ip: false
       source_dest_check: "{{ not target_provision_host_spec.disable_ip_anti_spoofing }}" # Disable the Anti IP Spoofing by setting Source/Destination Check to false
-    availability_zone: "{{ sap_vm_provision_aws_vpc_availability_zone }}"
-    placement:
+    # availability_zone: "{{ sap_vm_provision_aws_vpc_availability_zone }}" # Conflict with vpc_subnet_id
+    placement: "{{ placement_dict if sap_vm_provision_aws_placement_strategy_spread else omit }}"
+    access_key: "{{ sap_vm_provision_aws_access_key }}"
+    secret_key: "{{ sap_vm_provision_aws_secret_access_key }}"
+  vars:
+    placement_dict:
       availability_zone: "{{ sap_vm_provision_aws_vpc_availability_zone }}"
       group_name: "{{ (
         (__sap_vm_provision_task_aws_placement_group.results | selectattr('item','==','hana'))[0].name
@@ -52,8 +55,6 @@
         if ('nwas_ascs' in target_provision_host_spec.sap_host_type or 'nwas_ers' in target_provision_host_spec.sap_host_type)
         ) | default(omit) }}"
       tenancy: default # default is shared tenancy
-    access_key: "{{ sap_vm_provision_aws_access_key }}"
-    secret_key: "{{ sap_vm_provision_aws_secret_access_key }}"
 
 - name: Set fact for storage volume letters calculations (max 25 volumes)
   ansible.builtin.set_fact:
