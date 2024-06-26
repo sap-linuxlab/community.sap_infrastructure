@@ -100,6 +100,23 @@ See below for the drop-down list of required environment resources on an Infrast
 </details>
 
 <details>
+<summary><b>Red Hat OpenShift Virtualization</b></summary>
+
+- IMPORTANT: The playbook has to run with `ANSIBLE_JINJA2_NATIVE=true` otherwise you will see an unmarshalling error when the VM is created.
+- OpenShift cluster
+- Ansible Automation Platform Controller (AAPC) or at least an Ansible host. When using AAPC you have to set `ANSIBLE_JINJA2_NATIVE=true` in Settings --> Job Settings --> Extra Environment Variables, e.g.
+```
+{
+  "ANSIBLE_JINJA2_NATIVE": "true",
+  "HOME": "/var/lib/awx"
+}
+```
+- Kubeconfig, CA Certs, kubeadmin user and password, OpenShift API endpoint
+- SSH Key Pait for VMs or define user / password
+- Optional: Jumphost with access to OpenShift cluster
+
+</details>
+
 <summary><b>KubeVirt:</b></summary>
 
 - `TODO`

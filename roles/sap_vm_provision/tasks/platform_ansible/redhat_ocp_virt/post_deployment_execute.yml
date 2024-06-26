@@ -1,0 +1,5 @@
+---
+
+- name: Post Deployment notification
+  ansible.builtin.debug:
+    msg: "There are no Post Deployment tasks for SAP on this Infrastructure Platform"

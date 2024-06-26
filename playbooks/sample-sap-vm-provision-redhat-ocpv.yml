@@ -1,0 +1,54 @@
+---
+- name: Preparation Ansible Play for SAP VM provisioning
+  hosts: all
+  gather_facts: false
+  serial: 1
+  vars:
+    sap_vm_provision_iac_type: ansible
+    sap_vm_provision_iac_platform: redhat_ocp_virt 
+  pre_tasks:
+    # Alternative to executing ansible-playbook with -e for Ansible Extravars file
+#    - name: Include sample variables for Red Hat Openshift Virtualization
+#      ansible.builtin.include_vars: ./vars/sample-variables-sap-vm-provision-redhat-ocpv.yml
+  tasks:
+    - name: Save inventory_host as jumphost
+      ansible.builtin.set_fact:
+        sap_vm_provision_jumphost: "{{ inventory_hostname }}"
+
+    - name: Save ansible_user as jumphost user
+      ansible.builtin.set_fact:
+        __sap_vm_provision_register_jumphost_user: "{{ ansible_user }}"
+
+    - name: Log into Red Hat OpenShift cluster (obtain access token)
+      community.okd.openshift_auth:
+        host: "{{ sap_vm_provision_ocp_endpoint }}"
+        username: "{{ sap_vm_provision_ocp_admin_username }}"
+        password: "{{ sap_vm_provision_ocp_admin_password }}"
+        ca_cert: "{{ sap_vm_provision_ocp_ca_cert }}"
+      register: __sap_vm_provision_register_ocp_auth_results
+
+    - name: Create dynamic inventory group for Ansible Role sap_vm_provision and provide jumphost and api token
+      ansible.builtin.add_host:
+        name: "{{ item }}"
+        group: sap_vm_provision_target_inventory_group
+        sap_vm_provision_jumphost: "{{ sap_vm_provision_jumphost }}"
+        __sap_vm_provision_register_jumphost_user: "{{ __sap_vm_provision_register_jumphost_user }}"
+        __sap_vm_provision_register_ocp_auth_results: "{{ __sap_vm_provision_register_ocp_auth_results }}"
+      loop: "{{ sap_vm_provision_redhat_ocp_virt_host_specifications_dictionary[sap_vm_provision_host_specification_plan].keys() }}"
+
+- name: Ansible Play to provision VMs for SAP
+  hosts: sap_vm_provision_target_inventory_group # Ansible Play target hosts pattern, use Inventory Group created by previous Ansible Task (add_host)
+  gather_facts: false
+  environment:
+    KUBECONFIG: "{{ sap_vm_provision_ocp_kubeconfig_path }}"
+    K8S_AUTH_HOST: "{{ sap_vm_provision_ocp_endpoint }}"
+    K8S_AUTH_API_KEY: "{{ __sap_vm_provision_register_ocp_auth_results.openshift_auth.api_key }}"
+    K8S_AUTH_SSL_CA_CERT: "{{ sap_vm_provision_ocp_ca_cert }}"
+    K8S_AUTH_USERNAME: "{{ sap_vm_provision_ocp_admin_username }}"
+    K8S_AUTH_PASSWORD: "{{ sap_vm_provision_ocp_admin_password }}"
+    ANSIBLE_JINJA2_NATIVE: true
+  tasks:
+    - name: Execute Ansible Role sap_vm_provision
+      ansible.builtin.include_role:
+        name: community.sap_infrastructure.sap_vm_provision
+      when: sap_vm_provision_iac_type == "ansible" or sap_vm_provision_iac_type == "ansible_to_terraform"
