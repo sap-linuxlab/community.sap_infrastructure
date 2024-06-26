@@ -28,10 +28,14 @@ collections:
     version: 2.1.0
   - name: kubevirt.core
     type: galaxy
-    version: 1.1.0
+    version: 1.5.0
   - name: vmware.vmware_rest
     type: galaxy
     version: 3.0.0
   - name: cloud.common
     type: galaxy
     version: 3.0.0
+  # For Red Hat OpenShift 
+  - name: community.okd
+    type: galaxy
+    version: 3.0.1

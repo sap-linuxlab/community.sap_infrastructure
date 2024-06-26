@@ -3,7 +3,7 @@
 #### Provision host/s for Deployment of SAP Software (as part of an SAP Software Solution Scenario e.g. SAP S/4HANA Distributed HA) ####
 
 - name: Begin execution
-  delegate_to: localhost
+  delegate_to: "{{ sap_vm_provision_execution_host }}"
   delegate_facts: false # keep facts with the original play hosts, not the delegated host
   block:
 
@@ -15,7 +15,7 @@
 #### Post Deployment of SAP - tasks for GCP, IBM Cloud, MS Azure ####
 
 - name: Begin execution
-  delegate_to: localhost
+  delegate_to: "{{ sap_vm_provision_execution_host }}"
   delegate_facts: false # keep facts with the original play hosts, not the delegated host
   block:
 

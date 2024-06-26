@@ -32,7 +32,8 @@ The code modularity and commonality of provisioning enables a wide gamut of SAP 
 - Microsoft Azure Virtual Machine/s
 - IBM PowerVM Virtual Machine/s _(formerly LPAR/s)_
 - OVirt Virtual Machine/s (e.g. Red Hat Enterprise Linux KVM)
-- KubeVirt Virtual Machine/s (e.g. Red Hat OpenShift Virtualization, SUSE Rancher with Harvester HCI) `[Experimental]`
+- KubeVirt Virtual Machine/s (e.g. SUSE Rancher with Harvester HCI) `[Experimental]`
+- Red Hat OpenShift Virtualization `[Experimental]`
 - VMware vSphere Virtual Machine/s `[Beta]`
 
 ### Known issues
@@ -71,6 +72,7 @@ For a list of requirements and recommended authorizations on each Infrastructure
     - `openstacksdk` for IBM PowerVM
     - `ovirt-engine-sdk-python` for OVirt
     - `aiohttp` for VMware
+    - `kubernetes` for Kubernetes based platforms such as Red Hat OpenShift Virtualization
 - Ansible
     - Ansible Core 2.12.0+
     - Ansible Collections:
@@ -82,10 +84,13 @@ For a list of requirements and recommended authorizations on each Infrastructure
         - `google.cloud`
         - `ibm.cloudcollection`
             - _(legacy, to be replaced with `ibm.cloud` in future)_
-        - `kubevirt.core`
+        - `kubevirt.core` for kubevirt_vm or Red Hat OpenShift Virtualization
         - `openstack.cloud`
         - `ovirt.ovirt`
         - `vmware.vmware_rest` <sup>_(requires `cloud.common`)_</sup>
+        - `community.okd` for Red Hat OpenShift Virtualization
+
+TODO: Split up above dependencies per platform.
 
 
 ## Execution
@@ -182,6 +187,7 @@ Apache 2.0
 ## Authors
 
 Sean Freeman
+Nils Koenig (nkoenig@redhat.com) kubevirt_vm / Red Hat OpenShift Virtualization
 
 ---
 

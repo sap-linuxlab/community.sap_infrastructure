@@ -1,0 +1,128 @@
+---
+- name: Preparation Ansible Play for SAP VM provisioning on Red Hat OpenShift Virtualization
+  hosts: all
+  gather_facts: false
+  serial: 1
+  vars:
+    sap_vm_provision_iac_type: ansible
+    sap_vm_provision_iac_platform: kubevirt_vm
+  pre_tasks:
+    # Alternative to executing ansible-playbook with -e for Ansible Extravars file
+#    - name: Include sample variables for Red Hat Openshift Virtualization
+#      ansible.builtin.include_vars: ./vars/sample-variables-sap-vm-provision-redhat-ocpv.yml
+  tasks:
+
+    - name: Save inventory_host as execution_host
+      ansible.builtin.set_fact:
+        sap_vm_provision_execution_host: "{{ inventory_hostname }}"
+
+    - name: Save ansible_user as execution_host user
+      ansible.builtin.set_fact:
+        __sap_vm_provision_kubevirt_vm_register_execution_host_user: "{{ ansible_user }}"
+
+    - name: Use kubeconfig file specified in environment variable K8S_AUTH_KUBECONFIG if sap_vm_provision_kubevirt_vm_kubeconfig_path is not defined
+      when: >
+        sap_vm_provision_kubevirt_vm_kubeconfig_path is not defined or
+        sap_vm_provision_kubevirt_vm_kubeconfig_path == None or
+        sap_vm_provision_kubevirt_vm_kubeconfig_path == ''
+      ansible.builtin.set_fact:
+        sap_vm_provision_kubevirt_vm_kubeconfig_path: "{{ lookup('env', 'K8S_AUTH_KUBECONFIG') | default(None) }}"
+
+    - name: Create Tempdir
+      ansible.builtin.tempfile:
+        state: directory
+        suffix: "_sap_vm_provision_kubevirt_vm"
+      register: __sap_vm_provision_kubevirt_vm_register_tmpdir
+
+    - name: Set kubeconfig file variable
+      ansible.builtin.set_fact:
+        __sap_vm_provision_kubevirt_vm_register_kubeconfig: "{{ __sap_vm_provision_kubevirt_vm_register_tmpdir.path }}/kubeconfig"
+
+    - name: Read content of kubeconfig file
+      ansible.builtin.set_fact:
+        __sap_vm_provision_kubevirt_vm_register_kubeconfig_data:
+          "{{ lookup('file', sap_vm_provision_kubevirt_vm_kubeconfig_path) | from_yaml }}"
+
+    - name: Read cluster endpoint and CA certificate from kubeconfig if either is not defined
+      when: sap_vm_provision_kubevirt_vm_extract_kubeconfig
+      block:
+
+        - name: Set sap_vm_provision_kubevirt_vm_api_endpoint from kubeconfig
+          ansible.builtin.set_fact:
+            __sap_vm_provision_kubevirt_vm_register_api_endpoint:
+              "{{ __sap_vm_provision_kubevirt_vm_register_kubeconfig_data['clusters'][0]['cluster']['server'] }}"
+
+        - name: Write the certificate-authority-data to temp dir
+          ansible.builtin.copy:
+            content: "{{ __sap_vm_provision_kubevirt_vm_register_kubeconfig_data['clusters'][0]['cluster']['certificate-authority-data'] | b64decode }}"
+            dest: "{{ __sap_vm_provision_kubevirt_vm_register_tmpdir.path }}/cluster-ca-cert.pem"
+            mode: "0600"
+
+        - name: Set CA file variable
+          ansible.builtin.set_fact:
+            __sap_vm_provision_kubevirt_vm_register_ca_cert: "{{ __sap_vm_provision_kubevirt_vm_register_tmpdir.path }}/cluster-ca-cert.pem"
+
+    - name: Use predefined CA cert and API endpoint
+      when: not sap_vm_provision_kubevirt_vm_extract_kubeconfig
+      block:
+        - name: Set predefined OCP API Endpoint
+          ansible.builtin.set_fact:
+            __sap_vm_provision_kubevirt_vm_register_api_endpoint: "{{ sap_vm_provision_kubevirt_vm_api_endpoint }}"
+
+        - name: Set predefined CA file
+          ansible.builtin.set_fact:
+            __sap_vm_provision_kubevirt_vm_register_ca_cert: "{{ sap_vm_provision_kubevirt_vm_ca_cert }}"
+
+    - name: Log into Red Hat OpenShift cluster (obtain access token)
+      community.okd.openshift_auth:
+        host: "{{ __sap_vm_provision_kubevirt_vm_register_api_endpoint }}"
+        username: "{{ sap_vm_provision_kubevirt_vm_admin_username }}"
+        password: "{{ sap_vm_provision_kubevirt_vm_admin_password }}"
+        ca_cert: "{{ __sap_vm_provision_kubevirt_vm_register_ca_cert }}"
+      register: __sap_vm_provision_kubevirt_vm_register_kubevirt_vm_auth_results
+
+    - name: Set token in kubeconfig
+      ansible.builtin.set_fact:
+        __sap_vm_provision_kubevirt_vm_register_kubeconfig_data: >-
+          {{
+            __sap_vm_provision_kubevirt_vm_register_kubeconfig_data | combine({
+              'users':  __sap_vm_provision_kubevirt_vm_register_kubeconfig_data.users | map('combine', [{'user': {'token': __sap_vm_provision_kubevirt_vm_register_kubevirt_vm_auth_results.openshift_auth.api_key }}] )
+            }, recursive=True)
+          }}
+
+    - name: Write the updated kubeconfig
+      ansible.builtin.copy:
+        content: "{{ __sap_vm_provision_kubevirt_vm_register_kubeconfig_data | to_nice_yaml }}"
+        dest: "{{ __sap_vm_provision_kubevirt_vm_register_kubeconfig }}"
+        mode: "0600"
+
+    - name: Create dynamic inventory group for Ansible Role sap_vm_provision and provide execution_host and api token
+      ansible.builtin.add_host:
+        name: "{{ item }}"
+        group: sap_vm_provision_target_inventory_group
+        sap_vm_provision_execution_host: "{{ sap_vm_provision_execution_host }}"
+        __sap_vm_provision_kubevirt_vm_register_execution_host_user: "{{ __sap_vm_provision_kubevirt_vm_register_execution_host_user }}"
+        __sap_vm_provision_kubevirt_vm_register_tmpdir: "{{ __sap_vm_provision_kubevirt_vm_register_tmpdir }}"
+        __sap_vm_provision_kubevirt_vm_register_kubeconfig: "{{ __sap_vm_provision_kubevirt_vm_register_kubeconfig }}"
+      loop: "{{ sap_vm_provision_kubevirt_vm_host_specifications_dictionary[sap_vm_provision_host_specification_plan].keys() }}"
+
+- name: Ansible Play to provision VMs for SAP
+  hosts: sap_vm_provision_target_inventory_group # Ansible Play target hosts pattern, use Inventory Group created by previous Ansible Task (add_host)
+  gather_facts: false
+  environment:
+    K8S_AUTH_KUBECONFIG: "{{ __sap_vm_provision_kubevirt_vm_register_kubeconfig }}"
+  tasks:
+
+    - name: Execute Ansible Role sap_vm_provision
+      when: sap_vm_provision_iac_type == "ansible" or sap_vm_provision_iac_type == "ansible_to_terraform"
+      block:
+        - name: Include sap_vm_provision Ansible Role
+          ansible.builtin.include_role:
+            name: community.sap_infrastructure.sap_vm_provision
+
+      always:
+        - name: Remove temporary directory on execution_host
+          delegate_to: "{{ sap_vm_provision_execution_host }}"
+          ansible.builtin.file:
+            state: absent
+            path: "{{ __sap_vm_provision_kubevirt_vm_register_tmpdir.path }}"

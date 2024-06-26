@@ -1,4 +1,10 @@
 ---
+- name: Fail if sap_vm_provision_kubevirt_vm_os_user_password is not set and sap_vm_provision_kubevirt_vm_guest_ssh_auth_mechanism is set to password
+  ansible.builtin.fail:
+    msg: Password is not allowed to be empty or undefined (sap_vm_provision_kubevirt_vm_os_user_password).
+  when:
+    - sap_vm_provision_kubevirt_vm_guest_ssh_auth_mechanism == "password"
+    - sap_vm_provision_kubevirt_vm_os_user_password == "" or sap_vm_provision_kubevirt_vm_os_user_password == null
 
 - name: Ansible Task block for looped provisioning of KubeVirt Virtual Machines
   any_errors_fatal: true
@@ -11,38 +17,6 @@
       ansible.builtin.set_fact:
         register_provisioned_host_all: []
 
-    - name: Set fact for auth - defaults
-      ansible.builtin.set_fact:
-        api_version: "kubevirt.io/v1"
-        validate_certs: "{{ default(lookup('env', 'K8S_AUTH_VERIFY_SSL')) | default(false) }}"
-        persist_config: "{{ default(lookup('env', 'K8S_AUTH_PERSIST_CONFIG')) | default(true) }}"
-        host: "{{ sap_vm_provision_kubevirt_cluster_url | default(lookup('env', 'K8S_AUTH_HOST')) | default(omit) }}" # Target Hypervisor Node
-
-    - name: Set fact for auth - Kubeconfig
-      no_log: "{{ __sap_vm_provision_no_log }}"
-      ansible.builtin.set_fact:
-        kubeconfig: "{{ sap_vm_provision_kubevirt_kubeconfig_path | default(lookup('env', 'K8S_AUTH_KUBECONFIG')) | default(lookup('env', 'KUBECONFIG')) | default(omit) }}"
-
-    - name: Set fact for auth - API Key
-      no_log: "{{ __sap_vm_provision_no_log }}"
-      ansible.builtin.set_fact:
-        api_key: "{{ sap_vm_provision_kubevirt_api_key | default(lookup('env', 'K8S_AUTH_API_KEY')) | default(omit) }}"
-      when: kubeconfig is defined
-
-    - name: Set fact for auth - Username and Passwords
-      no_log: "{{ __sap_vm_provision_no_log }}"
-      ansible.builtin.set_fact:
-        username: "{{ sap_vm_provision_kubevirt_username | default(lookup('env', 'K8S_AUTH_USERNAME')) | default(omit) }}"
-        password: "{{ sap_vm_provision_kubevirt_username | default(lookup('env', 'K8S_AUTH_PASSWORD')) | default(omit) }}"
-
-    # - name: Set fact for auth - Alternative
-    #   no_log: "{{ __sap_vm_provision_no_log }}"
-    #   ansible.builtin.set_fact:
-    #     ca_cert: "{{ default(lookup('env', 'K8S_AUTH_SSL_CA_CERT')) | default(omit) }}"
-    #     client_cert: "{{ default(lookup('env', 'K8S_AUTH_CERT_FILE')) | default(omit) }}"
-    #     client_key: "{{ default(lookup('env', 'K8S_AUTH_KEY_FILE')) | default(omit) }}"
-    #     context: "{{ default(lookup('env', 'K8S_AUTH_CONTEXT')) | default(omit) }}"
-
     - name: Provision hosts to KubeVirt
       register: __sap_vm_provision_task_provision_host_all_run
       ansible.builtin.include_tasks:
@@ -53,30 +27,24 @@
       ansible.builtin.add_host:
         name: "{{ add_item[0].host_node }}"
         groups: "{{ add_item[0].sap_system_type + '_' if (add_item[0].sap_system_type != '') }}{{ add_item[0].sap_host_type }}"
-        ansible_host: "{{ add_item[0].reported_devices[0].ips[0].address }}"
-        ansible_user: "root"
-        ansible_ssh_private_key_file: "{{ sap_vm_provision_ssh_host_private_key_file_path }}"
-        ansible_ssh_common_args: -o ConnectTimeout=180 -o ControlMaster=auto -o ControlPersist=3600s -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ForwardX11=no
-      loop: "{{ ansible_play_hosts | map('extract', hostvars, 'register_provisioned_host_all')  }}"
+        ansible_host: "{{ add_item[0].provisioned_private_ip }}"
+        ansible_user: "{{ sap_vm_provision_kubevirt_vm_os_user }}"
+      loop: "{{ ansible_play_hosts | map('extract', hostvars, 'register_provisioned_host_all') }}"
       loop_control:
         label: "{{ add_item[0].host_node }}"
         loop_var: add_item
-
 
 # Cannot override any variables from extravars input, see https://docs.ansible.com/ansible/latest/playbook_guide/playbooks_variables.html#understanding-variable-precedence
 # Ensure no default value exists for any prompted variable before execution of Ansible Playbook
 
     - name: Set fact to hold all inventory hosts in all groups
       ansible.builtin.set_fact:
-        groups_merged_list: "{{ [ [ groups['hana_primary'] | default([]) ] , [ groups['hana_secondary'] | default([]) ] , [ groups['anydb_primary'] | default([]) ] , [ groups['anydb_secondary'] | default([]) ] , [ groups['nwas_ascs'] | default([]) ] , [ groups['nwas_ers'] | default([]) ] , [ groups['nwas_pas'] | default([]) ] , [ groups['nwas_aas'] | default([]) ] ] | flatten | select() }}"
+        groups_merged_list: "{{ [ [ groups['hana_primary'] | default([]) ] , [ groups['hana_secondary'] | default([]) ] , [ groups['nwas_ascs'] | default([]) ] , [ groups['nwas_ers'] | default([]) ] , [ groups['nwas_pas'] | default([]) ] , [ groups['nwas_aas'] | default([]) ] ] | flatten | select() }}"
 
     - name: Set Ansible Vars
       register: __sap_vm_provision_task_ansible_vars_set
       ansible.builtin.include_tasks:
         file: common/set_ansible_vars.yml
-
-  #  - ansible.builtin.debug:
-  #      var: __sap_vm_provision_task_provision_host_all_add.results
 
   rescue:
     # This requires no_log set on each Ansible Task, and not set on the Ansible Task Block
@@ -100,9 +68,25 @@
         - not lookup('ansible.builtin.vars', loop_item, default='') is skipped
         - lookup('ansible.builtin.vars', loop_item, default='') is failed
 
+- name: Write private ssh key to ansible_controller
+  delegate_to: "{{ sap_vm_provision_kubevirt_vm_ansible_controller }}"
+  no_log: true
+  ansible.builtin.copy:
+    dest: "{{ sap_vm_provision_ssh_host_private_key_file_path }}"
+    content: "{{ sap_vm_provision_ssh_host_private_key_data }}"
+    mode: "0600"
+  when: sap_vm_provision_kubevirt_vm_guest_ssh_auth_mechanism == "private_key_data"
 
 - name: Ansible Task block to execute on target inventory hosts
+  remote_user: "{{ sap_vm_provision_kubevirt_vm_os_user }}"
+  become: true
+  become_user: root
   delegate_to: "{{ inventory_hostname }}"
+  vars:
+    ansible_password: "{{ sap_vm_provision_kubevirt_vm_os_user_password }}"
+    ansible_ssh_private_key_file: "{{ sap_vm_provision_ssh_host_private_key_file_path }}"
+    ansible_ssh_common_args: "-o ConnectTimeout=180 -o ControlMaster=auto -o ControlPersist=3600s -o UserKnownHostsFile=/dev/null -o ForwardX11=no -o ProxyJump={{ __sap_vm_provision_kubevirt_vm_register_execution_host_user }}@{{ sap_vm_provision_execution_host }}"
+
   block:
 
     # Required to collect the remote host's facts for further processing
@@ -148,3 +132,13 @@
     - name: Register Package Repositories
       ansible.builtin.include_tasks:
         file: common/register_os.yml
+
+  always:
+
+    - name: Delete private ssh key from ansible_controller
+      delegate_to: "{{ sap_vm_provision_register_ansible_controller }}"
+      become: false
+      ansible.builtin.file:
+        path: "{{ sap_vm_provision_ssh_host_private_key_file_path }}"
+        state: absent
+      when: sap_vm_provision_kubevirt_vm_guest_ssh_auth_mechanism == "private_key_data"

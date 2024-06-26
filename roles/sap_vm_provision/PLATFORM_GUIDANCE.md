@@ -100,6 +100,31 @@ See below for the drop-down list of required environment resources on an Infrast
 </details>
 
 <details>
+<summary><b>Red Hat OpenShift Virtualization (kubevirt_vm)</b></summary>
+
+- IMPORTANT: The playbook has to run with the environment variable `ANSIBLE_JINJA2_NATIVE=true` otherwise you will see an unmarshalling error when the VM is created. On Ansible Automation Platform Controller (AAPC) you have to set this in Settings --> Job Settings --> Extra Environment Variables, e.g.
+```
+{
+  "ANSIBLE_JINJA2_NATIVE": "true",
+  "HOME": "/var/lib/awx"
+}
+```
+
+- Kubeconfig file, kubeadmin user and password for the cluster you want to deploy. Default behavior is to extract CA certificate and API endpoint from kubeconfig (`sap_vm_provision_kubevirt_vm_extract_kubeconfig: true`). Kubeconfig location will be read from `sap_vm_provision_kubevirt_vm_kubeconfig_path` and if that variable is not defined from environment variable `K8S_AUTH_KUBECONFIG`.
+
+- SSH Key Pair for VMs or provide a password
+  - `sap_vm_provision_ocp_guest_ssh_auth_mechanism`: Authentication mechanism to be used to connect to the guest. Possible options are:
+    - `password`: Make sure to set password in `sap_vm_provision_ocp_os_user_password`.
+    - `private_key`: Use the private ssh key at the location defined by `sap_vm_provision_ssh_host_private_key_file_path`.
+    - `private_key_data`: use the private ssh key provided in `sap_vm_provision_ssh_host_private_key_data` and write it to the location defined in `sap_vm_provision_ssh_host_private_key_file_path`.
+
+- Optional: Execution host with access to OpenShift cluster. 
+
+- Native Kubernetes with KubeVirt has not been tested.
+
+</details>
+
+<details>
 <summary><b>KubeVirt:</b></summary>
 
 - `TODO`
