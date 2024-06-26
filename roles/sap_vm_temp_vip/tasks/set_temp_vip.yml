@@ -84,6 +84,7 @@
       ip address add {{ sap_vm_temp_vip_hana_primary | regex_replace('/.*', '') }}/{{ primary_ip_address_netmask_cidr_prefix }} brd + dev eth0
       #ip address add {{ sap_vm_temp_vip_hana_primary | regex_replace('/.*', '') }}/{{ primary_ip_address_netmask_cidr_prefix }} brd $discover_primary_ip_bridge dev eth0
     elif [ "{{ primary_ip_broadcast_address }}" != "" ] && [ "{{ primary_ip_address_netmask_cidr_prefix }}" != "" ]
+    then
       ip address add {{ sap_vm_temp_vip_hana_primary | regex_replace('/.*', '') }}/{{ primary_ip_address_netmask_cidr_prefix }} brd {{ primary_ip_broadcast_address }} dev eth0
     else
       exit 1
@@ -116,6 +117,7 @@
       ip address add {{ sap_vm_temp_vip_anydb_primary | regex_replace('/.*', '') }}/{{ primary_ip_address_netmask_cidr_prefix }} brd + dev eth0
       #ip address add {{ sap_vm_temp_vip_anydb_primary | regex_replace('/.*', '') }}/{{ primary_ip_address_netmask_cidr_prefix }} brd $discover_primary_ip_bridge dev eth0
     elif [ "{{ primary_ip_broadcast_address }}" != "" ] && [ "{{ primary_ip_address_netmask_cidr_prefix }}" != "" ]
+    then
       ip address add {{ sap_vm_temp_vip_anydb_primary | regex_replace('/.*', '') }}/{{ primary_ip_address_netmask_cidr_prefix }} brd {{ primary_ip_broadcast_address }} dev eth0
     else
       exit 1
@@ -153,6 +155,7 @@
       ip address add {{ sap_vm_temp_vip_nwas_abap_ascs | regex_replace('/.*', '') }}/{{ primary_ip_address_netmask_cidr_prefix }} brd + dev eth0
       #ip address add {{ sap_vm_temp_vip_nwas_abap_ascs | regex_replace('/.*', '') }}/{{ primary_ip_address_netmask_cidr_prefix }} brd $discover_primary_ip_bridge dev eth0
     elif [ "{{ primary_ip_broadcast_address }}" != "" ] && [ "{{ primary_ip_address_netmask_cidr_prefix }}" != "" ]
+    then
       ip address add {{ sap_vm_temp_vip_nwas_abap_ascs | regex_replace('/.*', '') }}/{{ primary_ip_address_netmask_cidr_prefix }} brd {{ primary_ip_broadcast_address }} dev eth0
     else
       exit 1
@@ -187,6 +190,7 @@
       ip address add {{ sap_vm_temp_vip_nwas_abap_ers | regex_replace('/.*', '') }}/{{ primary_ip_address_netmask_cidr_prefix }} brd + dev eth0
       #ip address add {{ sap_vm_temp_vip_nwas_abap_ers | regex_replace('/.*', '') }}/{{ primary_ip_address_netmask_cidr_prefix }} brd $discover_primary_ip_bridge dev eth0
     elif [ "{{ primary_ip_broadcast_address }}" != "" ] && [ "{{ primary_ip_address_netmask_cidr_prefix }}" != "" ]
+    then
       ip address add {{ sap_vm_temp_vip_nwas_abap_ers | regex_replace('/.*', '') }}/{{ primary_ip_address_netmask_cidr_prefix }} brd {{ primary_ip_broadcast_address }} dev eth0
     else
       exit 1
