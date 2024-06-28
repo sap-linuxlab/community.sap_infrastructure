@@ -55,6 +55,49 @@
     - groups["hana_secondary"] is defined and (groups["hana_secondary"]|length>0)
 
 
+# - name: Ansible MS Azure Route Table append route for SAP AnyDB HA
+#   no_log: "{{ __sap_vm_provision_no_log }}"
+#   register: __sap_vm_provision_task_msazure_vnet_subnet_rt_route_sap_anydb
+#   azure.azcollection.azure_rm_route:
+#     resource_group: "{{ sap_vm_provision_msazure_resource_group_name }}"
+#     route_table_name: "{{ __sap_vm_provision_task_msazure_vnet_subnet_rt_info.route_tables[0].id }}"
+#     name: "{{ sap_swpm_db_host }}-rt"
+#     address_prefix: "{{ sap_vm_provision_ha_vip_anydb_primary }}"
+#     next_hop_type: "virtual_appliance"
+#     next_hop_ip_address: "{{ hostvars[host_node].ansible_host }}"
+#     # Azure credentials
+#     subscription_id: "{{ sap_vm_provision_msazure_subscription_id }}"
+#     tenant: "{{ sap_vm_provision_msazure_tenant_id }}"
+#     client_id: "{{ sap_vm_provision_msazure_app_client_id }}"
+#     secret: "{{ sap_vm_provision_msazure_app_client_secret }}"
+#   loop: "{{ (groups['anydb_primary'] | default([])) }}"
+#   loop_control:
+#     loop_var: host_node
+#   when:
+#     - groups["anydb_secondary"] is defined and (groups["anydb_secondary"] | length>0)
+
+- name: Ansible MS Azure Private DNS Records for SAP AnyDB HA Virtual Hostname
+  no_log: "{{ __sap_vm_provision_no_log }}"
+  azure.azcollection.azure_rm_privatednsrecordset:
+    # DNS may exist in separate Resource Group. Use empty string var (or default false if undefined) to evaluate to false boolean, and use Python or logic operator
+    resource_group: "{{ (sap_vm_provision_msazure_private_dns_resource_group_name | default(false)) or sap_vm_provision_msazure_resource_group_name }}"
+    zone_name: "{{ hostvars[host_node].sap_vm_provision_dns_root_domain }}"
+    relative_name: "{{ sap_swpm_db_host }}"
+    record_type: A
+    records:
+      - entry: "{{ sap_vm_provision_ha_vip_anydb_primary | regex_replace('/.*', '') }}"
+    # Azure credentials
+    subscription_id: "{{ sap_vm_provision_msazure_subscription_id }}"
+    tenant: "{{ sap_vm_provision_msazure_tenant_id }}"
+    client_id: "{{ sap_vm_provision_msazure_app_client_id }}"
+    secret: "{{ sap_vm_provision_msazure_app_client_secret }}"
+  loop: "{{ (groups['anydb_primary'] | default([])) }}"
+  loop_control:
+    loop_var: host_node
+  when:
+    - groups["anydb_secondary"] is defined and (groups["anydb_secondary"]|length>0)
+
+
 # - name: Ansible MS Azure Route Table append route for SAP NetWeaver ASCS HA
 #   no_log: "{{ __sap_vm_provision_no_log }}"
 #   register: __sap_vm_provision_task_msazure_vnet_subnet_rt_route_sap_netweaver_ascs
@@ -630,7 +673,7 @@
     - name: Set fact to hold loop variables from include_tasks when SAP AnyDB HA
       ansible.builtin.set_fact:
         lb_ha_sap_anydb: "{{ __sap_vm_provision_task_msazure_lb1_info.state.backend_address_pools | selectattr('name', '==', sap_vm_provision_ha_load_balancer_name_anydb + '-backend-pool') | map(attribute='id') | first }}"
-      when: (groups["anyb_secondary"] is defined and (groups["anydb_secondary"]|length>0))
+      when: (groups["anydb_secondary"] is defined and (groups["anydb_secondary"]|length>0))
 
     - name: Set fact to hold loop variables from include_tasks when SAP NetWeaver HA
       ansible.builtin.set_fact:

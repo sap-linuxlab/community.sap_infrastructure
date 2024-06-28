@@ -387,6 +387,48 @@
     secret_key: "{{ sap_vm_provision_aws_secret_access_key }}"
   when: groups["hana_secondary"] is defined and (groups["hana_secondary"]|length>0)
 
+# AWS HA for SAP - STONITH of SAP ANYDB
+- name: AWS IAM Policy - HA-Policy-STONITH-SAPANYDB
+  register: __sap_vm_provision_task_aws_iam_policy_stonith_sapanydb
+  no_log: "{{ __sap_vm_provision_no_log }}"
+  amazon.aws.iam_policy:
+    state: present
+    iam_type: role
+    iam_name: "HA-Role-Pacemaker"
+    policy_name: "HA-Policy-STONITH-SAPANYDB"
+    policy_json: |
+      {
+          "Version": "2012-10-17",
+          "Statement": [
+              {
+                  "Sid": "Stmt1424870324000",
+                  "Effect": "Allow",
+                  "Action": [
+                      "ec2:DescribeInstances",
+                      "ec2:DescribeInstanceAttribute",
+                      "ec2:DescribeTags"
+                  ],
+                  "Resource": "*"
+              },
+              {
+                  "Sid": "Stmt1424870324001",
+                  "Effect": "Allow",
+                  "Action": [
+                      "ec2:ModifyInstanceAttribute",
+                      "ec2:StartInstances",
+                      "ec2:StopInstances"
+                  ],
+                  "Resource": [
+                      "arn:aws:ec2:{{ sap_vm_provision_aws_region }}:{{ __sap_vm_provision_task_aws_account_info.account }}:instance/{{ hostvars[groups['anydb_primary'][0]].ansible_host }}",
+                      "arn:aws:ec2:{{ sap_vm_provision_aws_region }}:{{ __sap_vm_provision_task_aws_account_info.account }}:instance/{{ hostvars[groups['anydb_secondary'][0]].ansible_host }}"
+                  ]
+              }
+          ]
+      }
+    access_key: "{{ sap_vm_provision_aws_access_key }}"
+    secret_key: "{{ sap_vm_provision_aws_secret_access_key }}"
+  when: groups["anydb_secondary"] is defined and (groups["anydb_secondary"]|length>0)
+
 # AWS HA for SAP - STONITH of SAP NWAS
 - name: AWS IAM Policy - HA-Policy-STONITH-SAPNWAS
   register: __sap_vm_provision_task_aws_iam_policy_stonith_sapnwas
@@ -456,6 +498,21 @@
   loop_control:
     loop_var: host_node
   when: groups["hana_secondary"] is defined and (groups["hana_secondary"]|length>0)
+  ignore_errors: true
+
+# Equivalent to aws ec2 associate-iam-instance-profile --iam-instance-profile "Name=HA-Instance-Profile-Pacemaker-Cluster" --instance-id {{ hostvars[host_node].ansible_board_asset_tag }}
+- name: AWS EC2 Instances - associate AWS IAM Instance Profile for SAP ANYDB
+  register: __sap_vm_provision_task_aws_iam_associate_instance_sapanydb
+  no_log: "{{ __sap_vm_provision_no_log }}"
+  amazon.aws.ec2_instance:
+    instance_ids: "{{ hostvars[host_node].ansible_board_asset_tag }}"
+    iam_instance_profile: "HA-Instance-Profile-Pacemaker-Cluster"
+    access_key: "{{ sap_vm_provision_aws_access_key }}"
+    secret_key: "{{ sap_vm_provision_aws_secret_access_key }}"
+  loop: "{{ [ [ groups['anydb_primary'] | default([]) ] , [ groups['anydb_secondary'] | default([]) ] ] | flatten | select() }}"
+  loop_control:
+    loop_var: host_node
+  when: groups["anydb_secondary"] is defined and (groups["anydb_secondary"]|length>0)
   ignore_errors: true
 
 # Equivalent to aws ec2 associate-iam-instance-profile --iam-instance-profile "Name=HA-Instance-Profile-Pacemaker-Cluster" --instance-id {{ hostvars[host_node].ansible_board_asset_tag }}
