@@ -116,12 +116,12 @@ variable "sap_vm_provision_aws_ec2_vs_host_os_image" {
   description = "Host OS Image. This variable uses the locals mapping with regex of OS Images, and will alter host provisioning."
 }
 
-variable "sap_software_download_directory" {
+variable "sap_install_media_detect_source_directory" {
   description = "Mount point for downloads of SAP Software"
 
   validation {
     error_message = "Directory must start with forward slash."
-    condition = can(regex("^/", var.sap_software_download_directory))
+    condition = can(regex("^/", var.sap_install_media_detect_source_directory))
   }
 
 }
