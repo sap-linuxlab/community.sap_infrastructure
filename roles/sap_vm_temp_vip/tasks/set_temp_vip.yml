@@ -8,13 +8,14 @@
 # for IBM Power IaaS VLAN on IBM Cloud, must be within the VLAN Subnet CIDR Range
 # for IBM PowerVM, must be within the VLAN Subnet CIDR Range
 
-
+## Set Virtual IP's Netmask / CIDR Prefix
 # Use of Primary IP Address default netmask prefix and/or the broadcast is automatic for Linux Pacemaker
-# For AWS, this would be the VPC Subnet Netmask CIDR e.g. /24
+# For AWS, this would be static Netmask CIDR /32 (see AWS 'Overlay IP' documentation)
+# For GCP, this would be static Netmask CIDR /32, unless using custom OS Image - https://cloud.google.com/vpc/docs/create-use-multiple-interfaces#i_am_having_connectivity_issues_when_using_a_netmask_that_is_not_32
 # For MS Azure, this would be the VNet Subnet Netmask CIDR e.g. /24
-# For GCP, this would be static Netmask CIDR /32 unless using custom OS Image - https://cloud.google.com/vpc/docs/create-use-multiple-interfaces#i_am_having_connectivity_issues_when_using_a_netmask_that_is_not_32
 
-- name: Set fact for Broadcast Address and Prefix of the Primary IP
+
+- name: Set fact for Broadcast Address and Prefix of the Primary IP - Generic
   ansible.builtin.set_fact:
     primary_ip_address: "{{ ansible_default_ipv4.address | default('') }}"
     primary_ip_address_netmask: "{{ ansible_default_ipv4.netmask | default('') }}"
@@ -41,7 +42,9 @@
         primary_ip_broadcast_address = "{{ ansible_default_ipv4.broadcast | default('') }}"
 
       Command to be executed:
-      {% if primary_ip_broadcast_address == "" and primary_ip_address_netmask_cidr_prefix == "" %}
+      {% if (('amazon' in (ansible_system_vendor | lower) or 'amazon' in (ansible_product_name | lower)) or (ansible_product_name == 'Google Compute Engine')) %}
+        ip address add VIRTUAL_IP_ADDRESS/32 brd {{ primary_ip_broadcast_address }} dev eth0
+      {% elif primary_ip_broadcast_address == "" and primary_ip_address_netmask_cidr_prefix == "" %}
         ip address add VIRTUAL_IP_ADDRESS/32 brd + dev eth0
       {% elif (primary_ip_broadcast_address != "" and primary_ip_address_netmask_cidr_prefix == "") and primary_ip_address_netmask != "" %}
         ip address add VIRTUAL_IP_ADDRESS/NETMASK_PREFIX brd {{ primary_ip_broadcast_address }} dev eth0
@@ -64,7 +67,11 @@
 # Not required before SAP HANA installation or Linux Pacemaker installation, performed so the VIP connectivity can be tested
 - name: Append temporary Virtual IP (VIP) to network interface for SAP HANA, will be replaced by Linux Pacemaker IPaddr2 Resource Agent
   ansible.builtin.shell: |
-    if [ "{{ primary_ip_broadcast_address }}" = "" ] && [ "{{ primary_ip_address_netmask_cidr_prefix }}" = "" ]
+    platform_cidr_32_static="{{ 'true' if (('amazon' in (ansible_system_vendor | lower) or 'amazon' in (ansible_product_name | lower)) or (ansible_product_name == 'Google Compute Engine')) }}"
+    if [ $platform_cidr_32_static = "true" ]
+    then
+      ip address add {{ sap_vm_temp_vip_hana_primary | regex_replace('/.*', '') }}/32 brd {{ primary_ip_broadcast_address }} dev eth0
+    elif [ "{{ primary_ip_broadcast_address }}" = "" ] && [ "{{ primary_ip_address_netmask_cidr_prefix }}" = "" ]
     then
       ip address add {{ sap_vm_temp_vip_hana_primary | regex_replace('/.*', '') }}/32 brd + dev eth0
     elif [ "{{ primary_ip_broadcast_address }}" != "" ] && [ "{{ primary_ip_address_netmask_cidr_prefix }}" = "" ] && [ "{{ primary_ip_address_netmask }}" != "" ]
@@ -97,7 +104,11 @@
 # Not required before SAP HANA installation or Linux Pacemaker installation, performed so the VIP connectivity can be tested
 - name: Append temporary Virtual IP (VIP) to network interface for SAP AnyDB, will be replaced by Linux Pacemaker IPaddr2 Resource Agent
   ansible.builtin.shell: |
-    if [ "{{ primary_ip_broadcast_address }}" = "" ] && [ "{{ primary_ip_address_netmask_cidr_prefix }}" = "" ]
+    platform_cidr_32_static="{{ 'true' if (('amazon' in (ansible_system_vendor | lower) or 'amazon' in (ansible_product_name | lower)) or (ansible_product_name == 'Google Compute Engine')) }}"
+    if [ $platform_cidr_32_static = "true" ]
+    then
+      ip address add {{ sap_vm_temp_vip_anydb_primary | regex_replace('/.*', '') }}/32 brd {{ primary_ip_broadcast_address }} dev eth0
+    elif [ "{{ primary_ip_broadcast_address }}" = "" ] && [ "{{ primary_ip_address_netmask_cidr_prefix }}" = "" ]
     then
       ip address add {{ sap_vm_temp_vip_anydb_primary | regex_replace('/.*', '') }}/32 brd + dev eth0
     elif [ "{{ primary_ip_broadcast_address }}" != "" ] && [ "{{ primary_ip_address_netmask_cidr_prefix }}" = "" ] && [ "{{ primary_ip_address_netmask }}" != "" ]
@@ -135,7 +146,11 @@
 # And if the Virtual Hostname / Virtual IP cannot resolve, it will likely prevent SAP SWPM from completing the installation
 - name: Append temporary Virtual IP (VIP) to network interface for SAP NetWeaver ASCS, will be replaced by Linux Pacemaker IPaddr2 Resource Agent
   ansible.builtin.shell: |
-    if [ "{{ primary_ip_broadcast_address }}" = "" ] && [ "{{ primary_ip_address_netmask_cidr_prefix }}" = "" ]
+    platform_cidr_32_static="{{ 'true' if (('amazon' in (ansible_system_vendor | lower) or 'amazon' in (ansible_product_name | lower)) or (ansible_product_name == 'Google Compute Engine')) }}"
+    if [ $platform_cidr_32_static = "true" ]
+    then
+      ip address add {{ sap_vm_temp_vip_nwas_abap_ascs | regex_replace('/.*', '') }}/32 brd {{ primary_ip_broadcast_address }} dev eth0
+    elif [ "{{ primary_ip_broadcast_address }}" = "" ] && [ "{{ primary_ip_address_netmask_cidr_prefix }}" = "" ]
     then
       ip address add {{ sap_vm_temp_vip_nwas_abap_ascs | regex_replace('/.*', '') }}/32 brd + dev eth0
     elif [ "{{ primary_ip_broadcast_address }}" != "" ] && [ "{{ primary_ip_address_netmask_cidr_prefix }}" = "" ] && [ "{{ primary_ip_address_netmask }}" != "" ]
@@ -170,7 +185,11 @@
 # And if the Virtual Hostname / Virtual IP cannot resolve, it will likely prevent SAP SWPM from completing the installation
 - name: Append temporary Virtual IP (VIP) to network interface for SAP NetWeaver ERS, will be replaced by Linux Pacemaker IPaddr2 Resource Agent
   ansible.builtin.shell: |
-    if [ "{{ primary_ip_broadcast_address }}" = "" ] && [ "{{ primary_ip_address_netmask_cidr_prefix }}" = "" ]
+    platform_cidr_32_static="{{ 'true' if (('amazon' in (ansible_system_vendor | lower) or 'amazon' in (ansible_product_name | lower)) or (ansible_product_name == 'Google Compute Engine')) }}"
+    if [ $platform_cidr_32_static = "true" ]
+    then
+      ip address add {{ sap_vm_temp_vip_nwas_abap_ers | regex_replace('/.*', '') }}/32 brd {{ primary_ip_broadcast_address }} dev eth0
+    elif [ "{{ primary_ip_broadcast_address }}" = "" ] && [ "{{ primary_ip_address_netmask_cidr_prefix }}" = "" ]
     then
       ip address add {{ sap_vm_temp_vip_nwas_abap_ers | regex_replace('/.*', '') }}/32 brd + dev eth0
     elif [ "{{ primary_ip_broadcast_address }}" != "" ] && [ "{{ primary_ip_address_netmask_cidr_prefix }}" = "" ] && [ "{{ primary_ip_address_netmask }}" != "" ]
