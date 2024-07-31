@@ -254,12 +254,20 @@
 #     - groups["nwas_ers"] is defined and (groups["nwas_ers"]|length>0)
 
 
+# Setup custom IAM Role name using sap_vm_provision_aws_ha_iam_role
 - name: AWS IAM Role - Prepare IAM Role name
   ansible.builtin.set_fact:
     __sap_vm_provision_aws_ha_iam_role:
       "{{ sap_vm_provision_aws_ha_iam_role
        if sap_vm_provision_aws_ha_iam_role is defined and sap_vm_provision_aws_ha_iam_role | length > 0
        else 'HA-Role-Pacemaker' }}"
+
+# Following IAM Roles, Policies and Instance Profiles are created based on:
+# https://documentation.suse.com/sbp/sap-15/html/SLES4SAP-hana-sr-guide-perfopt-15-aws/index.html#id-aws-roles-and-policies
+# https://docs.aws.amazon.com/sap/latest/sap-netweaver/sles-netweaver-ha-settings.html#stonith
+# https://access.redhat.com/articles/4175371#create-policies
+# https://docs.aws.amazon.com/sap/latest/sap-netweaver/rhel-netweaver-ha-settings.html#stonith
+# https://docs.aws.amazon.com/sap/latest/sap-hana/sap-hana-on-aws-cluster-configuration-prerequisites.html#sap-hana-on-aws-create-the-stonith-policy
 
 - name: AWS IAM Role - {{ __sap_vm_provision_aws_ha_iam_role }}
   register: __sap_vm_provision_task_aws_iam_role_ha_pacemaker
