@@ -31,7 +31,7 @@
         line: "{{ item }}"
         state: present
       loop:
-        - "# SAP HANA scale-out workers\n{% for host in (groups['hana_primary'] | reject('search', '0') | list) %}{% if (host != inventory_hostname_short) %}{{ hostvars[host]['ansible_host'] }}\t{{ hostvars[host]['ansible_fqdn'] }}\t{{ hostvars[host]['inventory_hostname_short'] }}\n{% endif %}{% endfor %}"
+        - "# SAP HANA scale-out workers\n{% for host in (groups['hana_primary'] | reject('regex', '0$') | list) %}{% if (host != inventory_hostname_short) %}{{ hostvars[host]['ansible_host'] }}\t{{ hostvars[host]['ansible_fqdn'] }}\t{{ hostvars[host]['inventory_hostname_short'] }}\n{% endif %}{% endfor %}"
       loop_control:
         label: "{{ inventory_hostname_short }}"
       when:
@@ -43,7 +43,7 @@
         line: "{{ item }}"
         state: present
       loop:
-        - "# SAP HANA scale-out workers\n{% for host in (groups['hana_primary'] | reject('search', '0') | list)[:-1] %}{% if (host != inventory_hostname_short) %}{{ hostvars[host]['ansible_host'] }}\t{{ hostvars[host]['ansible_fqdn'] }}\t{{ hostvars[host]['inventory_hostname_short'] }}\n{% endif %}{% endfor %}"
+        - "# SAP HANA scale-out workers\n{% for host in (groups['hana_primary'] | reject('regex', '0$') | list)[:-1] %}{% if (host != inventory_hostname_short) %}{{ hostvars[host]['ansible_host'] }}\t{{ hostvars[host]['ansible_fqdn'] }}\t{{ hostvars[host]['inventory_hostname_short'] }}\n{% endif %}{% endfor %}"
       loop_control:
         label: "{{ inventory_hostname_short }}"
       when: sap_vm_provision_calculate_sap_hana_scaleout_standby > 0

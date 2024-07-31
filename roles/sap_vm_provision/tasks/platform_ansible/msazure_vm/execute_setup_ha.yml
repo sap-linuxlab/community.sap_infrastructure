@@ -272,11 +272,18 @@
 #     - groups["nwas_ers"] is defined and (groups["nwas_ers"]|length>0)
 
 
+- name: MS Azure IAM Role - Prepare IAM Role name
+  ansible.builtin.set_fact:
+    __sap_vm_provision_msazure_ha_iam_role:
+      "{{ sap_vm_provision_msazure_ha_iam_role
+       if sap_vm_provision_msazure_ha_iam_role is defined and sap_vm_provision_msazure_ha_iam_role | length > 0
+       else 'Linux Fence Agent Role' }}"
+
 - name: MS Azure IAM Role - Definition
   no_log: "{{ __sap_vm_provision_no_log }}"
   register: __sap_vm_provision_task_msazure_iam_role_fencing
   azure.azcollection.azure_rm_roledefinition:
-    name: "Linux Fence Agent Role"
+    name: "{{ __sap_vm_provision_msazure_ha_iam_role }}"
     description: "Allows to power-off and start virtual machines"
     #scope: /subscriptions/xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx/resourceGroups/myresourceGroup
     assignable_scopes:
@@ -308,7 +315,7 @@
   no_log: "{{ __sap_vm_provision_no_log }}"
   register: __sap_vm_provision_task_msazure_iam_role_fencing_sub
   azure.azcollection.azure_rm_roledefinition:
-    name: "Linux Fence Agent Role {{ sap_vm_provision_msazure_subscription_id.split('-')[-1] }}"
+    name: "{{ __sap_vm_provision_msazure_ha_iam_role }} {{ sap_vm_provision_msazure_subscription_id.split('-')[-1] }}"
     description: "Allows to power-off and start virtual machines {{ sap_vm_provision_msazure_subscription_id.split('-')[-1] }}"
     assignable_scopes:
       - "/subscriptions/{{ sap_vm_provision_msazure_subscription_id }}"
