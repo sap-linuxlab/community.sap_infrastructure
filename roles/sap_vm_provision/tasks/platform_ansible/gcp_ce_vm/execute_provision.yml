@@ -56,6 +56,7 @@
     zone: "{{ sap_vm_provision_gcp_region_zone }}"
     name: "{{ inventory_hostname + '-vol-' + vol_item.name | replace('_', '-')}}"
     size_gb: "{{ vol_item.size }}"
+    type: "{{ vol_item.type }}"
     provisioned_iops: "{{ vol_item.iops | default(omit) }}"
     auth_kind: "serviceaccount"
     service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
