@@ -145,6 +145,9 @@ sap_vm_provision_aws_placement_strategy_spread: false
 # Example for HANA HA: "HA-Role-Pacemaker-{{ sap_system_hana_db_sid }}"
 sap_vm_provision_aws_ha_iam_role: "HA-Role-Pacemaker"
 sap_vm_provision_aws_ha_iam_instance_profile: "HA-Instance-Profile-Pacemaker-Cluster"
+# Enable to overwrite existing DNS record.
+# AWS Route53 module fails when DNS record already exists.
+sap_vm_provision_aws_dns_overwrite: false
 
 # Google Cloud
 sap_vm_provision_gcp_credentials_json: ""

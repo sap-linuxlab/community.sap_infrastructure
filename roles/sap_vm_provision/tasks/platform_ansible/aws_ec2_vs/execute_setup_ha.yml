@@ -51,6 +51,7 @@
     wait: true
     access_key: "{{ sap_vm_provision_aws_access_key }}"
     secret_key: "{{ sap_vm_provision_aws_secret_access_key }}"
+    overwrite: "{{ sap_vm_provision_aws_dns_overwrite if sap_vm_provision_aws_dns_overwrite | bool else false }}"
   loop: "{{ (groups['hana_primary'] | default([])) }}"
   loop_control:
     loop_var: host_node
@@ -92,6 +93,7 @@
     wait: true
     access_key: "{{ sap_vm_provision_aws_access_key }}"
     secret_key: "{{ sap_vm_provision_aws_secret_access_key }}"
+    overwrite: "{{ sap_vm_provision_aws_dns_overwrite if sap_vm_provision_aws_dns_overwrite | bool else false }}"
   loop: "{{ (groups['anydb_primary'] | default([])) }}"
   loop_control:
     loop_var: host_node
@@ -133,6 +135,7 @@
     wait: true
     access_key: "{{ sap_vm_provision_aws_access_key }}"
     secret_key: "{{ sap_vm_provision_aws_secret_access_key }}"
+    overwrite: "{{ sap_vm_provision_aws_dns_overwrite if sap_vm_provision_aws_dns_overwrite | bool else false }}"
   loop: "{{ (groups['nwas_ascs'] | default([])) }}"
   loop_control:
     loop_var: host_node
@@ -174,6 +177,7 @@
     wait: true
     access_key: "{{ sap_vm_provision_aws_access_key }}"
     secret_key: "{{ sap_vm_provision_aws_secret_access_key }}"
+    overwrite: "{{ sap_vm_provision_aws_dns_overwrite if sap_vm_provision_aws_dns_overwrite | bool else false }}"
   loop: "{{ (groups['nwas_ers'] | default([])) }}"
   loop_control:
     loop_var: host_node
