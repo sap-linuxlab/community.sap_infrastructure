@@ -2,17 +2,60 @@
 
 # vars file for redhat_ocp_virt
 
+###########################################################
+# Red Hat OpenShift cluster connection details
+###########################################################
+
+# Admin username for Red Hat OpenShift cluster connection
+sap_hypervisor_node_preconfigure_ocp_admin_username:
+
+# Admin password for Red Hat OpenShift cluster connection
+sap_hypervisor_node_preconfigure_ocp_admin_password:
+
+# Path to kubeconfig file Red Hat OpenShift cluster connection
+sap_hypervisor_node_preconfigure_ocp_kubeconfig_path:
+
+# If this is set to true, the API endpoint and the
+# CA Certificate are extracted from the kubeconfig file.
+# If set to false, sap_hypervisor_node_preconfigure_ocp_endpoint and
+# sap_hypervisor_node_preconfigure_ocp_ca_cert have to be specified.
+sap_hypervisor_node_preconfigure_ocp_extract_kubeconfig: true
+
+# URL to the API endpoint of Red Hat OpenShift cluster
+#sap_hypervisor_node_preconfigure_ocp_endpoint:
+
+# CA Certificate for Red Hat OpenShift cluster connection
+# To extract the CA Cert from the kubeconfig, you can use
+# grep certificate-authority-data ${KUBECONFIG} | awk '{ print $2 }' | base64 --decode > client-cert.pem
+#sap_hypervisor_node_preconfigure_ocp_ca_cert:
+
+
+###########################################################
+# Configuration of what should be preconfigured
+###########################################################
+
 # Install and configure the host path provisioner (hpp) for a local storage disk
 sap_hypervisor_node_preconfigure_install_hpp: false
 
 # Install the trident NFS storage provider
 sap_hypervisor_node_preconfigure_install_trident: false
 
-# URL of the trident installer package to use
-sap_hypervisor_node_preconfigure_install_trident_url: https://github.com/NetApp/trident/releases/download/v23.10.0/trident-installer-23.10.0.tar.gz
+# Should the operators be installed
+sap_hypervisor_node_preconfigure_install_operators: true
 
-# should SRIOV be enabled for unsupported NICs
-sap_hypervisor_node_preconfigure_sriov_enable_unsupported_nics: true
+# Configure the workers?
+sap_hypervisor_node_preconfigure_setup_worker_nodes: true
+
+
+###########################################################
+# Configuration details
+###########################################################
+
+# URL of the trident installer package to use
+sap_hypervisor_node_preconfigure_install_trident_url: https://github.com/NetApp/trident/releases/download/v24.06.0/trident-installer-24.06.0.tar.gz
+
+# Allow unsupported NICs to be used for SR-IOV?
+sap_hypervisor_node_preconfigure_sriov_enable_unsupported_nics: false
 
 # Amount of memory [GiB] to be reserved for the hypervisor on hosts >= 512GiB
 sap_hypervisor_node_preconfigure_hypervisor_reserved_ram_host_ge_512: 64 # GiB
@@ -23,8 +66,146 @@ sap_hypervisor_node_preconfigure_hypervisor_reserved_ram_host_lt_512: 32 # GiB
 # Should the check for the minimal amount of be ignored? Minimal amount is 96 GiB
 sap_hypervisor_node_preconfigure_ignore_minimal_memory_check: false
 
-# Should the operators be installed
-sap_hypervisor_node_preconfigure_install_operators: true
+# Namespace to be used for the Red Hat Openshift Virtualization Operator
+sap_hypervisor_node_preconfigure_ocpv_namespace: openshift-cnv
 
-# Configure the workers?
-sap_hypervisor_node_preconfigure_setup_worker_nodes: true
+
+###########################################################
+# Red Hat OpenShift cluster configuration details
+###########################################################
+
+# Example configuration for redhat_ocp_virt
+sap_hypervisor_node_preconfigure_cluster_config:
+
+  # namespace under which the VMs are created, note this has to be
+  # openshift-sriov-network-operator in case of using SR-IOV network
+  # devices
+  vm_namespace: sap
+
+  # Optional, configuration for trident driver for Netapp NFS filer
+  trident:
+    management: management.domain.org
+    data: datalif.netapp.domain.org
+    svm: sap_svm
+    backend: nas_backend
+    aggregate: aggregate_Name
+    username: admin
+    password: xxxxx
+    storage_driver: ontap-nas
+    storage_prefix: ocpv_sap_
+
+  # CPU cores which will be reserved for kubernetes
+  worker_kubernetes_reserved_cpus: "0,1"
+
+  # Storage device used for host path provisioner as local storage.
+  worker_localstorage_device: /dev/vdb
+
+  # detailed configuration for every worker that should be configured
+  workers:
+
+    - name: worker-0                   # name must match the node name
+      networks:                        # Example network config
+
+        - name: sapbridge              # using a bridge
+          description: SAP bridge
+          state: up
+          type: linux-bridge
+          ipv4:
+            enabled: false
+            auto-gateway: false
+            auto-dns: false
+          bridge:
+            options:
+              stp:
+                enabled: false
+            port:
+              - name: ens1f0           # network IF name
+
+        - name: storage                # an SR-IOV device
+          interface: ens2f0            # network IF name
+          type: sriov
+
+        - name: ens2f0                 # Set elevated MTU of 9000
+          type: ethernet               # on parent interface of
+          state: up                    # storagebridge
+          ipv4:
+            dhcp: false
+            enabled: false
+          mtu: 9000
+
+        - name: storagebridge          # using a bridge
+          bridge:                      # another bridge
+            options:
+              stp:
+                enabled: false
+            port:
+              - name: ens2f0           # network IF name
+          description: storage
+          mtu: 9000
+          ipv4:
+            address:
+              - ip: 192.168.1.10       # IP config
+                prefix-length: 24
+            auto-dns: false
+            auto-gateway: false
+          enabled: true
+          state: up
+          type: linux-bridge
+
+        - name: multi                  # another SR-IOV device
+          interface: ens2f1            # network IF name
+          type: sriov
+
+
+    - name: worker-1                   # second worker configuration
+      networks:                        # Example network config
+
+        - name: sapbridge              # using a bridge
+          description: SAP bridge
+          state: up
+          type: linux-bridge
+          ipv4:
+            enabled: false
+            auto-gateway: false
+            auto-dns: false
+          bridge:
+            options:
+              stp:
+                enabled: false
+            port:
+              - name: ens1f0           # network IF name
+
+        - name: storage                # an SR-IOV device
+          interface: ens2f0            # network IF name
+          type: sriov
+
+        - name: ens2f0                 # Set elevated MTU of 9000
+          type: ethernet               # on parent interface of
+          state: up                    # storagebridge
+          ipv4:
+            dhcp: false
+            enabled: false
+          mtu: 9000
+
+        - name: storagebridge          # create storage bridge
+          bridge:
+            options:
+              stp:
+                enabled: false
+            port:
+              - name: ens2f0           # network IF name
+          description: storage
+          mtu: 9000
+          ipv4:
+            address:
+              - ip: 192.168.1.11       # IP config
+                prefix-length: 24
+            auto-dns: false
+            auto-gateway: false
+          enabled: true
+          state: up
+          type: linux-bridge
+
+        - name: multi                  # another SR-IOV device
+          interface: ens2f1            # network IF name
+          type: sriov

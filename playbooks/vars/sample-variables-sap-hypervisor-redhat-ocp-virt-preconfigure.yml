@@ -1,40 +1,84 @@
 ---
 
+# vars file for redhat_ocp_virt
+
+###########################################################
+# Red Hat OpenShift cluster connection details
+###########################################################
+
+# Admin username for Red Hat OpenShift cluster connection
+sap_hypervisor_node_preconfigure_ocp_admin_username:
+
+# Admin password for Red Hat OpenShift cluster connection
+sap_hypervisor_node_preconfigure_ocp_admin_password:
+
+# Path to kubeconfig file Red Hat OpenShift cluster connection
+sap_hypervisor_node_preconfigure_ocp_kubeconfig_path:
+
+# If this is set to true, the API endpoint and the
+# CA Certificate are extracted from the kubeconfig file.
+# If set to false, sap_hypervisor_node_preconfigure_ocp_endpoint and
+# sap_hypervisor_node_preconfigure_ocp_ca_cert have to be specified.
+sap_hypervisor_node_preconfigure_ocp_extract_kubeconfig: true
+
+# URL to the API endpoint of Red Hat OpenShift cluster
+#sap_hypervisor_node_preconfigure_ocp_endpoint:
+
+# CA Certificate for Red Hat OpenShift cluster connection
+# To extract the CA Cert from the kubeconfig, you can use
+# grep certificate-authority-data ${KUBECONFIG} | awk '{ print $2 }' | base64 --decode > client-cert.pem
+#sap_hypervisor_node_preconfigure_ocp_ca_cert:
+
+
+###########################################################
+# Configuration of what should be preconfigured
+###########################################################
+
+# Install and configure the host path provisioner (hpp) for a local storage disk
+sap_hypervisor_node_preconfigure_install_hpp: false
+
+# Install the trident NFS storage provider
+sap_hypervisor_node_preconfigure_install_trident: false
+
+# Should the operators be installed
 sap_hypervisor_node_preconfigure_install_operators: true
+
+# Configure the workers?
 sap_hypervisor_node_preconfigure_setup_worker_nodes: true
 
-# Install the trident NFS storage provider. If yes, expects configuration details under
-# sap_hypervisor_node_preconfigure_cluster_config.trident, see example config.
-sap_hypervisor_node_preconfigure_install_trident: false # true, false
+
+###########################################################
+# Configuration details
+###########################################################
+
 # URL of the trident installer package to use
-sap_hypervisor_node_preconfigure_install_trident_url: https://github.com/NetApp/trident/releases/download/v23.01.0/trident-installer-23.01.0.tar.gz
+sap_hypervisor_node_preconfigure_install_trident_url: https://github.com/NetApp/trident/releases/download/v24.06.0/trident-installer-24.06.0.tar.gz
 
-# should SRIOV be enabled for unsupported NICs
-sap_hypervisor_node_preconfigure_sriov_enable_unsupported_nics: true # true, false
+# Allow unsupported NICs to be used for SR-IOV?
+sap_hypervisor_node_preconfigure_sriov_enable_unsupported_nics: false
 
-# Amount of memory [GB] to be reserved for the hypervisor on hosts >= 512GB
-sap_hypervisor_node_preconfigure_hypervisor_reserved_ram_host_ge_512: 64 #GB
-# Amount of memory [GB] to be reserved for the hypervisor on hosts < 512GB
-sap_hypervisor_node_preconfigure_hypervisor_reserved_ram_host_lt_512: 32 #GB
+# Amount of memory [GiB] to be reserved for the hypervisor on hosts >= 512GiB
+sap_hypervisor_node_preconfigure_hypervisor_reserved_ram_host_ge_512: 64 # GiB
 
-# Should the check for the minimal amount of memory be ignored? Minimal amount is 96 GB
-# If ignored, the amount of $hostmemory - $reserved is allocated with a lower bound of 0 in case $reserved > $hostmemory
-sap_hypervisor_node_preconfigure_ignore_minimal_memory_check: true # true, false
+# Amount of memory [GiB] to be reserved for the hypervisor on hosts < 512GiB
+sap_hypervisor_node_preconfigure_hypervisor_reserved_ram_host_lt_512: 32 # GiB
 
-# Define if the host path provisioner should be installed in order to use a local disk as storage device.
-# Uses the following variable to be set to the storage device to be used, e.g.:
-# sap_hypervisor_node_preconfigure_cluster_config.worker_localstorage_device: /dev/sdb
-sap_hypervisor_node_preconfigure_install_hpp: true # true, false
+# Should the check for the minimal amount of be ignored? Minimal amount is 96 GiB
+sap_hypervisor_node_preconfigure_ignore_minimal_memory_check: false
 
+# Namespace to be used for the Red Hat Openshift Virtualization Operator
+sap_hypervisor_node_preconfigure_ocpv_namespace: openshift-cnv
+
+
+###########################################################
+# Red Hat OpenShift cluster configuration details
+###########################################################
 
 # Example configuration for redhat_ocp_virt
 sap_hypervisor_node_preconfigure_cluster_config:
 
-  # URL under which the OCP cluster is reachable
-  cluster_url: ocpcluster.domain.org
-
   # namespace under which the VMs are created, note this has to be
-  # openshift-sriov-network-operator in case of using SRIOV network
+  # openshift-sriov-network-operator in case of using SR-IOV network
   # devices
   vm_namespace: sap
 
@@ -77,9 +121,17 @@ sap_hypervisor_node_preconfigure_cluster_config:
             port:
               - name: ens1f0           # network IF name
 
-        - name: storage                # an SRIOV device
+        - name: storage                # an SR-IOV device
           interface: ens2f0            # network IF name
           type: sriov
+
+        - name: ens2f0                 # Set elevated MTU of 9000
+          type: ethernet               # on parent interface of
+          state: up                    # storagebridge
+          ipv4:
+            dhcp: false
+            enabled: false
+          mtu: 9000
 
         - name: storagebridge          # using a bridge
           bridge:                      # another bridge
@@ -92,7 +144,7 @@ sap_hypervisor_node_preconfigure_cluster_config:
           mtu: 9000
           ipv4:
             address:
-              - ip: 192.168.1.51       # IP config
+              - ip: 192.168.1.10       # IP config
                 prefix-length: 24
             auto-dns: false
             auto-gateway: false
@@ -100,9 +152,10 @@ sap_hypervisor_node_preconfigure_cluster_config:
           state: up
           type: linux-bridge
 
-        - name: multi                  # another SRIOV device
+        - name: multi                  # another SR-IOV device
           interface: ens2f1            # network IF name
           type: sriov
+
 
     - name: worker-1                   # second worker configuration
       networks:                        # Example network config
@@ -122,6 +175,37 @@ sap_hypervisor_node_preconfigure_cluster_config:
             port:
               - name: ens1f0           # network IF name
 
-        - name: storage                # an SRIOV device
+        - name: storage                # an SR-IOV device
           interface: ens2f0            # network IF name
+          type: sriov
+
+        - name: ens2f0                 # Set elevated MTU of 9000
+          type: ethernet               # on parent interface of
+          state: up                    # storagebridge
+          ipv4:
+            dhcp: false
+            enabled: false
+          mtu: 9000
+
+        - name: storagebridge          # create storage bridge
+          bridge:
+            options:
+              stp:
+                enabled: false
+            port:
+              - name: ens2f0           # network IF name
+          description: storage
+          mtu: 9000
+          ipv4:
+            address:
+              - ip: 192.168.1.11       # IP config
+                prefix-length: 24
+            auto-dns: false
+            auto-gateway: false
+          enabled: true
+          state: up
+          type: linux-bridge
+
+        - name: multi                  # another SR-IOV device
+          interface: ens2f1            # network IF name
           type: sriov

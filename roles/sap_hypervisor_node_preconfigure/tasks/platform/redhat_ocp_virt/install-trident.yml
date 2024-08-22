@@ -3,30 +3,28 @@
   ansible.builtin.unarchive:
     remote_src: true
     src: "{{ sap_hypervisor_node_preconfigure_install_trident_url }}"
-    dest: "{{ __sap_hypervisor_node_preconfigure_register_tmpdir.path }}/"
+    dest: "{{ __sap_hypervisor_node_preconfigure_register_tmpdir_role.path }}/"
 
 - name: Uninstall trident
-  ansible.builtin.command: "{{ __sap_hypervisor_node_preconfigure_register_tmpdir.path }}/trident-installer/tridentctl uninstall -n trident"
+  ansible.builtin.command: "{{ __sap_hypervisor_node_preconfigure_register_tmpdir_role.path }}/trident-installer/tridentctl uninstall -n trident"
   ignore_errors: true
   register: __sap_hypervisor_node_preconfigure_register_uninstall_trident
   changed_when: __sap_hypervisor_node_preconfigure_register_uninstall_trident.rc != 0
 
 - name: Install trident
-  ansible.builtin.command: "{{ __sap_hypervisor_node_preconfigure_register_tmpdir.path }}/trident-installer/tridentctl install -n trident"
+  ansible.builtin.command: "{{ __sap_hypervisor_node_preconfigure_register_tmpdir_role.path }}/trident-installer/tridentctl install -n trident"
   register: __sap_hypervisor_node_preconfigure_register_install_trident
   changed_when: __sap_hypervisor_node_preconfigure_register_install_trident.rc != 0
 
 - name: Copy backend file
   ansible.builtin.template:
     src: "trident-backend.json.j2"
-    dest: "{{ __sap_hypervisor_node_preconfigure_register_tmpdir.path }}/trident-backend.json"
+    dest: "{{ __sap_hypervisor_node_preconfigure_register_tmpdir_role.path }}/trident-backend.json"
     mode: "0644"
 
 - name: Create trident backend
-  ansible.builtin.command: "{{ __sap_hypervisor_node_preconfigure_register_tmpdir.path }}\
-                            /trident-installer/tridentctl -n trident create backend -f\
-                            {{ __sap_hypervisor_node_preconfigure_register_tmpdir.path }}\
-                            /trident-backend.json"
+  ansible.builtin.command:
+    "{{ __sap_hypervisor_node_preconfigure_register_tmpdir_role.path }}/trident-installer/tridentctl -n trident create backend -f {{ __sap_hypervisor_node_preconfigure_register_tmpdir_role.path }}/trident-backend.json"
   register: __sap_hypervisor_node_preconfigure_register_create_trident_backend
   changed_when: __sap_hypervisor_node_preconfigure_register_create_trident_backend.rc != 0
 
