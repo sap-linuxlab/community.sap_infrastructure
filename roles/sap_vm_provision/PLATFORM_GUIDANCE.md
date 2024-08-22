@@ -34,11 +34,10 @@ See below for the drop-down list of required environment resources on an Infrast
     - VPC Subnetwork
 - Compute Firewall
 - Compute Router
-    - SNAT
+    - Cloud NAT (SNAT)
 - DNS Managed Zone (Private DNS)
 - Filestore (NFS) or NFS server
 - Bastion host (GCP CE VM)
-- Cloud NAT
 
 </details>
 
@@ -242,6 +241,7 @@ compute.instances.get
 compute.instances.list
 compute.instances.setMetadata
 compute.instances.setServiceAccount
+compute.instances.update
 compute.instances.use
 compute.networks.list
 compute.regionBackendServices.create
