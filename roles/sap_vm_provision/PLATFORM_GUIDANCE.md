@@ -34,9 +34,9 @@ See below for the drop-down list of required environment resources on an Infrast
     - VPC Subnetwork
 - Compute Firewall
 - Compute Router
-    - SNAT
+    - Cloud NAT (SNAT)
 - DNS Managed Zone (Private DNS)
-- Filestore (NFS)
+- Filestore (NFS) or NFS server
 - Bastion host (GCP CE VM)
 
 </details>
@@ -212,6 +212,58 @@ The Google Cloud User credentials (Client ID and Client Secret) JSON file with a
 - Enable the Cloud Filestore API, using https://console.cloud.google.com/apis/library/file.googleapis.com
 - Enable the Service Networking API (Private Services Connection to Filestore), using https://console.cloud.google.com/apis/library/servicenetworking.googleapis.com
 
+It is recommended to create new custom IAM role with detailed actions to improve security.
+- Following permissions are minimum requirement to provision SAP HA system.
+```shell
+compute.addresses.createInternal
+compute.addresses.deleteInternal
+compute.addresses.get
+compute.addresses.useInternal
+compute.disks.create
+compute.disks.get
+compute.disks.use
+compute.forwardingRules.create
+compute.forwardingRules.get
+compute.forwardingRules.update
+compute.healthChecks.create
+compute.healthChecks.get
+compute.healthChecks.update
+compute.healthChecks.useReadOnly
+compute.images.get
+compute.images.list
+compute.instanceGroups.create
+compute.instanceGroups.get
+compute.instanceGroups.update
+compute.instanceGroups.use
+compute.instances.attachDisk
+compute.instances.create
+compute.instances.get
+compute.instances.list
+compute.instances.setMetadata
+compute.instances.setServiceAccount
+compute.instances.update
+compute.instances.use
+compute.networks.list
+compute.regionBackendServices.create
+compute.regionBackendServices.get
+compute.regionBackendServices.list
+compute.regionBackendServices.use
+compute.subnetworks.list
+compute.subnetworks.use
+compute.zoneOperations.get
+dns.changes.create
+dns.changes.get
+dns.changes.list
+dns.managedZones.create
+dns.managedZones.get
+dns.managedZones.list
+dns.managedZones.update
+dns.resourceRecordSets.create
+dns.resourceRecordSets.get
+dns.resourceRecordSets.list
+dns.resourceRecordSets.update
+```
+
 </details>
 
 <details>
@@ -338,6 +390,21 @@ The recommended [IBM PowerVC Security Role](https://www.ibm.com/docs/en/powervc/
 ## Recommended Infrastructure Platform configuration
 
 See below for the drop-down list of recommended configurations for each Infrastructure Platform.
+
+<details>
+<summary><b>Google Cloud (GCP):</b></summary>
+
+Using Cloud NAT to allow outbound communication can result in registration issues on SLES images.
+Please follow troubleshooting guide at [Troubleshooting SLES pay-as-you-go registration](https://cloud.google.com/compute/docs/troubleshooting/troubleshooting-suse-registration)
+
+These issues were detected when using SLES PAYG (Pay As You Go) images
+Issues were resolved by following [Troubleshooting SLES pay-as-you-go registration - Registration failed](https://cloud.google.com/compute/docs/troubleshooting/troubleshooting-suse-registration#registration_failed)
+```
+Cloud NAT parameter "minimum ports per VM instance" has to be increased to higher than 160 (Recommended higher).
+```
+
+
+</details>
 
 <details>
 <summary><b>VMware vCenter:</b></summary>

@@ -44,6 +44,33 @@
         auth_kind: "serviceaccount"
         service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
 
+    - name: Gather GCP Private DNS information
+      no_log: "{{ __sap_vm_provision_no_log }}"
+      register: __sap_vm_provision_task_gcp_pdns_info
+      google.cloud.gcp_dns_managed_zone_info:
+        project: "{{ sap_vm_provision_gcp_project }}"
+        dns_name: "{{ sap_vm_provision_dns_root_domain }}."
+        auth_kind: "serviceaccount"
+        service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
+
+    # There is no reason to proceed if resources were not found.
+    - name: "Check if resources were found (OS Image, VPC, VPC Subnet, DNS)"
+      # Ensure that fail message is shown in rescue block
+      register: __sap_vm_provision_task_gcp_resources_found
+      ansible.builtin.fail:
+        msg: |
+          Variable {{ item[0] }} has no resources.
+          Ensure that provided {{ item[1] }} exists.
+      loop_control:
+        label: "{{ item[1] }}"
+      loop:
+        - ["{{ __sap_vm_provision_task_gcp_os_image_info }}", "OS Image"]
+        - ["{{ __sap_vm_provision_task_gcp_vpc_info }}", "VPC"]
+        - ["{{ __sap_vm_provision_task_gcp_vpc_subnet_info }}", "VPC Subnet"]
+        - ["{{ __sap_vm_provision_task_gcp_pdns_info }}", "DNS"]
+      when: item[0].resources is not defined or item[0].resources | length == 0
+
+
     # - name: Create Placement Policies when High Availability
     #   no_log: "{{ __sap_vm_provision_no_log }}"
     #   register: __sap_vm_provision_task_gcp_availability_policy
@@ -112,25 +139,6 @@
         auth_kind: "serviceaccount"
         service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
 
-    - name: Gather GCP VPC Subnet information
-      no_log: "{{ __sap_vm_provision_no_log }}"
-      register: __sap_vm_provision_task_gcp_vpc_subnet_info
-      google.cloud.gcp_compute_subnetwork_info:
-        project: "{{ sap_vm_provision_gcp_project }}"
-        region: "{{ sap_vm_provision_gcp_region }}"
-        filters:
-          - name = {{ sap_vm_provision_gcp_vpc_subnet_name }}
-        auth_kind: "serviceaccount"
-        service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
-
-    - name: Gather GCP Private DNS information
-      no_log: "{{ __sap_vm_provision_no_log }}"
-      register: __sap_vm_provision_task_gcp_pdns_info
-      google.cloud.gcp_dns_managed_zone_info:
-        project: "{{ sap_vm_provision_gcp_project }}"
-        dns_name: "{{ sap_vm_provision_dns_root_domain }}."
-        auth_kind: "serviceaccount"
-        service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
 
     # - name: Gather information about GCP Router and table for the VPC Subnet
     #   no_log: "{{ __sap_vm_provision_no_log }}"
@@ -188,10 +196,10 @@
         - __sap_vm_provision_task_provision_host_single
         - __sap_vm_provision_task_provision_host_single_info
         - __sap_vm_provision_task_provision_host_all_add
-        - __sap_vm_provision_task_gcp_vpc_subnet_info
         - __sap_vm_provision_task_gcp_pdns_info
         - __sap_vm_provision_task_gcp_router_info
         - __sap_vm_provision_task_gcp_pdns_records
+        - __sap_vm_provision_task_gcp_resources_found
       loop_control:
         loop_var: loop_item
         index_var: loop_item_index
