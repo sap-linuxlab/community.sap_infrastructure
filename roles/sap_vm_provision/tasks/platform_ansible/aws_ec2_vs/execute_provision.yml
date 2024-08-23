@@ -189,6 +189,10 @@
     ansible_ssh_common_args: -o ConnectTimeout=180 -o ControlMaster=auto -o ControlPersist=3600s -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ForwardX11=no -o ProxyCommand='ssh -W %h:%p {{ delegate_sap_vm_provision_bastion_user }}@{{ delegate_sap_vm_provision_bastion_public_ip }} -p {{ delegate_sap_vm_provision_bastion_ssh_port }} -i {{ delegate_sap_vm_provision_ssh_bastion_private_key_file_path }} -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null'
   block:
 
+    - name: Wait until SSH connection is available
+      ansible.builtin.wait_for_connection:
+        timeout: 300
+
     - name: Fix root authorized_keys entries
       ansible.builtin.replace:
         path: /root/.ssh/authorized_keys

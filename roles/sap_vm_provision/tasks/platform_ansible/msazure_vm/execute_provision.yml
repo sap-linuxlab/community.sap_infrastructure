@@ -135,6 +135,18 @@
     delegate_sap_vm_provision_ssh_bastion_private_key_file_path: "{{ sap_vm_provision_ssh_bastion_private_key_file_path }}"
     delegate_sap_vm_provision_ssh_host_private_key_file_path: "{{ sap_vm_provision_ssh_host_private_key_file_path }}"
 
+- name: Wait for connection
+  ansible.builtin.wait_for_connection:
+    timeout: 300
+  remote_user: azureadmin
+  become: true
+  become_user: root
+  delegate_to: "{{ provisioned_private_ip }}"
+  delegate_facts: true
+  vars:
+    ansible_ssh_private_key_file: "{{ delegate_sap_vm_provision_ssh_host_private_key_file_path }}"
+    ansible_ssh_common_args: -o ConnectTimeout=180 -o ControlMaster=auto -o ControlPersist=3600s -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ForwardX11=no -o ProxyCommand='ssh -W %h:%p {{ delegate_sap_vm_provision_bastion_user }}@{{ delegate_sap_vm_provision_bastion_public_ip }} -p {{ delegate_sap_vm_provision_bastion_ssh_port }} -i {{ delegate_sap_vm_provision_ssh_bastion_private_key_file_path }} -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null'
+
 - name: Collect only facts about hardware
   register: __sap_vm_provision_task_ansible_facts_host_disks_info
   ansible.builtin.setup:
