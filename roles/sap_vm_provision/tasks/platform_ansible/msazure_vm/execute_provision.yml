@@ -135,9 +135,7 @@
     delegate_sap_vm_provision_ssh_bastion_private_key_file_path: "{{ sap_vm_provision_ssh_bastion_private_key_file_path }}"
     delegate_sap_vm_provision_ssh_host_private_key_file_path: "{{ sap_vm_provision_ssh_host_private_key_file_path }}"
 
-- name: Wait for connection
-  ansible.builtin.wait_for_connection:
-    timeout: 300
+- name: Block to collect only facts about hardware
   remote_user: azureadmin
   become: true
   become_user: root
@@ -146,23 +144,22 @@
   vars:
     ansible_ssh_private_key_file: "{{ delegate_sap_vm_provision_ssh_host_private_key_file_path }}"
     ansible_ssh_common_args: -o ConnectTimeout=180 -o ControlMaster=auto -o ControlPersist=3600s -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ForwardX11=no -o ProxyCommand='ssh -W %h:%p {{ delegate_sap_vm_provision_bastion_user }}@{{ delegate_sap_vm_provision_bastion_public_ip }} -p {{ delegate_sap_vm_provision_bastion_ssh_port }} -i {{ delegate_sap_vm_provision_ssh_bastion_private_key_file_path }} -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null'
+  block:
 
-- name: Collect only facts about hardware
-  register: __sap_vm_provision_task_ansible_facts_host_disks_info
-  ansible.builtin.setup:
-    gather_subset:
-      - hardware
-  remote_user: azureadmin
-  become: true
-  become_user: root
-  delegate_to: "{{ provisioned_private_ip }}"
-  delegate_facts: true
-  vars:
-    ansible_ssh_private_key_file: "{{ delegate_sap_vm_provision_ssh_host_private_key_file_path }}"
-    ansible_ssh_common_args: -o ConnectTimeout=180 -o ControlMaster=auto -o ControlPersist=3600s -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ForwardX11=no -o ProxyCommand='ssh -W %h:%p {{ delegate_sap_vm_provision_bastion_user }}@{{ delegate_sap_vm_provision_bastion_public_ip }} -p {{ delegate_sap_vm_provision_bastion_ssh_port }} -i {{ delegate_sap_vm_provision_ssh_bastion_private_key_file_path }} -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null'
-  # Ensure that VM has enough time to start before connecting
-  retries: 60
-  delay: 10
+    # Required as state: present on Ansible Module azure_rm_virtualmachine does waiting enough until VM has booted
+    # wait_for_connection is used instead to ensure connection is available before proceeding.
+    - name: Wait until SSH connection is available
+      ansible.builtin.wait_for_connection:
+        timeout: 300
+
+    - name: Collect only facts about hardware
+      register: __sap_vm_provision_task_ansible_facts_host_disks_info
+      ansible.builtin.setup:
+        gather_subset:
+          - hardware
+      retries: 60
+      delay: 10
+
 
 #- name: Output disks
 #  ansible.builtin.debug:
