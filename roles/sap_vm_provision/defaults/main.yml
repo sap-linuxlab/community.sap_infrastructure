@@ -10,6 +10,8 @@ sap_vm_provision_iac_type: ""
 # aws_ec2_vs , gcp_ce_vm , ibmcloud_vs , ibmcloud_powervs , msazure_vm , ibmpowervm_vm , kubevirt_vm , ovirt_vm , vmware_vm
 sap_vm_provision_iac_platform: ""
 
+# execution_host where ansible playbook will delegate_to
+sap_vm_provision_execution_host: "localhost"
 
 ####
 # VM Provision Infrastructure-as-Code (IaC) Configuration - Ansible provisioning - Cloud Hyperscaler
@@ -571,23 +573,109 @@ sap_vm_provision_ibmpowervm_vm_host_specifications_dictionary:
           disk_size: 512                 # size in GB, integer
 
 
-# KubeVirt
+#######################################################
+# kubevirt / Red Hat OpenShift Virtualization         #
+#######################################################
+
+# Namespace where the VM should be created in
+sap_vm_provision_kubevirt_vm_target_namespace: sap
+
+# Username to be created on guest
+sap_vm_provision_kubevirt_vm_os_user: cloud-user
+
+# Password for the above user
+sap_vm_provision_kubevirt_vm_os_user_password: ""
+
+# how to authenticate to the guest vm [password|private_key|private_key_data]
+# password: uses provided password in sap_vm_provision_kubevirt_vm_os_user_password, make sure your ssh config allows password authentication
+# private_key: use the private ssh key at the location defined by sap_vm_provision_ssh_host_private_key_file_path
+# private_key_data: use the private ssh key provided in sap_vm_provision_ssh_host_private_key_data and write it to the location defined in sap_vm_provision_ssh_host_private_key_file_path
+sap_vm_provision_kubevirt_vm_guest_ssh_auth_mechanism: private-key
+
+# Private SSH key file, must be accessible on the ansible controller
+# sap_vm_provision_ssh_host_private_key_file_path: <your private ssh key file>
+
+# private ssh key, make sure the indentation is correct, here it's two spaces at the beginning of every line
+# sap_vm_provision_ssh_host_private_key_data: |
+#  < your key data>
+
+# Should the CA cert and the API endpoint be extracted from the kubeconfig file?
+sap_vm_provision_kubevirt_vm_extract_kubeconfig: true
+
+# Should an existing VM be overwritten?
+sap_vm_provision_kubevirt_vm_overwrite_vm: false
+
+# Kubeconfig file for cluster where VMs should be created
+sap_vm_provision_kubevirt_vm_kubeconfig_path: /path/to/clusterconfigs/kubeconfig
+
+# In order to use secured communication, provide the CA cert bundle for the cluster.
+# This can be extracted from the kubeconfig file with the following command from the
+# kubeconfig file:
+#   grep certificate-authority-data ${KUBECONFIG} | awk '{ print $2 }' | base64 --decode > cluster-ca-cert.pem
+# This variable will not be used if sap_vm_provision_kubevirt_vm_extract_kubeconfig = true
+# sap_vm_provision_kubevirt_vm_ca_cert: /path/to/clusterconfigs/cluster-ca-cert.pem
+
+# API endpoint of the cluster
+# This variable will not be used if sap_vm_provision_kubevirt_vm_extract_kubeconfig = true
+# sap_vm_provision_kubevirt_api_vm_endpoint: https://api.cluster.domain.tld:6443
+
+# Admin username for the cluster communication
+sap_vm_provision_kubevirt_vm_admin_username: kubeadmin
+
+# Password for the above admin user
+sap_vm_provision_kubevirt_vm_admin_password: AAAAA-BBBBB-CCCCC-DDDDD
+
+# RAM Overhead [GiB] for virt-launcher container, this can be small for VMs < 1 TB and without SRIOV but should be increased to 16 or more for VMs > 1TB
+sap_vm_provision_kubevirt_vm_container_memory_overhead: 1
+
+# hostname of the ansible controller
+sap_vm_provision_kubevirt_vm_ansible_controller: localhost # on AAP, this is localhost
+
 sap_vm_provision_kubevirt_vm_host_specifications_dictionary:
   example_host_specification_plan:
     host1: # Hostname, must be 13 characters or less
       # SMT-2 (i.e. 2 CPU Threads per CPU Core) is default for Intel CPU Hyper-Threading, optionally can be altered to SMT-1
       kubevirt_vm_cpu_smt: 2
-      kubevirt_vm_cpu_threads: 32
-      kubevirt_vm_memory_gib: 256
-      #sap_system_type: project_dev # project_dev, project_tst, project_prd
+      kubevirt_vm_cpu_cores: 2
+      kubevirt_vm_memory_gib: 24
+      sap_system_type: project_dev # project_dev, project_tst, project_prd
       sap_host_type: hana_primary # hana_primary, hana_secondary, anydb_primary, anydb_secondary, nwas_ascs, nwas_ers, nwas_pas, nwas_aas
+      # Provide either an existing PVC or a URL for an OS image
+      os_image: # either url or source_pvc_name have to be provided
+        # URL for an image to be used
+        url: "docker://registry.redhat.io/rhel8/rhel-guest-image:8.8.0"
+        # Name for a PVC to be cloned
+        # source_pvc_name: "rhel-8.8"
+        namespace: openshift-virtualization-os-images
+        size: "50Gi"
+      network_definition:
+        - name: sapbridge
+          type: bridge
+          networkName: sapbridge-network-definition
+          model: virtio
       storage_definition:
-        - name: data_0
-          mountpoint: /data0
+        - name: hana
+          mountpoint: /hana
           disk_count: 1                  # default: 1
-          disk_size: 512                 # size in GB, integer
-          disk_type: nas                 # KubeVirt Storage Clas
-
+          disk_size: 2048                # size in GB, integer
+          disk_type: nas                 # KubeVirt Storage Class
+      cloudinit:
+        userData: |-
+          #cloud-config
+          timezone: Europe/Berlin
+          hostname: "{{ scaleout_origin_host_spec }}"
+          user: {{ sap_vm_provision_kubevirt_vm_os_user if sap_vm_provision_kubevirt_vm_os_user is defined }}
+          password: {{ sap_vm_provision_kubevirt_vm_os_user_password if sap_vm_provision_kubevirt_vm_os_user_password is defined }}
+          chpasswd:
+            expire: false
+          ssh_authorized_keys:
+            - "{{ lookup('ansible.builtin.file', sap_vm_provision_ssh_host_public_key_file_path ) }}"
+        networkData: |-
+          network:
+            version: 2
+            ethernets:
+              eth0:
+                dhcp4: true
 
 # OVirt
 sap_vm_provision_ovirt_vm_boot_menu: false
