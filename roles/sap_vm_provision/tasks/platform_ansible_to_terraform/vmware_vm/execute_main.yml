@@ -48,7 +48,7 @@
 
           sap_vm_provision_ibmcloud_vs_host_os_image: "{{ sap_vm_provision_ibmcloud_vs_host_os_image }}"
 
-          sap_software_download_directory: "{{ sap_software_download_directory }}"
+          sap_install_media_detect_source_directory: "{{ sap_install_media_detect_source_directory }}"
           sap_hana_install_instance_nr: "{{ sap_hana_install_instance_nr | default('') }}"
           sap_nwas_abap_ascs_instance_no: "{{ sap_swpm_ascs_instance_nr | default('') }}"
           sap_nwas_abap_pas_instance_no: "{{ sap_swpm_pas_instance_nr | default('') }}"

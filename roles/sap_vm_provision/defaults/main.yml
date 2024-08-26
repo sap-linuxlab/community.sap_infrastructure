@@ -143,6 +143,13 @@ sap_vm_provision_aws_vpc_sg_names: "" # comma-separated, if ansible_to_terraform
 sap_vm_provision_aws_key_pair_name_ssh_host_public_key: ""
 sap_vm_provision_aws_placement_resource_name: "sap-placement-group-spread"
 sap_vm_provision_aws_placement_strategy_spread: false
+# Specify role/profile names to allow multiple clusters
+# Example for HANA HA: "HA-Role-Pacemaker-{{ sap_system_hana_db_sid }}"
+sap_vm_provision_aws_ha_iam_role: "HA-Role-Pacemaker"
+sap_vm_provision_aws_ha_iam_instance_profile: "HA-Instance-Profile-Pacemaker-Cluster"
+# Enable to overwrite existing DNS record.
+# AWS Route53 module fails when DNS record already exists.
+sap_vm_provision_aws_dns_overwrite: false
 
 # Google Cloud
 sap_vm_provision_gcp_credentials_json: ""
@@ -188,7 +195,8 @@ sap_vm_provision_msazure_vnet_subnet_name: ""
 sap_vm_provision_msazure_key_pair_name_ssh_host_public_key: ""
 sap_vm_provision_msazure_placement_resource_name: "sap-availability-set-spread"
 sap_vm_provision_msazure_placement_strategy_spread: false
-
+# Specify role name for fence agent
+sap_vm_provision_msazure_ha_iam_role: "Linux Fence Agent Role"
 
 ####
 # Infrastructure Platform - Cloud Hyperscaler - High Availability resources

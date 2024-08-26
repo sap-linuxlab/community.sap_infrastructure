@@ -8,16 +8,61 @@
 # for IBM Power IaaS VLAN on IBM Cloud, must be within the VLAN Subnet CIDR Range
 # for IBM PowerVM, must be within the VLAN Subnet CIDR Range
 
-
+## Set Virtual IP's Netmask / CIDR Prefix
 # Use of Primary IP Address default netmask prefix and/or the broadcast is automatic for Linux Pacemaker
-# For AWS, this would be the VPC Subnet Netmask CIDR e.g. /24
+# For AWS, this would be static Netmask CIDR /32 (see AWS 'Overlay IP' documentation)
+# For GCP, this would be static Netmask CIDR /32, unless using custom OS Image - https://cloud.google.com/vpc/docs/create-use-multiple-interfaces#i_am_having_connectivity_issues_when_using_a_netmask_that_is_not_32
 # For MS Azure, this would be the VNet Subnet Netmask CIDR e.g. /24
-# For GCP, this would be static Netmask CIDR /32 unless using custom OS Image - https://cloud.google.com/vpc/docs/create-use-multiple-interfaces#i_am_having_connectivity_issues_when_using_a_netmask_that_is_not_32
 
-- name: Set fact for Broadcast Address and Prefix of the Primary IP
+## Set Virtual IP - Other related information
+# In all cases, use noprefixroute parameter to avoid automatic creation of OS route table entries (i.e. 'ip route'), which occurs if the IP Address is outside of the existing Subnet Range
+
+
+- name: Set fact for Broadcast Address and Prefix of the Primary IP - Generic
   ansible.builtin.set_fact:
-    ip_broadcast_address: "{{ ansible_default_ipv4.broadcast | default('') }}"
-    ip_cidr_prefix: "{{ ansible_default_ipv4.prefix | default('') }}"
+    primary_ip_address: "{{ ansible_default_ipv4.address | default('') }}"
+    primary_ip_address_netmask: "{{ ansible_default_ipv4.netmask | default('') }}"
+    primary_ip_address_netmask_cidr_prefix: "{{ ansible_default_ipv4.prefix | default('') }}"
+    primary_ip_broadcast_address: "{{ ansible_default_ipv4.broadcast | default('') }}"
+
+- name: Install ipcalc binary when required
+  ansible.builtin.package:
+    name:
+      - ipcalc
+    state: present
+  when:
+    - not primary_ip_broadcast_address == ""
+    - primary_ip_address_netmask_cidr_prefix == ""
+    - primary_ip_address_netmask != ""
+
+- name: Show temporary Virtual IP actions
+  ansible.builtin.debug:
+    msg: |
+      Ansible Facts:
+        primary_ip_address = "{{ ansible_default_ipv4.address | default('') }}"
+        primary_ip_address_netmask = "{{ ansible_default_ipv4.netmask | default('') }}"
+        primary_ip_address_netmask_cidr_prefix = "{{ ansible_default_ipv4.prefix | default('') }}"
+        primary_ip_broadcast_address = "{{ ansible_default_ipv4.broadcast | default('') }}"
+
+      Command to be executed:
+      {% if (('amazon' in (ansible_system_vendor | lower) or 'amazon' in (ansible_product_name | lower)) or (ansible_product_name == 'Google Compute Engine')) %}
+        ip address add VIRTUAL_IP_ADDRESS/32 brd {{ primary_ip_broadcast_address }} dev eth0 noprefixroute
+      {% elif primary_ip_broadcast_address == "" and primary_ip_address_netmask_cidr_prefix == "" %}
+        ip address add VIRTUAL_IP_ADDRESS/32 brd + dev eth0 noprefixroute
+      {% elif (primary_ip_broadcast_address != "" and primary_ip_address_netmask_cidr_prefix == "") and primary_ip_address_netmask != "" %}
+        ip address add VIRTUAL_IP_ADDRESS/NETMASK_PREFIX brd {{ primary_ip_broadcast_address }} dev eth0 noprefixroute
+      {% elif ((primary_ip_broadcast_address != "" and primary_ip_address_netmask_cidr_prefix == "") and primary_ip_address_netmask == "") and primary_ip_address != "" %}
+        ip address add VIRTUAL_IP_ADDRESS/NETMASK_PREFIX brd {{ primary_ip_broadcast_address }} dev eth0 noprefixroute
+      {% elif primary_ip_broadcast_address == "" and primary_ip_address_netmask_cidr_prefix != "" %}
+        ip address add VIRTUAL_IP_ADDRESS/{{ primary_ip_address_netmask_cidr_prefix }} brd + dev eth0 noprefixroute
+      {% elif primary_ip_broadcast_address != "" and primary_ip_address_netmask_cidr_prefix != "" %}
+        ip address add VIRTUAL_IP_ADDRESS/{{ primary_ip_address_netmask_cidr_prefix }} brd {{ primary_ip_broadcast_address }} dev eth0 noprefixroute
+      {% else %}
+        ERROR
+      {% endif %}
+  when:
+    - (groups["hana_secondary"] is defined and inventory_hostname in groups["hana_primary"]) or (groups["anydb_secondary"] is defined and inventory_hostname in groups["anydb_primary"]) or (groups["nwas_ers"] is defined and (inventory_hostname in groups["nwas_ascs"] or inventory_hostname in groups["nwas_ers"]))
+    - not ansible_chassis_asset_tag == 'ibmcloud'
 
 
 #### HA of HANA Primary/Secondary ####
@@ -25,38 +70,76 @@
 # Not required before SAP HANA installation or Linux Pacemaker installation, performed so the VIP connectivity can be tested
 - name: Append temporary Virtual IP (VIP) to network interface for SAP HANA, will be replaced by Linux Pacemaker IPaddr2 Resource Agent
   ansible.builtin.shell: |
-    if [ "{{ ip_broadcast_address }}" = "" ] && [ "{{ ip_cidr_prefix }}" = "" ]
+    platform_cidr_32_static="{{ 'true' if (('amazon' in (ansible_system_vendor | lower) or 'amazon' in (ansible_product_name | lower)) or (ansible_product_name == 'Google Compute Engine')) }}"
+    if [ $platform_cidr_32_static = "true" ]
     then
-      ip address add {{ sap_vm_temp_vip_hana_primary | regex_replace('/.*', '') }}/32 brd + dev eth0
-    elif [ "{{ ip_broadcast_address }}" != "" ]
+      ip address add {{ sap_vm_temp_vip_hana_primary | regex_replace('/.*', '') }}/32 brd {{ primary_ip_broadcast_address }} dev eth0 noprefixroute
+    elif [ "{{ primary_ip_broadcast_address }}" = "" ] && [ "{{ primary_ip_address_netmask_cidr_prefix }}" = "" ]
     then
-      ip address add {{ sap_vm_temp_vip_hana_primary | regex_replace('/.*', '') }} brd {{ ip_broadcast_address }} dev eth0
-    elif [ "{{ ip_cidr_prefix }}" != "" ]
+      ip address add {{ sap_vm_temp_vip_hana_primary | regex_replace('/.*', '') }}/32 brd + dev eth0 noprefixroute
+    elif [ "{{ primary_ip_broadcast_address }}" != "" ] && [ "{{ primary_ip_address_netmask_cidr_prefix }}" = "" ] && [ "{{ primary_ip_address_netmask }}" != "" ]
     then
-      ip address add {{ sap_vm_temp_vip_hana_primary | regex_replace('/.*', '') }}/{{ ip_cidr_prefix }} brd + dev eth0
+      calculate_netmask_prefix=$(ipcalc --prefix 0.0.0.0 {{ primary_ip_address_netmask }})
+      ip address add {{ sap_vm_temp_vip_hana_primary | regex_replace('/.*', '') }}/$calculate_netmask_prefix brd {{ primary_ip_broadcast_address }} dev eth0 noprefixroute
+    elif [ "{{ primary_ip_broadcast_address }}" != "" ] && [ "{{ primary_ip_address_netmask_cidr_prefix }}" = "" ] && [ "{{ primary_ip_address_netmask }}" == "" ] && [ "{{ primary_ip_address }}" != "" ]
+    then
+      discover_network_adapter_active=$(ip route show default 0.0.0.0/0 | awk '/default/ {print $5}')
+      discover_primary_ip_cidr=$(ip -oneline address show $discover_network_adapter_active | grep {{ primary_ip_address }} | sed -n 's/.*inet \(.*\) brd.*/\1/p')
+      discover_netmask_prefix=$(basename $discover_primary_ip_cidr)
+      ip address add {{ sap_vm_temp_vip_hana_primary | regex_replace('/.*', '') }}/$discover_netmask_prefix brd {{ primary_ip_broadcast_address }} dev eth0 noprefixroute
+    elif [ "{{ primary_ip_broadcast_address }}" = "" ] && "{{ primary_ip_address_netmask_cidr_prefix }}" != "" ]
+    then
+      discover_network_adapter_active=$(ip route show default 0.0.0.0/0 | awk '/default/ {print $5}')
+      discover_primary_ip_bridge=$(ip -oneline address show $discover_network_adapter_active | grep {{ primary_ip_address }} | sed -n 's/.*brd \(.*\) scope.*/\1/p')
+      ip address add {{ sap_vm_temp_vip_hana_primary | regex_replace('/.*', '') }}/{{ primary_ip_address_netmask_cidr_prefix }} brd + dev eth0 noprefixroute
+      #ip address add {{ sap_vm_temp_vip_hana_primary | regex_replace('/.*', '') }}/{{ primary_ip_address_netmask_cidr_prefix }} brd $discover_primary_ip_bridge dev eth0 noprefixroute
+    elif [ "{{ primary_ip_broadcast_address }}" != "" ] && [ "{{ primary_ip_address_netmask_cidr_prefix }}" != "" ]
+    then
+      ip address add {{ sap_vm_temp_vip_hana_primary | regex_replace('/.*', '') }}/{{ primary_ip_address_netmask_cidr_prefix }} brd {{ primary_ip_broadcast_address }} dev eth0 noprefixroute
+    else
+      exit 1
     fi
   when:
     - (groups["hana_secondary"] is defined and inventory_hostname in groups["hana_primary"]) and (groups["hana_secondary"] is defined and (groups["hana_secondary"]|length>0))
     - not ansible_chassis_asset_tag == 'ibmcloud'
-  ignore_errors: true
+  ignore_errors: true  # Ignore when stderr is 'RTNETLINK answers: File exists'
 
 # Not required before SAP HANA installation or Linux Pacemaker installation, performed so the VIP connectivity can be tested
 - name: Append temporary Virtual IP (VIP) to network interface for SAP AnyDB, will be replaced by Linux Pacemaker IPaddr2 Resource Agent
   ansible.builtin.shell: |
-    if [ "{{ ip_broadcast_address }}" = "" ] && [ "{{ ip_cidr_prefix }}" = "" ]
+    platform_cidr_32_static="{{ 'true' if (('amazon' in (ansible_system_vendor | lower) or 'amazon' in (ansible_product_name | lower)) or (ansible_product_name == 'Google Compute Engine')) }}"
+    if [ $platform_cidr_32_static = "true" ]
     then
-      ip address add {{ sap_vm_temp_vip_anydb_primary | regex_replace('/.*', '') }}/32 brd + dev eth0
-    elif [ "{{ ip_broadcast_address }}" != "" ]
+      ip address add {{ sap_vm_temp_vip_anydb_primary | regex_replace('/.*', '') }}/32 brd {{ primary_ip_broadcast_address }} dev eth0 noprefixroute
+    elif [ "{{ primary_ip_broadcast_address }}" = "" ] && [ "{{ primary_ip_address_netmask_cidr_prefix }}" = "" ]
     then
-      ip address add {{ sap_vm_temp_vip_anydb_primary | regex_replace('/.*', '') }} brd {{ ip_broadcast_address }} dev eth0
-    elif [ "{{ ip_cidr_prefix }}" != "" ]
+      ip address add {{ sap_vm_temp_vip_anydb_primary | regex_replace('/.*', '') }}/32 brd + dev eth0 noprefixroute
+    elif [ "{{ primary_ip_broadcast_address }}" != "" ] && [ "{{ primary_ip_address_netmask_cidr_prefix }}" = "" ] && [ "{{ primary_ip_address_netmask }}" != "" ]
     then
-      ip address add {{ sap_vm_temp_vip_anydb_primary | regex_replace('/.*', '') }}/{{ ip_cidr_prefix }} brd + dev eth0
+      calculate_netmask_prefix=$(ipcalc --prefix 0.0.0.0 {{ primary_ip_address_netmask }})
+      ip address add {{ sap_vm_temp_vip_anydb_primary | regex_replace('/.*', '') }}/$calculate_netmask_prefix brd {{ primary_ip_broadcast_address }} dev eth0 noprefixroute
+    elif [ "{{ primary_ip_broadcast_address }}" != "" ] && [ "{{ primary_ip_address_netmask_cidr_prefix }}" = "" ] && [ "{{ primary_ip_address_netmask }}" == "" ] && [ "{{ primary_ip_address }}" != "" ]
+    then
+      discover_network_adapter_active=$(ip route show default 0.0.0.0/0 | awk '/default/ {print $5}')
+      discover_primary_ip_cidr=$(ip -oneline address show $discover_network_adapter_active | grep {{ primary_ip_address }} | sed -n 's/.*inet \(.*\) brd.*/\1/p')
+      discover_netmask_prefix=$(basename $discover_primary_ip_cidr)
+      ip address add {{ sap_vm_temp_vip_anydb_primary | regex_replace('/.*', '') }}/$discover_netmask_prefix brd {{ primary_ip_broadcast_address }} dev eth0 noprefixroute
+    elif [ "{{ primary_ip_broadcast_address }}" = "" ] && "{{ primary_ip_address_netmask_cidr_prefix }}" != "" ]
+    then
+      discover_network_adapter_active=$(ip route show default 0.0.0.0/0 | awk '/default/ {print $5}')
+      discover_primary_ip_bridge=$(ip -oneline address show $discover_network_adapter_active | grep {{ primary_ip_address }} | sed -n 's/.*brd \(.*\) scope.*/\1/p')
+      ip address add {{ sap_vm_temp_vip_anydb_primary | regex_replace('/.*', '') }}/{{ primary_ip_address_netmask_cidr_prefix }} brd + dev eth0 noprefixroute
+      #ip address add {{ sap_vm_temp_vip_anydb_primary | regex_replace('/.*', '') }}/{{ primary_ip_address_netmask_cidr_prefix }} brd $discover_primary_ip_bridge dev eth0 noprefixroute
+    elif [ "{{ primary_ip_broadcast_address }}" != "" ] && [ "{{ primary_ip_address_netmask_cidr_prefix }}" != "" ]
+    then
+      ip address add {{ sap_vm_temp_vip_anydb_primary | regex_replace('/.*', '') }}/{{ primary_ip_address_netmask_cidr_prefix }} brd {{ primary_ip_broadcast_address }} dev eth0 noprefixroute
+    else
+      exit 1
     fi
   when:
     - (groups["anydb_secondary"] is defined and inventory_hostname in groups["anydb_primary"]) and (groups["anydb_secondary"] is defined and (groups["anydb_secondary"]|length>0))
     - not ansible_chassis_asset_tag == 'ibmcloud'
-  ignore_errors: true
+  ignore_errors: true  # Ignore when stderr is 'RTNETLINK answers: File exists'
 
 
 #### HA of ASCS/ERS ####
@@ -66,40 +149,78 @@
 # And if the Virtual Hostname / Virtual IP cannot resolve, it will likely prevent SAP SWPM from completing the installation
 - name: Append temporary Virtual IP (VIP) to network interface for SAP NetWeaver ASCS, will be replaced by Linux Pacemaker IPaddr2 Resource Agent
   ansible.builtin.shell: |
-    if [ "{{ ip_broadcast_address }}" = "" ] && [ "{{ ip_cidr_prefix }}" = "" ]
+    platform_cidr_32_static="{{ 'true' if (('amazon' in (ansible_system_vendor | lower) or 'amazon' in (ansible_product_name | lower)) or (ansible_product_name == 'Google Compute Engine')) }}"
+    if [ $platform_cidr_32_static = "true" ]
     then
-      ip address add {{ sap_vm_temp_vip_nwas_abap_ascs | regex_replace('/.*', '') }}/32 brd + dev eth0
-    elif [ "{{ ip_broadcast_address }}" != "" ]
+      ip address add {{ sap_vm_temp_vip_nwas_abap_ascs | regex_replace('/.*', '') }}/32 brd {{ primary_ip_broadcast_address }} dev eth0 noprefixroute
+    elif [ "{{ primary_ip_broadcast_address }}" = "" ] && [ "{{ primary_ip_address_netmask_cidr_prefix }}" = "" ]
     then
-      ip address add {{ sap_vm_temp_vip_nwas_abap_ascs | regex_replace('/.*', '') }} brd {{ ip_broadcast_address }} dev eth0
-    elif [ "{{ ip_cidr_prefix }}" != "" ]
+      ip address add {{ sap_vm_temp_vip_nwas_abap_ascs | regex_replace('/.*', '') }}/32 brd + dev eth0 noprefixroute
+    elif [ "{{ primary_ip_broadcast_address }}" != "" ] && [ "{{ primary_ip_address_netmask_cidr_prefix }}" = "" ] && [ "{{ primary_ip_address_netmask }}" != "" ]
     then
-      ip address add {{ sap_vm_temp_vip_nwas_abap_ascs | regex_replace('/.*', '') }}/{{ ip_cidr_prefix }} brd + dev eth0
+      calculate_netmask_prefix=$(ipcalc --prefix 0.0.0.0 {{ primary_ip_address_netmask }})
+      ip address add {{ sap_vm_temp_vip_nwas_abap_ascs | regex_replace('/.*', '') }}/$calculate_netmask_prefix brd {{ primary_ip_broadcast_address }} dev eth0 noprefixroute
+    elif [ "{{ primary_ip_broadcast_address }}" != "" ] && [ "{{ primary_ip_address_netmask_cidr_prefix }}" = "" ] && [ "{{ primary_ip_address_netmask }}" == "" ] && [ "{{ primary_ip_address }}" != "" ]
+    then
+      discover_network_adapter_active=$(ip route show default 0.0.0.0/0 | awk '/default/ {print $5}')
+      discover_primary_ip_cidr=$(ip -oneline address show $discover_network_adapter_active | grep {{ primary_ip_address }} | sed -n 's/.*inet \(.*\) brd.*/\1/p')
+      discover_netmask_prefix=$(basename $discover_primary_ip_cidr)
+      ip address add {{ sap_vm_temp_vip_nwas_abap_ascs | regex_replace('/.*', '') }}/$discover_netmask_prefix brd {{ primary_ip_broadcast_address }} dev eth0 noprefixroute
+    elif [ "{{ primary_ip_broadcast_address }}" = "" ] && "{{ primary_ip_address_netmask_cidr_prefix }}" != "" ]
+    then
+      discover_network_adapter_active=$(ip route show default 0.0.0.0/0 | awk '/default/ {print $5}')
+      discover_primary_ip_bridge=$(ip -oneline address show $discover_network_adapter_active | grep {{ primary_ip_address }} | sed -n 's/.*brd \(.*\) scope.*/\1/p')
+      ip address add {{ sap_vm_temp_vip_nwas_abap_ascs | regex_replace('/.*', '') }}/{{ primary_ip_address_netmask_cidr_prefix }} brd + dev eth0 noprefixroute
+      #ip address add {{ sap_vm_temp_vip_nwas_abap_ascs | regex_replace('/.*', '') }}/{{ primary_ip_address_netmask_cidr_prefix }} brd $discover_primary_ip_bridge dev eth0 noprefixroute
+    elif [ "{{ primary_ip_broadcast_address }}" != "" ] && [ "{{ primary_ip_address_netmask_cidr_prefix }}" != "" ]
+    then
+      ip address add {{ sap_vm_temp_vip_nwas_abap_ascs | regex_replace('/.*', '') }}/{{ primary_ip_address_netmask_cidr_prefix }} brd {{ primary_ip_broadcast_address }} dev eth0 noprefixroute
+    else
+      exit 1
     fi
   when:
     - (groups["nwas_ers"] is defined and inventory_hostname in groups["nwas_ascs"]) and (groups["nwas_ers"] is defined and (groups["nwas_ers"]|length>0))
     - not ansible_chassis_asset_tag == 'ibmcloud'
-  ignore_errors: true
+  ignore_errors: true  # Ignore when stderr is 'RTNETLINK answers: File exists'
 
 # Required before running SAP SWPM
 # Otherwise CSiManagerInterfaces.cpp will provide WARNING "The host with the name XXXXXX defined by SAPINST_USE_HOSTNAME is not a virtual host on the local host."
 # And if the Virtual Hostname / Virtual IP cannot resolve, it will likely prevent SAP SWPM from completing the installation
 - name: Append temporary Virtual IP (VIP) to network interface for SAP NetWeaver ERS, will be replaced by Linux Pacemaker IPaddr2 Resource Agent
   ansible.builtin.shell: |
-    if [ "{{ ip_broadcast_address }}" = "" ] && [ "{{ ip_cidr_prefix }}" = "" ]
+    platform_cidr_32_static="{{ 'true' if (('amazon' in (ansible_system_vendor | lower) or 'amazon' in (ansible_product_name | lower)) or (ansible_product_name == 'Google Compute Engine')) }}"
+    if [ $platform_cidr_32_static = "true" ]
     then
-      ip address add {{ sap_vm_temp_vip_nwas_abap_ers | regex_replace('/.*', '') }}/32 brd + dev eth0
-    elif [ "{{ ip_broadcast_address }}" != "" ]
+      ip address add {{ sap_vm_temp_vip_nwas_abap_ers | regex_replace('/.*', '') }}/32 brd {{ primary_ip_broadcast_address }} dev eth0 noprefixroute
+    elif [ "{{ primary_ip_broadcast_address }}" = "" ] && [ "{{ primary_ip_address_netmask_cidr_prefix }}" = "" ]
     then
-      ip address add {{ sap_vm_temp_vip_nwas_abap_ers | regex_replace('/.*', '') }} brd {{ ip_broadcast_address }} dev eth0
-    elif [ "{{ ip_cidr_prefix }}" != "" ]
+      ip address add {{ sap_vm_temp_vip_nwas_abap_ers | regex_replace('/.*', '') }}/32 brd + dev eth0 noprefixroute
+    elif [ "{{ primary_ip_broadcast_address }}" != "" ] && [ "{{ primary_ip_address_netmask_cidr_prefix }}" = "" ] && [ "{{ primary_ip_address_netmask }}" != "" ]
     then
-      ip address add {{ sap_vm_temp_vip_nwas_abap_ers | regex_replace('/.*', '') }}/{{ ip_cidr_prefix }} brd + dev eth0
+      calculate_netmask_prefix=$(ipcalc --prefix 0.0.0.0 {{ primary_ip_address_netmask }})
+      ip address add {{ sap_vm_temp_vip_nwas_abap_ers | regex_replace('/.*', '') }}/$calculate_netmask_prefix brd {{ primary_ip_broadcast_address }} dev eth0 noprefixroute
+    elif [ "{{ primary_ip_broadcast_address }}" != "" ] && [ "{{ primary_ip_address_netmask_cidr_prefix }}" = "" ] && [ "{{ primary_ip_address_netmask }}" == "" ] && [ "{{ primary_ip_address }}" != "" ]
+    then
+      discover_network_adapter_active=$(ip route show default 0.0.0.0/0 | awk '/default/ {print $5}')
+      discover_primary_ip_cidr=$(ip -oneline address show $discover_network_adapter_active | grep {{ primary_ip_address }} | sed -n 's/.*inet \(.*\) brd.*/\1/p')
+      discover_netmask_prefix=$(basename $discover_primary_ip_cidr)
+      ip address add {{ sap_vm_temp_vip_nwas_abap_ers | regex_replace('/.*', '') }}/$discover_netmask_prefix brd {{ primary_ip_broadcast_address }} dev eth0 noprefixroute
+    elif [ "{{ primary_ip_broadcast_address }}" = "" ] && "{{ primary_ip_address_netmask_cidr_prefix }}" != "" ]
+    then
+      discover_network_adapter_active=$(ip route show default 0.0.0.0/0 | awk '/default/ {print $5}')
+      discover_primary_ip_bridge=$(ip -oneline address show $discover_network_adapter_active | grep {{ primary_ip_address }} | sed -n 's/.*brd \(.*\) scope.*/\1/p')
+      ip address add {{ sap_vm_temp_vip_nwas_abap_ers | regex_replace('/.*', '') }}/{{ primary_ip_address_netmask_cidr_prefix }} brd + dev eth0 noprefixroute
+      #ip address add {{ sap_vm_temp_vip_nwas_abap_ers | regex_replace('/.*', '') }}/{{ primary_ip_address_netmask_cidr_prefix }} brd $discover_primary_ip_bridge dev eth0 noprefixroute
+    elif [ "{{ primary_ip_broadcast_address }}" != "" ] && [ "{{ primary_ip_address_netmask_cidr_prefix }}" != "" ]
+    then
+      ip address add {{ sap_vm_temp_vip_nwas_abap_ers | regex_replace('/.*', '') }}/{{ primary_ip_address_netmask_cidr_prefix }} brd {{ primary_ip_broadcast_address }} dev eth0 noprefixroute
+    else
+      exit 1
     fi
   when:
     - (groups["nwas_ers"] is defined and inventory_hostname in groups["nwas_ers"]) and (groups["nwas_ers"] is defined and (groups["nwas_ers"]|length>0))
     - not ansible_chassis_asset_tag == 'ibmcloud'
-  ignore_errors: true
+  ignore_errors: true  # Ignore when stderr is 'RTNETLINK answers: File exists'
 
 
 #### HA of PAS/AAS [rare, comment out] ####
@@ -108,7 +229,7 @@
 # # Otherwise CSiManagerInterfaces.cpp will provide WARNING "The host with the name XXXXXX defined by SAPINST_USE_HOSTNAME is not a virtual host on the local host."
 # # And if the Virtual Hostname / Virtual IP cannot resolve, it will likely prevent SAP SWPM from completing the installation
 # - name: Append temporary Virtual IP (VIP) to network interface for SAP NetWeaver PAS, will be replaced by Linux Pacemaker IPaddr2 Resource Agent
-#   ansible.builtin.shell: ip address add {{ sap_vm_temp_vip_nwas_abap_pas | regex_replace('/.*', '') }}/24 brd + dev eth0
+#   ansible.builtin.shell:
 #   when:
 #     - (groups["nwas_pas"] is defined and inventory_hostname in groups["nwas_pas"]) and (groups["nwas_pas"] is defined and (groups["nwas_pas"]|length>0))
 #     - not ansible_chassis_asset_tag == 'ibmcloud'
@@ -118,8 +239,7 @@
 # # Otherwise CSiManagerInterfaces.cpp will provide WARNING "The host with the name XXXXXX defined by SAPINST_USE_HOSTNAME is not a virtual host on the local host."
 # # And if the Virtual Hostname / Virtual IP cannot resolve, it will likely prevent SAP SWPM from completing the installation
 # - name: Append temporary Virtual IP (VIP) to network interface for SAP NetWeaver AAS, will be replaced by Linux Pacemaker IPaddr2 Resource Agent
-#   ansible.builtin.shell: ip address add {{ sap_vm_temp_vip_nwas_abap_aas | regex_replace('/.*', '') }}/24 brd + dev eth0
-
+#   ansible.builtin.shell:
 #   when:
 #     - (groups["nwas_pas"] is defined and inventory_hostname in groups["nwas_aas"]) and (groups["nwas_pas"] is defined and (groups["nwas_pas"]|length>0))
 #     - not ansible_chassis_asset_tag == 'ibmcloud'

@@ -103,6 +103,7 @@
         wait: true
         access_key: "{{ sap_vm_provision_aws_access_key }}"
         secret_key: "{{ sap_vm_provision_aws_secret_access_key }}"
+        overwrite: "{{ sap_vm_provision_aws_dns_overwrite if sap_vm_provision_aws_dns_overwrite | bool else false }}"
 
   rescue:
     # This requires no_log set on each Ansible Task, and not set on the Ansible Task Block

@@ -62,12 +62,12 @@ variable "sap_vm_provision_host_specification_plan" {
   description = "Host specification plans are xsmall_256gb. This variable uses the locals mapping with a nested list of host specifications, and will alter host provisioning."
 }
 
-variable "sap_software_download_directory" {
+variable "sap_install_media_detect_source_directory" {
   description = "Mount point for downloads of SAP Software"
 
   validation {
     error_message = "Directory must start with forward slash."
-    condition = can(regex("^/", var.sap_software_download_directory))
+    condition = can(regex("^/", var.sap_install_media_detect_source_directory))
   }
 
 }

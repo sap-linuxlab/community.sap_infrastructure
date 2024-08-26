@@ -630,7 +630,7 @@
     project: "{{ sap_vm_provision_gcp_project }}"
     region: "{{ sap_vm_provision_gcp_region }}"
     subnetwork: { "selfLink": "{{ __sap_vm_provision_task_gcp_vpc_subnet_info.resources[0].selfLink }}" }
-    name: "{{ sap_vm_provision_ha_load_balancer_name_nwas + '-ascs-reserved-static-ip-vip' + (vip_item_nr | string) }}"
+    name: "{{ sap_vm_provision_ha_load_balancer_name_nwas + '-ascs-reserved-static-ip-vip' }}"
     address_type: internal
     address: "{{ sap_vm_provision_ha_vip_nwas_abap_ascs | regex_replace('/.*', '') }}"
     #network_tier: PREMIUM # An address with type INTERNAL cannot have a network tier
@@ -648,7 +648,7 @@
     project: "{{ sap_vm_provision_gcp_project }}"
     region: "{{ sap_vm_provision_gcp_region }}"
     subnetwork: { "selfLink": "{{ __sap_vm_provision_task_gcp_vpc_subnet_info.resources[0].selfLink }}" }
-    name: "{{ sap_vm_provision_ha_load_balancer_name_nwas + '-ers-reserved-static-ip-vip' + (vip_item_nr | string) }}"
+    name: "{{ sap_vm_provision_ha_load_balancer_name_nwas + '-ers-reserved-static-ip-vip' }}"
     address_type: internal
     address: "{{ sap_vm_provision_ha_vip_nwas_abap_ers | regex_replace('/.*', '') }}"
     #network_tier: PREMIUM # An address with type INTERNAL cannot have a network tier

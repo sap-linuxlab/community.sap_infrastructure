@@ -51,6 +51,7 @@
     wait: true
     access_key: "{{ sap_vm_provision_aws_access_key }}"
     secret_key: "{{ sap_vm_provision_aws_secret_access_key }}"
+    overwrite: "{{ sap_vm_provision_aws_dns_overwrite if sap_vm_provision_aws_dns_overwrite | bool else false }}"
   loop: "{{ (groups['hana_primary'] | default([])) }}"
   loop_control:
     loop_var: host_node
@@ -92,6 +93,7 @@
     wait: true
     access_key: "{{ sap_vm_provision_aws_access_key }}"
     secret_key: "{{ sap_vm_provision_aws_secret_access_key }}"
+    overwrite: "{{ sap_vm_provision_aws_dns_overwrite if sap_vm_provision_aws_dns_overwrite | bool else false }}"
   loop: "{{ (groups['anydb_primary'] | default([])) }}"
   loop_control:
     loop_var: host_node
@@ -133,6 +135,7 @@
     wait: true
     access_key: "{{ sap_vm_provision_aws_access_key }}"
     secret_key: "{{ sap_vm_provision_aws_secret_access_key }}"
+    overwrite: "{{ sap_vm_provision_aws_dns_overwrite if sap_vm_provision_aws_dns_overwrite | bool else false }}"
   loop: "{{ (groups['nwas_ascs'] | default([])) }}"
   loop_control:
     loop_var: host_node
@@ -174,6 +177,7 @@
     wait: true
     access_key: "{{ sap_vm_provision_aws_access_key }}"
     secret_key: "{{ sap_vm_provision_aws_secret_access_key }}"
+    overwrite: "{{ sap_vm_provision_aws_dns_overwrite if sap_vm_provision_aws_dns_overwrite | bool else false }}"
   loop: "{{ (groups['nwas_ers'] | default([])) }}"
   loop_control:
     loop_var: host_node
@@ -254,11 +258,26 @@
 #     - groups["nwas_ers"] is defined and (groups["nwas_ers"]|length>0)
 
 
-- name: AWS IAM Role - HA-Role-Pacemaker
+# Setup custom IAM Role name using sap_vm_provision_aws_ha_iam_role
+- name: AWS IAM Role - Prepare IAM Role name
+  ansible.builtin.set_fact:
+    __sap_vm_provision_aws_ha_iam_role:
+      "{{ sap_vm_provision_aws_ha_iam_role
+       if sap_vm_provision_aws_ha_iam_role is defined and sap_vm_provision_aws_ha_iam_role | length > 0
+       else 'HA-Role-Pacemaker' }}"
+
+# Following IAM Roles, Policies and Instance Profiles are created based on:
+# https://documentation.suse.com/sbp/sap-15/html/SLES4SAP-hana-sr-guide-perfopt-15-aws/index.html#id-aws-roles-and-policies
+# https://docs.aws.amazon.com/sap/latest/sap-netweaver/sles-netweaver-ha-settings.html#stonith
+# https://access.redhat.com/articles/4175371#create-policies
+# https://docs.aws.amazon.com/sap/latest/sap-netweaver/rhel-netweaver-ha-settings.html#stonith
+# https://docs.aws.amazon.com/sap/latest/sap-hana/sap-hana-on-aws-cluster-configuration-prerequisites.html#sap-hana-on-aws-create-the-stonith-policy
+
+- name: AWS IAM Role - {{ __sap_vm_provision_aws_ha_iam_role }}
   register: __sap_vm_provision_task_aws_iam_role_ha_pacemaker
   no_log: "{{ __sap_vm_provision_no_log }}"
   amazon.aws.iam_role:
-    name: "HA-Role-Pacemaker"
+    name: "{{ __sap_vm_provision_aws_ha_iam_role }}"
     assume_role_policy_document: |
       {
           "Version": "2012-10-17",
@@ -283,7 +302,7 @@
   amazon.aws.iam_policy:
     state: present
     iam_type: role
-    iam_name: "HA-Role-Pacemaker"
+    iam_name: "{{ __sap_vm_provision_aws_ha_iam_role }}"
     policy_name: "HA-Policy-DataProvider"
     policy_json: |
       {
@@ -319,7 +338,7 @@
   amazon.aws.iam_policy:
     state: present
     iam_type: role
-    iam_name: "HA-Role-Pacemaker"
+    iam_name: "{{ __sap_vm_provision_aws_ha_iam_role }}"
     policy_name: "HA-Policy-OverlayVirtualIPAgent"
     policy_json: |
       {
@@ -352,7 +371,7 @@
   amazon.aws.iam_policy:
     state: present
     iam_type: role
-    iam_name: "HA-Role-Pacemaker"
+    iam_name: "{{ __sap_vm_provision_aws_ha_iam_role }}"
     policy_name: "HA-Policy-STONITH-SAPHANA"
     policy_json: |
       {
@@ -374,11 +393,14 @@
                   "Action": [
                       "ec2:ModifyInstanceAttribute",
                       "ec2:StartInstances",
-                      "ec2:StopInstances"
+                      "ec2:StopInstances",
+                      "ec2:RebootInstances"
                   ],
                   "Resource": [
-                      "arn:aws:ec2:{{ sap_vm_provision_aws_region }}:{{ __sap_vm_provision_task_aws_account_info.account }}:instance/{{ hostvars[groups['hana_primary'][0]].ansible_host }}",
-                      "arn:aws:ec2:{{ sap_vm_provision_aws_region }}:{{ __sap_vm_provision_task_aws_account_info.account }}:instance/{{ hostvars[groups['hana_secondary'][0]].ansible_host }}"
+                      "arn:aws:ec2:{{ sap_vm_provision_aws_region }}:{{ __sap_vm_provision_task_aws_account_info.account }}:instance/{{
+                       hostvars[groups['hana_primary'][0]].__sap_vm_provision_task_provision_host_single_info.instances[0].instance_id }}",
+                      "arn:aws:ec2:{{ sap_vm_provision_aws_region }}:{{ __sap_vm_provision_task_aws_account_info.account }}:instance/{{
+                       hostvars[groups['hana_secondary'][0]].__sap_vm_provision_task_provision_host_single_info.instances[0].instance_id }}"
                   ]
               }
           ]
@@ -387,6 +409,51 @@
     secret_key: "{{ sap_vm_provision_aws_secret_access_key }}"
   when: groups["hana_secondary"] is defined and (groups["hana_secondary"]|length>0)
 
+# AWS HA for SAP - STONITH of SAP ANYDB
+- name: AWS IAM Policy - HA-Policy-STONITH-SAPANYDB
+  register: __sap_vm_provision_task_aws_iam_policy_stonith_sapanydb
+  no_log: "{{ __sap_vm_provision_no_log }}"
+  amazon.aws.iam_policy:
+    state: present
+    iam_type: role
+    iam_name: "{{ __sap_vm_provision_aws_ha_iam_role }}"
+    policy_name: "HA-Policy-STONITH-SAPANYDB"
+    policy_json: |
+      {
+          "Version": "2012-10-17",
+          "Statement": [
+              {
+                  "Sid": "Stmt1424870324000",
+                  "Effect": "Allow",
+                  "Action": [
+                      "ec2:DescribeInstances",
+                      "ec2:DescribeInstanceAttribute",
+                      "ec2:DescribeTags"
+                  ],
+                  "Resource": "*"
+              },
+              {
+                  "Sid": "Stmt1424870324001",
+                  "Effect": "Allow",
+                  "Action": [
+                      "ec2:ModifyInstanceAttribute",
+                      "ec2:StartInstances",
+                      "ec2:StopInstances",
+                      "ec2:RebootInstances"
+                  ],
+                  "Resource": [
+                      "arn:aws:ec2:{{ sap_vm_provision_aws_region }}:{{ __sap_vm_provision_task_aws_account_info.account }}:instance/{{
+                       hostvars[groups['anydb_primary'][0]].__sap_vm_provision_task_provision_host_single_info.instances[0].instance_id }}",
+                      "arn:aws:ec2:{{ sap_vm_provision_aws_region }}:{{ __sap_vm_provision_task_aws_account_info.account }}:instance/{{
+                       hostvars[groups['anydb_secondary'][0]].__sap_vm_provision_task_provision_host_single_info.instances[0].instance_id }}"
+                  ]
+              }
+          ]
+      }
+    access_key: "{{ sap_vm_provision_aws_access_key }}"
+    secret_key: "{{ sap_vm_provision_aws_secret_access_key }}"
+  when: groups["anydb_secondary"] is defined and (groups["anydb_secondary"]|length>0)
+
 # AWS HA for SAP - STONITH of SAP NWAS
 - name: AWS IAM Policy - HA-Policy-STONITH-SAPNWAS
   register: __sap_vm_provision_task_aws_iam_policy_stonith_sapnwas
@@ -394,7 +461,7 @@
   amazon.aws.iam_policy:
     state: present
     iam_type: role
-    iam_name: "HA-Role-Pacemaker"
+    iam_name: "{{ __sap_vm_provision_aws_ha_iam_role }}"
     policy_name: "HA-Policy-STONITH-SAPNWAS"
     policy_json: |
       {
@@ -419,8 +486,10 @@
                       "ec2:StopInstances"
                   ],
                   "Resource": [
-                      "arn:aws:ec2:{{ sap_vm_provision_aws_region }}:{{ __sap_vm_provision_task_aws_account_info.account }}:instance/{{ hostvars[groups['nwas_ascs'][0]].ansible_host }}",
-                      "arn:aws:ec2:{{ sap_vm_provision_aws_region }}:{{ __sap_vm_provision_task_aws_account_info.account }}:instance/{{ hostvars[groups['nwas_ers'][0]].ansible_host }}"
+                      "arn:aws:ec2:{{ sap_vm_provision_aws_region }}:{{ __sap_vm_provision_task_aws_account_info.account }}:instance/{{
+                       hostvars[groups['nwas_ascs'][0]].__sap_vm_provision_task_provision_host_single_info.instances[0].instance_id }}",
+                      "arn:aws:ec2:{{ sap_vm_provision_aws_region }}:{{ __sap_vm_provision_task_aws_account_info.account }}:instance/{{
+                       hostvars[groups['nwas_ers'][0]].__sap_vm_provision_task_provision_host_single_info.instances[0].instance_id }}"
                   ]
               }
           ]
@@ -428,6 +497,14 @@
     access_key: "{{ sap_vm_provision_aws_access_key }}"
     secret_key: "{{ sap_vm_provision_aws_secret_access_key }}"
   when: groups["nwas_ers"] is defined and (groups["nwas_ers"]|length>0)
+
+
+- name: AWS IAM Role - Prepare IAM Instance Profile name
+  ansible.builtin.set_fact:
+    __sap_vm_provision_aws_ha_iam_instance_profile:
+      "{{ sap_vm_provision_aws_ha_iam_instance_profile
+       if sap_vm_provision_aws_ha_iam_instance_profile is defined and sap_vm_provision_aws_ha_iam_instance_profile | length > 0
+       else 'HA-Instance-Profile-Pacemaker-Cluster' }}"
 
 # Equivalent to
 # aws iam create-instance-profile --instance-profile-name "HA-Instance-Profile-Pacemaker-Cluster"
@@ -437,8 +514,8 @@
   no_log: "{{ __sap_vm_provision_no_log }}"
   amazon.aws.iam_instance_profile:
     state: present
-    name: "HA-Instance-Profile-Pacemaker-Cluster"
-    role: "HA-Role-Pacemaker"
+    name: "{{ __sap_vm_provision_aws_ha_iam_instance_profile }}"
+    role: "{{ __sap_vm_provision_aws_ha_iam_role }}"
     path: "/"
     access_key: "{{ sap_vm_provision_aws_access_key }}"
     secret_key: "{{ sap_vm_provision_aws_secret_access_key }}"
@@ -449,7 +526,7 @@
   no_log: "{{ __sap_vm_provision_no_log }}"
   amazon.aws.ec2_instance:
     instance_ids: "{{ hostvars[host_node].ansible_board_asset_tag }}"
-    iam_instance_profile: "HA-Instance-Profile-Pacemaker-Cluster"
+    iam_instance_profile: "{{ __sap_vm_provision_aws_ha_iam_instance_profile }}"
     access_key: "{{ sap_vm_provision_aws_access_key }}"
     secret_key: "{{ sap_vm_provision_aws_secret_access_key }}"
   loop: "{{ [ [ groups['hana_primary'] | default([]) ] , [ groups['hana_secondary'] | default([]) ] ] | flatten | select() }}"
@@ -459,12 +536,27 @@
   ignore_errors: true
 
 # Equivalent to aws ec2 associate-iam-instance-profile --iam-instance-profile "Name=HA-Instance-Profile-Pacemaker-Cluster" --instance-id {{ hostvars[host_node].ansible_board_asset_tag }}
+- name: AWS EC2 Instances - associate AWS IAM Instance Profile for SAP ANYDB
+  register: __sap_vm_provision_task_aws_iam_associate_instance_sapanydb
+  no_log: "{{ __sap_vm_provision_no_log }}"
+  amazon.aws.ec2_instance:
+    instance_ids: "{{ hostvars[host_node].ansible_board_asset_tag }}"
+    iam_instance_profile: "{{ __sap_vm_provision_aws_ha_iam_instance_profile }}"
+    access_key: "{{ sap_vm_provision_aws_access_key }}"
+    secret_key: "{{ sap_vm_provision_aws_secret_access_key }}"
+  loop: "{{ [ [ groups['anydb_primary'] | default([]) ] , [ groups['anydb_secondary'] | default([]) ] ] | flatten | select() }}"
+  loop_control:
+    loop_var: host_node
+  when: groups["anydb_secondary"] is defined and (groups["anydb_secondary"]|length>0)
+  ignore_errors: true
+
+# Equivalent to aws ec2 associate-iam-instance-profile --iam-instance-profile "Name=HA-Instance-Profile-Pacemaker-Cluster" --instance-id {{ hostvars[host_node].ansible_board_asset_tag }}
 - name: AWS EC2 Instances - associate AWS IAM Instance Profile for SAP NetWeaver
   register: __sap_vm_provision_task_aws_iam_associate_instance_sapnwas
   no_log: "{{ __sap_vm_provision_no_log }}"
   amazon.aws.ec2_instance:
     instance_ids: "{{ hostvars[host_node].ansible_board_asset_tag }}"
-    iam_instance_profile: "HA-Instance-Profile-Pacemaker-Cluster"
+    iam_instance_profile: "{{ __sap_vm_provision_aws_ha_iam_instance_profile }}"
     access_key: "{{ sap_vm_provision_aws_access_key }}"
     secret_key: "{{ sap_vm_provision_aws_secret_access_key }}"
   loop: "{{ [ [ groups['nwas_ascs'] | default([]) ] , [ groups['nwas_ers'] | default([]) ] , [ groups['nwas_pas'] | default([]) ] , [ groups['nwas_aas'] | default([]) ] ] | flatten | select() }}"

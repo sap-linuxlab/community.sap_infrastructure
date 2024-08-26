@@ -1,19 +1,105 @@
 ---
-
-- name: Ansible Play to run sap_hypervisor_node_preconfigure Ansible Role
+- name: Ansible Play to run sap_hypervisor_node_preconfigure Ansible Role for Red Hat OpenShift
   hosts: all
-  gather_facts: true
-  serial: 1
-
+  gather_facts: false
   vars:
-    sap_hypervisor_node_platform: redhat_ocp_virt
-    sap_hypervisor_node_kubeconfig: "{{ lookup( 'ansible.builtin.env', 'KUBECONFIG') }}"
-
-  environment:
-    KUBECONFIG: "{{ sap_hypervisor_node_kubeconfig }}"
-    K8S_AUTH_KUBECONFIG: "{{ sap_hypervisor_node_kubeconfig }}"
-
+    sap_hypervisor_node_preconfigure_platform: redhat_ocp_virt
   tasks:
-    - name: Include sap_hypervisor_node_preconfigure Ansible Role
-      ansible.builtin.include_role:
-        name: sap_hypervisor_node_preconfigure
+
+    - name: Use kubeconfig file specified in environment variable K8S_AUTH_KUBECONFIG if sap_hypervisor_node_preconfigure_ocp_kubeconfig_path is not defined
+      when: >
+        sap_hypervisor_node_preconfigure_ocp_kubeconfig_path is not defined or
+        sap_hypervisor_node_preconfigure_ocp_kubeconfig_path == None or
+        sap_hypervisor_node_preconfigure_ocp_kubeconfig_path == ''
+      ansible.builtin.set_fact:
+        sap_hypervisor_node_preconfigure_ocp_kubeconfig_path: "{{ lookup('env', 'K8S_AUTH_KUBECONFIG') | default(None) }}"
+
+    - name: Create Tempdir on jumphost
+      ansible.builtin.tempfile:
+        state: directory
+        suffix: "_sap_hypervisor_node_preconfigure"
+      register: __sap_hypervisor_node_preconfigure_register_tmpdir_jumphost
+
+    - name: Set kubeconfig file variable
+      ansible.builtin.set_fact:
+        __sap_hypervisor_node_preconfigure_register_kubeconfig: "{{ __sap_hypervisor_node_preconfigure_register_tmpdir_jumphost.path }}/kubeconfig"
+
+    - name: Read content of kubeconfig file
+      ansible.builtin.set_fact:
+        sap_hypervisor_node_preconfigure_ocp_kubeconfig_data:
+          "{{ lookup('file', sap_hypervisor_node_preconfigure_ocp_kubeconfig_path) | from_yaml }}"
+
+    - name: Read cluster endpoint and CA certificate from kubeconfig if either is not defined
+      when: sap_hypervisor_node_preconfigure_ocp_extract_kubeconfig
+      block:
+
+        - name: Set sap_hypervisor_node_preconfigure_ocp_endpoint from kubeconfig
+          ansible.builtin.set_fact:
+            __sap_hypervisor_node_preconfigure_register_ocp_endpoint:
+              "{{ sap_hypervisor_node_preconfigure_ocp_kubeconfig_data['clusters'][0]['cluster']['server'] }}"
+
+        - name: Write the certificate-authority-data to temp dir on jumphost
+          ansible.builtin.copy:
+            content: "{{ sap_hypervisor_node_preconfigure_ocp_kubeconfig_data['clusters'][0]['cluster']['certificate-authority-data'] | b64decode }}"
+            dest: "{{ __sap_hypervisor_node_preconfigure_register_tmpdir_jumphost.path }}/cluster-ca-cert.pem"
+            mode: "0666"
+
+        - name: Set CA file variable
+          ansible.builtin.set_fact:
+            __sap_hypervisor_node_preconfigure_register_ca_cert: "{{ __sap_hypervisor_node_preconfigure_register_tmpdir_jumphost.path }}/cluster-ca-cert.pem"
+
+
+    - name: Use predefined CA cert and API endpoint
+      when: not sap_hypervisor_node_preconfigure_ocp_extract_kubeconfig
+
+      block:
+        - name: Set predefined OCP API Endpoint
+          ansible.builtin.set_fact:
+            __sap_hypervisor_node_preconfigure_register_ocp_endpoint: "{{ sap_hypervisor_node_preconfigure_ocp_endpoint }}"
+
+        - name: Set predefined CA file
+          ansible.builtin.set_fact:
+            __sap_hypervisor_node_preconfigure_register_ca_cert: "{{ sap_hypervisor_node_preconfigure_ocp_ca_cert }}"
+
+
+    - name: Log into Red Hat OpenShift cluster (obtain access token)
+      community.okd.openshift_auth:
+        host: "{{ __sap_hypervisor_node_preconfigure_register_ocp_endpoint }}"
+        username: "{{ sap_hypervisor_node_preconfigure_ocp_admin_username }}"
+        password: "{{ sap_hypervisor_node_preconfigure_ocp_admin_password }}"
+        ca_cert: "{{ __sap_hypervisor_node_preconfigure_register_ca_cert }}"
+      register: __sap_vm_provision_register_ocp_auth_results
+
+    - name: Set token in kubeconfig
+      ansible.builtin.set_fact:
+        sap_hypervisor_node_preconfigure_ocp_kubeconfig_data: >-
+          {{
+            sap_hypervisor_node_preconfigure_ocp_kubeconfig_data | combine({
+              'users':  sap_hypervisor_node_preconfigure_ocp_kubeconfig_data.users | map('combine', [{'user': {'token': __sap_vm_provision_register_ocp_auth_results.openshift_auth.api_key }}] )
+            }, recursive=True)
+          }}
+
+    - name: Write the updated kubeconfig
+      ansible.builtin.copy:
+        content: "{{ sap_hypervisor_node_preconfigure_ocp_kubeconfig_data | to_nice_yaml }}"
+        dest: "{{ __sap_hypervisor_node_preconfigure_register_kubeconfig }}"
+        mode: "0600"
+
+    - name: Invoke role with credentials set as environment variables
+      delegate_to: "{{ inventory_hostname }}"
+      delegate_facts: true
+      environment:
+        KUBECONFIG: "{{ __sap_hypervisor_node_preconfigure_register_kubeconfig }}"
+        K8S_AUTH_KUBECONFIG: "{{ __sap_hypervisor_node_preconfigure_register_kubeconfig }}"
+      block:
+
+        - name: Include sap_hypervisor_node_preconfigure Ansible Role
+          ansible.builtin.include_role:
+            name: community.sap_infrastructure.sap_hypervisor_node_preconfigure
+
+      always:
+
+        - name: Remove temporary directory
+          ansible.builtin.file:
+            state: absent
+            path: "{{ __sap_hypervisor_node_preconfigure_register_tmpdir_jumphost.path }}"
