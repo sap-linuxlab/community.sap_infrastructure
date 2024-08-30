@@ -57,8 +57,6 @@ For a list of requirements and recommended authorizations on each Infrastructure
 **Dependencies:**
 - OS Packages
     - Python 3.9.7+ (i.e. CPython distribution)
-    - AWS CLI _(when High Availability on AWS)_
-    - GCloud CLI _(when High Availability on GCP)_
     - IBM Cloud CLI _(when High Availability on IBM Cloud)_
     - Terraform 1.0.0-1.5.5 _(when Ansible to Terraform, or legacy Ansible Collection for IBM Cloud)_
 - Python Packages
