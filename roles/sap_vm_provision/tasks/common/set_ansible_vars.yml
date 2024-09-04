@@ -4,7 +4,7 @@
 - name: Set facts for all hosts - use facts from localhost - SAP Variables from host_specifications_dictionary
   ansible.builtin.set_fact:
     "{{ host_spec_sap_item }}": "{{ lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan][scaleout_origin_host_spec | default(inventory_hostname)][host_spec_sap_item] }}"
-  loop: "{{ vars['sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary'][sap_vm_provision_host_specification_plan][scaleout_origin_host_spec | default(inventory_hostname)].keys() | map('regex_findall', '^sap_.*') | flatten | select() | list }}"
+  loop: "{{ lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan][scaleout_origin_host_spec | default(inventory_hostname)].keys() | map('regex_findall', '^sap_.*') | flatten | select() | list }}"
   loop_control:
     loop_var: host_spec_sap_item
 
