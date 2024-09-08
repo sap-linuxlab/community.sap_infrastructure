@@ -67,10 +67,10 @@
         storagePools:
           - name: localstorage
             path: /var/localstorage
-      workload:
-        nodeSelector:
-          kubernetes.io/os: linux
-          machineconfiguration.openshift.io/role: worker
+        workload:
+          nodeSelector:
+            kubernetes.io/os: linux
+            machineconfiguration.openshift.io/role: worker
 
 - name: Create storage class for HPP
   kubernetes.core.k8s:
