@@ -852,8 +852,8 @@
     ip_address: "{{ sap_vm_provision_ha_vip_nwas_abap_ers | regex_replace('/.*', '') }}"
     all_ports: true # For internal network load balancing, allow any ports to be forwarded to the backend service (can not be set if ports are defined)
     allow_global_access: false # Only for use if access to the SAP NetWeaver Database Server is required from outside of the GCP Region
-    backend_service: { "selfLink": "{{ __sap_vm_provision_task_gcp_lb_backend_service_regional_ascs.selfLink }}" } # Mandatory, otherwise error "Invalid value for field 'resource.target'"
-    #backend_service: { "selfLink": "https://www.googleapis.com/compute/v1/projects/{{ sap_vm_provision_gcp_project }}/regions/{{ sap_vm_provision_gcp_region }}/backendServices/{{ sap_vm_provision_ha_load_balancer_name_nwas + '-ascs-backend-service' }}" }
+    backend_service: { "selfLink": "{{ __sap_vm_provision_task_gcp_lb_backend_service_regional_ers.selfLink }}" } # Mandatory, otherwise error "Invalid value for field 'resource.target'"
+    #backend_service: { "selfLink": "https://www.googleapis.com/compute/v1/projects/{{ sap_vm_provision_gcp_project }}/regions/{{ sap_vm_provision_gcp_region }}/backendServices/{{ sap_vm_provision_ha_load_balancer_name_nwas + '-ers-backend-service' }}" }
     subnetwork: { "selfLink": "{{ __sap_vm_provision_task_gcp_vpc_subnet_info.resources[0].selfLink }}" }
     load_balancing_scheme: INTERNAL
     network_tier: PREMIUM
