@@ -36,16 +36,84 @@
         name: sriov-network-operator
         channel: "stable"
 
-- name: Pause to give operator a chance to install
-  ansible.builtin.pause:
-    minutes: 3
+- name: Wait for Subscription to have an InstallPlan
+  kubernetes.core.k8s_info:
+    api_version: operators.coreos.com/v1alpha1
+    kind: Subscription
+    name: sriov-network-operator-subscription
+    namespace: openshift-sriov-network-operator
+  register: subscription_status
+  retries: 30
+  delay: 10
+  until: subscription_status.resources[0].status.installplan.name is defined
 
-- name: Enable unsupported NICs for SR-IOV usage
-  when: sap_hypervisor_node_preconfigure_sriov_enable_unsupported_nics
+- name: Wait for InstallPlan to complete for SR-IOV
+  kubernetes.core.k8s_info:
+    api_version: operators.coreos.com/v1alpha1
+    kind: InstallPlan
+    name: "{{ subscription_status.resources[0].status.installplan.name }}"
+    namespace: openshift-sriov-network-operator
+  register: installplan_status
+  retries: 30
+  delay: 10
+  ignore_errors: yes
+  until: installplan_status.resources[0].status.phase == "Complete"
+
+- name: Verify SR-IOV Operator is running
+  kubernetes.core.k8s_info:
+    api_version: operators.coreos.com/v1
+    kind: OperatorGroup
+    name: sriov-network-operators
+    namespace: openshift-sriov-network-operator
+  register: operatorgroup_status
+  retries: 30
+  delay: 10
+  until: operatorgroup_status.resources
+
+- name: Check if SriovOperatorConfig exists
+  kubernetes.core.k8s_info:
+    api_version: sriovnetwork.openshift.io/v1
+    kind: SriovOperatorConfig
+    name: default
+    namespace: openshift-sriov-network-operator
+  register: sriov_operator_config_status
+  ignore_errors: yes
+
+- name: Enable unsupported NICs for SR-IOV usage if the resource exists
   kubernetes.core.k8s:
     state: patched
     definition:
       apiVersion: sriovnetwork.openshift.io/v1
       kind: SriovOperatorConfig
+      metadata:
+        name: default
+        namespace: openshift-sriov-network-operator
       spec:
         enableOperatorWebhook: false
+  when: sriov_operator_config_status.resources is defined and sriov_operator_config_status.resources | length > 0
+
+- name: Create SriovOperatorConfig if it does not exist
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: sriovnetwork.openshift.io/v1
+      kind: SriovOperatorConfig
+      metadata:
+        name: default
+        namespace: openshift-sriov-network-operator
+      spec:
+        disableDrain: false
+        enableInjector: true
+        enableOperatorWebhook: false
+        logLevel: 2
+
+- name: Wait for SriovOperatorConfig to exist
+  kubernetes.core.k8s_info:
+    api_version: sriovnetwork.openshift.io/v1
+    kind: SriovOperatorConfig
+    name: default
+    namespace: openshift-sriov-network-operator
+  register: sriov_operator_config_status
+  retries: 10
+  delay: 10
+  until: sriov_operator_config_status.resources | length > 0
