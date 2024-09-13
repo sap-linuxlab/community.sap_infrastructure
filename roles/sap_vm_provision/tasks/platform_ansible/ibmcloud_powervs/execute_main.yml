@@ -373,7 +373,7 @@
     # the SNAT (VPC Public Gateway) service is not routable from IBM Power Virtual Server hosts
     # and cannot be used for outbound Public Internet connectivity
     # For IBM PowerVS Workspace with legacy Cloud Connection,
-    # required for both outbound Public Internet connectivty and internal traffic to other IBM Cloud Services
+    # required for both outbound Public Internet connectivity and internal traffic to other IBM Cloud Services
     - name: Register Web Forward Proxy
       ansible.builtin.include_tasks:
         file: common/register_proxy.yml
