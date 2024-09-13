@@ -68,6 +68,7 @@
 - name: Set facts for all hosts - use facts from localhost - HA/DR - Virtual IP for SAP AnyDB Primary node
   ansible.builtin.set_fact:
     sap_vm_temp_vip_anydb_primary: "{{ sap_vm_provision_ha_vip_anydb_primary }}"
+    sap_ha_install_anydb_ibmdb2_vip_primary_ip_address: "{{ sap_vm_provision_ha_vip_anydb_primary }}"
   when:
     - (sap_vm_provision_ha_vip_anydb_primary | length) > 0
   no_log: "{{ __sap_vm_provision_no_log }}"

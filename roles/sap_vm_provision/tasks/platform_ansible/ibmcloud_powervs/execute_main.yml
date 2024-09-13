@@ -83,6 +83,16 @@
         name: "{{ sap_vm_provision_ibmcloud_powervs_workspace_name }}"
         ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
 
+    - name: Identify IBM Power Infrastructure Workspace capabilities
+      no_log: "{{ __sap_vm_provision_no_log }}"
+      register: __sap_vm_provision_task_ibmcloud_pi_workspace_capabilities
+      run_once: true
+      environment:
+        IC_REGION: "{{ sap_vm_provision_ibmcloud_powervs_region }}"
+      ibm.cloudcollection.ibm_pi_workspace_info:
+        pi_cloud_instance_id: "{{ __sap_vm_provision_task_ibmcloud_pi_workspace_service_instance.resource.guid }}" # must be GUID, not CRN
+        ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
+
     - name: Identify pre-loaded IBM Power Infrastructure SSH Public Key info
       no_log: "{{ __sap_vm_provision_no_log }}"
       register: __sap_vm_provision_task_ibmcloud_pi_ssh_public_key
@@ -112,7 +122,7 @@
           then Subnet DNS Default should use IBM Cloud IaaS Backbone DNS Resolver 161.26.0.10/11 (which will be populated into /etc/resolv.conf).
           Otherwise cloud-init actions during provisioning may not be successful.
       when:
-        - not sap_vm_provision_proxy_web_forward_proxy_ip is defined
+        - __sap_vm_provision_task_ibmcloud_pi_workspace_capabilities.resource.pi_workspace_capabilities['power-edge-router']
         - not (__sap_vm_provision_task_ibmcloud_pi_subnet.resource.dns | first) in ['161.26.0.10', '161.26.0.11']
 
     # DNS may exist in separate Resource Group
@@ -358,8 +368,13 @@
         path: /etc/resolv.conf
         line: nameserver 161.26.0.10
 
-    # Not applicable to the IBM PowerVS Workspace enabled with Power Edge Router (from Q4-2023 onwards)
-    - name: Register Web Forward Proxy (for legacy Power Infrastructure Cloud Connections networking configuration)
+    # Required Web Forward Proxy
+    # For IBM PowerVS Workspace enabled with Power Edge Router (from Q4-2023 onwards),
+    # the SNAT (VPC Public Gateway) service is not routable from IBM Power Virtual Server hosts
+    # and cannot be used for outbound Public Internet connectivity
+    # For IBM PowerVS Workspace with legacy Cloud Connection,
+    # required for both outbound Public Internet connectivity and internal traffic to other IBM Cloud Services
+    - name: Register Web Forward Proxy
       ansible.builtin.include_tasks:
         file: common/register_proxy.yml
       when: sap_vm_provision_proxy_web_forward_proxy_ip is defined
@@ -378,9 +393,9 @@
         set -o pipefail && if [ "${workspace_legacy_cc}" = true ]; then sleep 120 ; fi
       when:
         - ansible_os_family == 'RedHat'
-        - (not sap_vm_provision_os_registration_script_command is defined) and (not sap_vm_provision_os_registration_script_command | length > 0)
-        - (not sap_vm_provision_os_online_registration_user is defined) and (sap_vm_provision_os_online_registration_user | length == 0)
-        - (not sap_vm_provision_os_online_registration_passcode is defined) and (sap_vm_provision_os_online_registration_passcode | length == 0)
+        - sap_vm_provision_os_registration_script_command is undefined
+        - (sap_vm_provision_os_online_registration_user is undefined) or (sap_vm_provision_os_online_registration_passcode is undefined)
+        - not __sap_vm_provision_task_ibmcloud_pi_workspace_capabilities.resource.pi_workspace_capabilities['power-edge-router']
 
     # Not applicable to the IBM PowerVS Workspace enabled with Power Edge Router (from Q4-2023 onwards)
     # Extract the generated command string and activation key from /usr/share, then execute script from /usr/local/bin
@@ -396,9 +411,9 @@
         set -o pipefail && SUSEConnect --product PackageHub/{{ ansible_distribution_version }}/ppc64le
       when:
         - ansible_os_family == 'Suse'
-        - (not sap_vm_provision_os_registration_script_command is defined) and (not sap_vm_provision_os_registration_script_command | length > 0)
-        - (not sap_vm_provision_os_online_registration_user is defined) and (sap_vm_provision_os_online_registration_user | length == 0)
-        - (not sap_vm_provision_os_online_registration_passcode is defined) and (sap_vm_provision_os_online_registration_passcode | length == 0)
+        - sap_vm_provision_os_registration_script_command is undefined
+        - (sap_vm_provision_os_online_registration_user is undefined) or (sap_vm_provision_os_online_registration_passcode is undefined)
+        - not __sap_vm_provision_task_ibmcloud_pi_workspace_capabilities.resource.pi_workspace_capabilities['power-edge-router']
 
     - name: Register Package Repositories for OS Images with Bring-Your-Own-Subscription (BYOS)
       ansible.builtin.include_tasks:
@@ -412,7 +427,9 @@
         sleep: 10
         connect_timeout: 15
         timeout: 120
-      when: sap_vm_provision_nfs_mount_point is defined
+      when:
+        - sap_vm_provision_nfs_mount_point is defined
+        - (sap_vm_provision_nfs_mount_point | default('')) | length > 0
 
     - name: Verify connection to separate NFS for SAP Transport Directory
       ansible.builtin.wait_for:
@@ -422,7 +439,9 @@
         sleep: 10
         connect_timeout: 15
         timeout: 120
-      when: sap_vm_provision_nfs_mount_point_separate_sap_transport_dir is defined
+      when:
+        - sap_vm_provision_nfs_mount_point_separate_sap_transport_dir is defined
+        - (sap_vm_provision_nfs_mount_point_separate_sap_transport_dir | default('')) | length > 0
 
     # Ensure lock to RHEL major.minor version
     # Lock using subscription-manager release --set or /var/lib/rhsm/cache/releasever.json, alternatively using /etc/yum/vars/releasever or /etc/dnf/vars/releasever
