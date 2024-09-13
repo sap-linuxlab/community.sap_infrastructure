@@ -1246,7 +1246,6 @@
   failed_when: not __sap_vm_provision_task_ibmcloud_lb_pool_members_nwas_ers10.rc == 0 and not 'already exists in a pool' in __sap_vm_provision_task_ibmcloud_lb_pool_members_nwas_ers10.stderr
 
 
-
 # Set DNS A Record for Virtual IP (use the first of the IBM Cloud Load Balancer instance assigned Private IPs in the VPC Subnet Range)
 
 - name: IBM Cloud Private DNS Record for SAP HANA HA Virtual Hostname
