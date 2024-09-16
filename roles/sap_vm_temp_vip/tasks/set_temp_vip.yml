@@ -71,7 +71,10 @@
 - name: Append temporary Virtual IP (VIP) to network interface for SAP HANA, will be replaced by Linux Pacemaker IPaddr2 Resource Agent
   ansible.builtin.shell: |
     platform_cidr_32_static="{{ 'true' if (('amazon' in (ansible_system_vendor | lower) or 'amazon' in (ansible_product_name | lower)) or (ansible_product_name == 'Google Compute Engine')) }}"
-    if [ "$platform_cidr_32_static" = "true" ]
+    if [ "$platform_cidr_32_static" = "true" ] && [ "{{ primary_ip_broadcast_address }}" = "" ]
+    then
+      ip address add {{ sap_vm_temp_vip_hana_primary | regex_replace('/.*', '') }}/32 dev eth0 noprefixroute
+    elif [ "$platform_cidr_32_static" = "true" ] && [ "{{ primary_ip_broadcast_address }}" != "" ]
     then
       ip address add {{ sap_vm_temp_vip_hana_primary | regex_replace('/.*', '') }}/32 brd {{ primary_ip_broadcast_address }} dev eth0 noprefixroute
     elif [ "{{ primary_ip_broadcast_address }}" = "" ] && [ "{{ primary_ip_address_netmask_cidr_prefix }}" = "" ]
@@ -108,7 +111,10 @@
 - name: Append temporary Virtual IP (VIP) to network interface for SAP AnyDB, will be replaced by Linux Pacemaker IPaddr2 Resource Agent
   ansible.builtin.shell: |
     platform_cidr_32_static="{{ 'true' if (('amazon' in (ansible_system_vendor | lower) or 'amazon' in (ansible_product_name | lower)) or (ansible_product_name == 'Google Compute Engine')) }}"
-    if [ "$platform_cidr_32_static" = "true" ]
+    if [ "$platform_cidr_32_static" = "true" ] && [ "{{ primary_ip_broadcast_address }}" = "" ]
+    then
+      ip address add {{ sap_vm_temp_vip_anydb_primary | regex_replace('/.*', '') }}/32 dev eth0 noprefixroute
+    elif [ "$platform_cidr_32_static" = "true" ] && [ "{{ primary_ip_broadcast_address }}" != "" ]
     then
       ip address add {{ sap_vm_temp_vip_anydb_primary | regex_replace('/.*', '') }}/32 brd {{ primary_ip_broadcast_address }} dev eth0 noprefixroute
     elif [ "{{ primary_ip_broadcast_address }}" = "" ] && [ "{{ primary_ip_address_netmask_cidr_prefix }}" = "" ]
@@ -150,7 +156,10 @@
 - name: Append temporary Virtual IP (VIP) to network interface for SAP NetWeaver ASCS, will be replaced by Linux Pacemaker IPaddr2 Resource Agent
   ansible.builtin.shell: |
     platform_cidr_32_static="{{ 'true' if (('amazon' in (ansible_system_vendor | lower) or 'amazon' in (ansible_product_name | lower)) or (ansible_product_name == 'Google Compute Engine')) }}"
-    if [ "$platform_cidr_32_static" = "true" ]
+    if [ "$platform_cidr_32_static" = "true" ] && [ "{{ primary_ip_broadcast_address }}" = "" ]
+    then
+      ip address add {{ sap_vm_temp_vip_nwas_abap_ascs | regex_replace('/.*', '') }}/32 dev eth0 noprefixroute
+    elif [ "$platform_cidr_32_static" = "true" ] && [ "{{ primary_ip_broadcast_address }}" != "" ]
     then
       ip address add {{ sap_vm_temp_vip_nwas_abap_ascs | regex_replace('/.*', '') }}/32 brd {{ primary_ip_broadcast_address }} dev eth0 noprefixroute
     elif [ "{{ primary_ip_broadcast_address }}" = "" ] && [ "{{ primary_ip_address_netmask_cidr_prefix }}" = "" ]
@@ -189,7 +198,10 @@
 - name: Append temporary Virtual IP (VIP) to network interface for SAP NetWeaver ERS, will be replaced by Linux Pacemaker IPaddr2 Resource Agent
   ansible.builtin.shell: |
     platform_cidr_32_static="{{ 'true' if (('amazon' in (ansible_system_vendor | lower) or 'amazon' in (ansible_product_name | lower)) or (ansible_product_name == 'Google Compute Engine')) }}"
-    if [ "$platform_cidr_32_static" = "true" ]
+    if [ "$platform_cidr_32_static" = "true" ] && [ "{{ primary_ip_broadcast_address }}" = "" ]
+    then
+      ip address add {{ sap_vm_temp_vip_nwas_abap_ers | regex_replace('/.*', '') }}/32 dev eth0 noprefixroute
+    elif [ "$platform_cidr_32_static" = "true" ] && [ "{{ primary_ip_broadcast_address }}" != "" ]
     then
       ip address add {{ sap_vm_temp_vip_nwas_abap_ers | regex_replace('/.*', '') }}/32 brd {{ primary_ip_broadcast_address }} dev eth0 noprefixroute
     elif [ "{{ primary_ip_broadcast_address }}" = "" ] && [ "{{ primary_ip_address_netmask_cidr_prefix }}" = "" ]

@@ -325,6 +325,37 @@
         state: stopped
         enabled: false
 
+    # Ensure that backend load balancer configuration is allowed before Load balancers are created
+    # SUSE: https://cloud.google.com/solutions/sap/docs/netweaver-ha-config-sles#enable-back-end-comms
+    # RHEL: https://cloud.google.com/solutions/sap/docs/netweaver-ha-config-rhel#enable-back-end-comms
+    - name: Stop google-guest-agent service
+      ansible.builtin.service:
+        name: google-guest-agent
+        state: stopped
+
+    - name: Update /etc/default/instance_configs.cfg file
+      register: __sap_vm_provision_task_gcp_instance_config
+      ansible.builtin.blockinfile:
+        path: /etc/default/instance_configs.cfg
+        create: true
+        mode: '0644'
+        block: |
+          [IpForwarding]
+          ethernet_proto_id = 66
+          ip_aliases = true
+          target_instance_ips = false
+
+          [NetworkInterfaces]
+          dhclient_script = /sbin/google-dhclient-script
+          dhcp_command =
+          ip_forwarding = false
+          setup = true
+
+    - name: Start google-guest-agent service
+      ansible.builtin.service:
+        name: google-guest-agent
+        state: started
+
 
 - name: Ansible Task block for looped provisioning of High Availability resources for Google Cloud CE VMs
   delegate_to: localhost
