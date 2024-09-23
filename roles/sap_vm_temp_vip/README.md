@@ -9,7 +9,7 @@ Ansible role `sap_vm_temp_vip` is used to enable installation of SAP Application
 Installation of cluster environment requires temporary assignment of Virtual IP (VIP) before executing installation roles [sap_hana_install](https://github.com/sap-linuxlab/community.sap_install/tree/main/roles/sap_hana_install) and [sap_swpm](https://github.com/sap-linuxlab/community.sap_install/tree/main/roles/sap_swpm).
 - This is temporary and it will be replaced by Cluster VIP resource once cluster is configured by [sap_ha_pacemaker_cluster](https://github.com/sap-linuxlab/community.sap_install/tree/main/roles/sap_ha_pacemaker_cluster) role.
 
-This role does not update `/etc/hosts` or DNS, because that is completed by [sap_vm_provision](https://github.com/sap-linuxlab/community.sap_infrastructure/tree/main/roles/sap_vm_provision) role.
+This role does not update `/etc/hosts` or DNS records, as these steps are performed by the [sap_vm_provision](https://github.com/sap-linuxlab/community.sap_infrastructure/tree/main/roles/sap_vm_provision) role.
 <!-- END Description -->
 
 ## Prerequisites
@@ -19,8 +19,8 @@ Environment:
 2. Assign hosts to correct groups, which are also used in other roles in our project
     - Supported cluster groups: `hana_primary, hana_secondary, anydb_primary, anydb_secondary, nwas_ascs, nwas_ers`
 
-Dependent on roles:
-1. [sap_vm_provision](https://github.com/sap-linuxlab/community.sap_infrastructure/tree/main/roles/sap_vm_provision) to create required resources: DNS, Load Balancers and Health Checks.
+Role dependency:
+1. [sap_vm_provision](https://github.com/sap-linuxlab/community.sap_infrastructure/tree/main/roles/sap_vm_provision), for creating the following required resources: DNS, Load Balancers and Health Checks.
 <!-- END Prerequisites -->
 
 ## Execution
