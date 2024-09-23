@@ -1,0 +1,100 @@
+---
+# Get details of default ip route to detect default network interface
+- name: Get network interface from ip route show default 0.0.0.0/0
+  ansible.builtin.shell:
+    cmd: set -o pipefail && ip route show default 0.0.0.0/0 | awk '/default/ {print $5}'
+  register: __sap_vm_temp_vip_get_route
+  changed_when: false
+  failed_when: false
+
+# Get content of ip address show filtered by primary IP
+- name: Get contents of ip address show for {{ sap_vm_temp_vip_primary_ip }}
+  ansible.builtin.shell:
+    cmd: set -o pipefail && ip -oneline address show {{ __sap_vm_temp_vip_get_route.stdout }} | grep {{ sap_vm_temp_vip_primary_ip }}
+  when:
+    - __sap_vm_temp_vip_get_route.stdout is defined  and __sap_vm_temp_vip_get_route.stdout | length > 0
+  register: __sap_vm_temp_vip_get_ips
+  changed_when: false
+  failed_when: false
+
+# Extract prefix from netmask if it is available
+# Use localhost (execution host) Python3 instead of relying on target host
+- name: Calculate prefix from netmask {{ sap_vm_temp_vip_primary_netmask }}
+  delegate_to: localhost
+  ansible.builtin.command:
+    cmd: >
+      python3 -c "import ipaddress; print(ipaddress.IPv4Network('{{ sap_vm_temp_vip_primary_ip }}/{{ sap_vm_temp_vip_primary_netmask }}', strict=False).prefixlen)"
+  when:
+    - sap_vm_temp_vip_primary_prefix == ''
+    - sap_vm_temp_vip_primary_netmask | length > 0
+  register: __sap_vm_temp_vip_get_prefix_netmask
+  changed_when: false
+  failed_when: false
+
+# Extract prefix from primary IP on default interface if netmask is not available
+# Stdout result is array instead of string. [0] is used to select only one in case of multiple results.
+# [0] could be replaced by join('') but it would require duplicate record validation.
+- name: Calculate prefix from IP {{ sap_vm_temp_vip_primary_ip }} if sap_vm_temp_vip_primary_netmask is empty
+  ansible.builtin.set_fact:
+    __sap_vm_temp_vip_get_prefix_ip:
+      "{{ (__sap_vm_temp_vip_inet[0] | basename) if __sap_vm_temp_vip_inet | length > 0 else __sap_vm_temp_vip_inet }}"
+  vars:
+    __sap_vm_temp_vip_inet: "{{ __sap_vm_temp_vip_get_ips.stdout | regex_search('inet ([0-9.]+/[0-9]+)', '\\1') }}"
+  when:
+    - sap_vm_temp_vip_primary_prefix == ''
+    - sap_vm_temp_vip_primary_netmask == ''
+    - __sap_vm_temp_vip_get_ips is defined and __sap_vm_temp_vip_get_ips.stdout is defined and __sap_vm_temp_vip_get_ips.stdout | length > 0
+  changed_when: false
+
+
+# Combine final prefix variable based on decision below:
+# 1. Use /32 for AWS and GCP if sap_vm_temp_vip_primary_prefix is empty
+# 2. Else use prefix calculated from netmask if it is available and sap_vm_temp_vip_primary_prefix is empty
+# 3. Else use prefix calculated from primary IP if netmask is not available and sap_vm_temp_vip_primary_prefix is empty
+# 4. Else use sap_vm_temp_vip_primary_prefix (regardless of content) to be used to skip steps.
+- name: Update netmask prefix variable if it was calculated
+  ansible.builtin.set_fact:
+    __sap_vm_temp_vip_primary_prefix: >-
+      {%- if sap_vm_temp_vip_primary_prefix | length == 0 and __sap_vm_temp_vip_force_static_32 -%}
+        32
+      {%- elif sap_vm_temp_vip_primary_prefix | length == 0
+       and __sap_vm_temp_vip_get_prefix_netmask.stdout is defined and __sap_vm_temp_vip_get_prefix_netmask.stdout | length > 0 -%}
+        {{ __sap_vm_temp_vip_get_prefix_netmask.stdout }}
+      {%- elif sap_vm_temp_vip_primary_prefix | length == 0
+       and __sap_vm_temp_vip_get_prefix_ip is defined and __sap_vm_temp_vip_get_prefix_ip | length > 0 -%}
+        {{ __sap_vm_temp_vip_get_prefix_ip }}
+      {%- else -%}
+        {{ sap_vm_temp_vip_primary_prefix }}
+      {%- endif -%}
+  vars:
+    __sap_vm_temp_vip_force_static_32:
+      "{{ true if (('amazon' in (ansible_system_vendor | lower) or 'amazon' in (ansible_product_name | lower))
+        or (ansible_product_name == 'Google Compute Engine')) else false }}"
+
+
+# Extract broadcast IP from primary IP if it is present and ansible fact ansible_default_ipv4.broadcast is empty
+# Stdout result is array instead of string. [0] is used to select only one in case of multiple results.
+# [0] could be replaced by join('') but it would require duplicate record validation.
+- name: Calculate broadcast IP from IP {{ sap_vm_temp_vip_primary_ip }} if sap_vm_temp_vip_primary_broadcast is empty
+  ansible.builtin.set_fact:
+    __sap_vm_temp_vip_get_broadcast_ip:
+      "{{ (__sap_vm_temp_vip_brd[0] | basename) if __sap_vm_temp_vip_brd | length > 0 else __sap_vm_temp_vip_brd }}"
+  vars:
+    __sap_vm_temp_vip_brd: "{{ __sap_vm_temp_vip_get_ips.stdout | regex_search('brd ([0-9.]+)', '\\1') }}"
+  when:
+    - sap_vm_temp_vip_primary_broadcast == ''
+    - __sap_vm_temp_vip_get_ips is defined and __sap_vm_temp_vip_get_ips.stdout is defined and __sap_vm_temp_vip_get_ips.stdout | length > 0
+  changed_when: false
+
+# Combine final broadcast IP based on decision below:
+# 1. Use calculated broadcast from primary IP if sap_vm_temp_vip_primary_broadcast is empty
+# 2. Else use sap_vm_temp_vip_primary_broadcast (regardless of content) to be used during VIP creation
+- name: Update broadcast IP variable if it was calculated
+  ansible.builtin.set_fact:
+    __sap_vm_temp_vip_primary_broadcast: >-
+      {%- if sap_vm_temp_vip_primary_broadcast | length == 0
+        and __sap_vm_temp_vip_get_broadcast_ip is defined and __sap_vm_temp_vip_get_broadcast_ip | length > 0 -%}
+        {{ __sap_vm_temp_vip_get_broadcast_ip }}
+      {%- else -%}
+        {{ sap_vm_temp_vip_primary_broadcast }}
+      {%- endif -%}

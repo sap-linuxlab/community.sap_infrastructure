@@ -1,14 +1,36 @@
 ---
+# Ansible role to setup temporary Virtual IP (VIP)
 
-- name: Setup temporary Virtual IP (VIP)
+- name: Assert that sap_vm_temp_vip_primary_ip is defined
+  ansible.builtin.assert:
+    that: sap_vm_temp_vip_primary_ip is defined and sap_vm_temp_vip_primary_ip | length > 0
+    fail_msg:
+      - "Unable to get ansible fact ansible_default_ipv4.address or variable sap_vm_temp_vip_primary_ip is empty!"
+      - "Ensure that gather_facts:true is set and sap_vm_temp_vip_primary_ip is not empty."
+
+
+- name: Block to ensure that only supported groups are allowed
+  when: group_names | intersect(['hana_primary', 'hana_secondary', 'anydb_primary', 'anydb_secondary', 'nwas_ascs', 'nwas_ers'])
   block:
 
     # - name: Identify OS Primary Network Interface
     #   ansible.builtin.include_tasks: "identify_network_interface.yml"
 
+    - name: Attempt to obtain missing network information
+      ansible.builtin.include_tasks: "get_temp_vip_details.yml"
+      when:
+        - not ansible_chassis_asset_tag == 'ibmcloud'  # Moved here instead of each task inside of "set_temp_vip.yml"
+
+
     - name: Execute temporary set of a Virtual IP (VIP) prior to Linux Pacemaker ownership
       ansible.builtin.include_tasks: "set_temp_vip.yml"
+      when:
+        - not ansible_chassis_asset_tag == 'ibmcloud'  # Moved here instead of each task inside of "set_temp_vip.yml"
 
+
+    # Required when using Load Balancers (i.e. Google Cloud, IBM Cloud, MS Azure)
     - name: Set Health Check Probe Listener for Virtual IP when Load Balancer
       ansible.builtin.include_tasks: "set_temp_vip_lb_listener.yml"
-      when: (ansible_product_name == 'Google Compute Engine') or (ansible_chassis_asset_tag == 'ibmcloud') or (ansible_chassis_vendor == 'Microsoft Corporation' and ansible_product_name == 'Virtual Machine')
+      when:
+        - (ansible_product_name == 'Google Compute Engine') or (ansible_chassis_asset_tag == 'ibmcloud')
+          or (ansible_chassis_vendor == 'Microsoft Corporation' and ansible_product_name == 'Virtual Machine')
