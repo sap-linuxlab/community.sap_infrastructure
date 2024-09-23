@@ -19,8 +19,8 @@ Environment:
 2. Assign hosts to correct groups, which are also used in other roles in our project
     - Supported cluster groups: `hana_primary, hana_secondary, anydb_primary, anydb_secondary, nwas_ascs, nwas_ers`
 
-Dependant on roles:
-1. [sap_vm_provision](https://github.com/sap-linuxlab/community.sap_infrastructure/tree/main/roles/sap_vm_provision) to create dependant resources: DNS, Load Balancers and Health Checks.
+Dependent on roles:
+1. [sap_vm_provision](https://github.com/sap-linuxlab/community.sap_infrastructure/tree/main/roles/sap_vm_provision) to create required resources: DNS, Load Balancers and Health Checks.
 <!-- END Prerequisites -->
 
 ## Execution
