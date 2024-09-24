@@ -60,7 +60,7 @@ Role can be execute separately or as part of [ansible.playbooks_for_sap](https:/
 <!-- BEGIN Role Tags -->
 <!-- END Role Tags -->
 
-<!-- BEGIN Further Information →
+<!-- BEGIN Further Information -->
 <!-- END Further Information -->
 
 ## License
