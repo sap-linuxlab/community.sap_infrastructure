@@ -48,14 +48,14 @@
 
 
 # Combine final prefix variable based on decision below:
-# 1. Use /32 for AWS and GCP if sap_vm_temp_vip_primary_prefix is empty
+# 1. Always use /32 for AWS and GCP, regardless of existing prefix
 # 2. Else use prefix calculated from netmask if it is available and sap_vm_temp_vip_primary_prefix is empty
 # 3. Else use prefix calculated from primary IP if netmask is not available and sap_vm_temp_vip_primary_prefix is empty
 # 4. Else use sap_vm_temp_vip_primary_prefix (regardless of content) to be used to skip steps.
 - name: Update netmask prefix variable if it was calculated
   ansible.builtin.set_fact:
     __sap_vm_temp_vip_primary_prefix: >-
-      {%- if sap_vm_temp_vip_primary_prefix | length == 0 and __sap_vm_temp_vip_force_static_32 -%}
+      {%- if __sap_vm_temp_vip_force_static_32 -%}
         32
       {%- elif sap_vm_temp_vip_primary_prefix | length == 0
        and __sap_vm_temp_vip_get_prefix_netmask.stdout is defined and __sap_vm_temp_vip_get_prefix_netmask.stdout | length > 0 -%}
