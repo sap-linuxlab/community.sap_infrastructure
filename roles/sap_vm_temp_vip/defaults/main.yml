@@ -1,9 +1,10 @@
 ---
 # General variables that are calculated from Ansible facts
-sap_vm_temp_vip_primary_ip: "{{ ansible_default_ipv4.address | default('') }}"
-sap_vm_temp_vip_primary_netmask: "{{ ansible_default_ipv4.netmask | default('') }}"
-sap_vm_temp_vip_primary_prefix: "{{ ansible_default_ipv4.prefix | default('') }}"
-sap_vm_temp_vip_primary_broadcast: "{{ ansible_default_ipv4.broadcast | default('') }}"
+sap_vm_temp_vip_default_ip: "{{ ansible_default_ipv4.address | default('') }}"
+sap_vm_temp_vip_default_netmask: "{{ ansible_default_ipv4.netmask | default('') }}"
+sap_vm_temp_vip_default_prefix: "{{ ansible_default_ipv4.prefix | default('') }}"
+sap_vm_temp_vip_default_broadcast: "{{ ansible_default_ipv4.broadcast | default('') }}"
+sap_vm_temp_vip_default_interface: "{{ ansible_default_ipv4.interface | default('eth0') }}"
 
 
 # SAP specific IPs are defined from sap_install.sap_ha_pacemaker_role input variables

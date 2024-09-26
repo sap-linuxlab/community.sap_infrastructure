@@ -58,15 +58,15 @@
     msg: >-
       {%- if __vip_expected == __vip_found -%}
         VIP address {{ __vip_expected }} is already present. VIP creation will be skipped.
-      {%- elif __vip_expected != __vip_found and __sap_vm_temp_vip_primary_prefix != '' and not __vip_multiple -%}
+      {%- elif __vip_expected != __vip_found and __sap_vm_temp_vip_prefix != '' and not __vip_multiple -%}
         VIP address {{ __vip_expected }} is already present with different prefix {{ __vip_found }}. VIP creation will be skipped.
       {%- elif __vip_multiple -%}
         Multiple VIP address entries found. VIP creation will be skipped.
       {%- else -%}
-        VIP address {{ __sap_vm_temp_vip_address }} is already present, but comparison failed because of empty __sap_vm_temp_vip_primary_prefix.
+        VIP address {{ __sap_vm_temp_vip_address }} is already present, but comparison failed because of empty sap_vm_temp_vip_default_prefix.
       {%- endif -%}
   vars:
-    __vip_expected: "{{ __sap_vm_temp_vip_address ~ '/' ~ __sap_vm_temp_vip_primary_prefix }}"
+    __vip_expected: "{{ __sap_vm_temp_vip_address ~ '/' ~ __sap_vm_temp_vip_prefix }}"
     __vip_found: "{{ __sap_vm_temp_vip_get_vip.stdout | regex_search('inet ([0-9.]+/[0-9]+)', '\\1') | join('') if not __vip_multiple else '' }}"
     __vip_multiple: "{{ true if __sap_vm_temp_vip_get_vip.stdout_lines | length > 1 else false }}"
   when:
@@ -78,17 +78,17 @@
 # 1. VIP address is defined based on target host group
 # 2. Prefix is defined or generated using netmask or primary IP prefix
 # 3. Broadcast IP is used only if it was defined or generated using primary IP broadcast
-- name: Generate command for IP creation - Prefix /{{ __sap_vm_temp_vip_primary_prefix }} static IPs
+- name: Generate command for IP creation - Prefix /{{ __sap_vm_temp_vip_prefix }} static IPs
   ansible.builtin.set_fact:
     __sap_vm_temp_vip_command: >-
-      {%- if __sap_vm_temp_vip_primary_broadcast | length > 0 -%}
-        ip address add {{ __sap_vm_temp_vip_address }}/{{ __sap_vm_temp_vip_primary_prefix }} brd {{ __sap_vm_temp_vip_primary_broadcast }} dev eth0 noprefixroute
+      {%- if __sap_vm_temp_vip_broadcast | length > 0 -%}
+        ip address add {{ __sap_vm_temp_vip_address }}/{{ __sap_vm_temp_vip_prefix }} brd {{ __sap_vm_temp_vip_broadcast }} dev {{ sap_vm_temp_vip_default_interface }} noprefixroute
       {%- else -%}
-        ip address add {{ __sap_vm_temp_vip_address }}/{{ __sap_vm_temp_vip_primary_prefix }} brd + dev eth0 noprefixroute
+        ip address add {{ __sap_vm_temp_vip_address }}/{{ __sap_vm_temp_vip_prefix }} brd + dev {{ sap_vm_temp_vip_default_interface }} noprefixroute
       {%- endif -%}
   when:
     - __sap_vm_temp_vip_address is defined and __sap_vm_temp_vip_address | length > 0
-    - __sap_vm_temp_vip_primary_prefix | length > 0
+    - __sap_vm_temp_vip_prefix | length > 0
     - __sap_vm_temp_vip_get_vip.stdout is defined and __sap_vm_temp_vip_get_vip.stdout | length == 0
 
 
@@ -97,10 +97,10 @@
   ansible.builtin.debug:
     msg:
       - "Ansible Facts:"
-      - primary_ip_address = {{ sap_vm_temp_vip_primary_ip }}
-      - primary_ip_address_netmask = {{ sap_vm_temp_vip_primary_netmask }}
-      - primary_ip_address_netmask_cidr_prefix = {{ __sap_vm_temp_vip_primary_prefix }}
-      - primary_ip_broadcast_address = {{ __sap_vm_temp_vip_primary_broadcast }}
+      - primary_ip_address = {{ sap_vm_temp_vip_default_ip }}
+      - primary_ip_address_netmask = {{ sap_vm_temp_vip_default_netmask }}
+      - primary_ip_address_netmask_cidr_prefix = {{ __sap_vm_temp_vip_prefix }}
+      - primary_ip_broadcast_address = {{ __sap_vm_temp_vip_broadcast }}
       - ""
       - "Command to be executed:"
       - "{{ __sap_vm_temp_vip_command }}"
@@ -115,10 +115,10 @@
       - "ERROR: Unable to generate command because of lacking data."
       - ""
       - "Please review facts below, to see which are empty or missing:"
-      - primary_ip_address = {{ sap_vm_temp_vip_primary_ip }}
-      - primary_ip_address_netmask = {{ sap_vm_temp_vip_primary_netmask }}
-      - primary_ip_address_netmask_cidr_prefix = {{ __sap_vm_temp_vip_primary_prefix }}
-      - primary_ip_broadcast_address = {{ __sap_vm_temp_vip_primary_broadcast }}
+      - primary_ip_address = {{ sap_vm_temp_vip_default_ip }}
+      - primary_ip_address_netmask = {{ sap_vm_temp_vip_default_netmask }}
+      - primary_ip_address_netmask_cidr_prefix = {{ __sap_vm_temp_vip_prefix }}
+      - primary_ip_broadcast_address = {{ __sap_vm_temp_vip_broadcast }}
   when:
     - __sap_vm_temp_vip_command is not defined or (__sap_vm_temp_vip_command is defined and __sap_vm_temp_vip_command | length == 0)
     - __sap_vm_temp_vip_get_vip.stdout is defined and __sap_vm_temp_vip_get_vip.stdout | length == 0

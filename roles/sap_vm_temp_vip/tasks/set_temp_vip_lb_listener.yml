@@ -33,13 +33,13 @@
     - __sap_vm_temp_vip_address is defined and __sap_vm_temp_vip_address | length > 0
     - __sap_vm_temp_vip_port is defined and __sap_vm_temp_vip_port | length > 0
     - __sap_vm_temp_vip_port_check.stdout is defined and __sap_vm_temp_vip_port_check.stdout | length == 0
-    - __sap_vm_temp_vip_primary_prefix | length > 0  # Dont execute if prefix was empty during VIP creation
+    - __sap_vm_temp_vip_prefix | length > 0  # Dont execute if prefix was empty during VIP creation
   block:
 
     # Get content of ip address show filtered by VIP - Additional execution if VIP was previously created
     - name: Check if VIP is was already attached to network interface
       ansible.builtin.shell:
-        cmd: "set -o pipefail && ip --oneline address show | grep {{ __sap_vm_temp_vip_address }}/{{ __sap_vm_temp_vip_primary_prefix }}"
+        cmd: "set -o pipefail && ip --oneline address show | grep {{ __sap_vm_temp_vip_address }}/{{ __sap_vm_temp_vip_prefix }}"
         executable: /bin/bash
       register: __sap_vm_temp_vip_check_ip
       changed_when: false
