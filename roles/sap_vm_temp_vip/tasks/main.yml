@@ -1,6 +1,12 @@
 ---
 # Ansible role to setup temporary Virtual IP (VIP)
 
+- name: Collect Ansible facts for required subsets - Hardware and Network Interfaces
+  ansible.builtin.setup:
+    gather_subset:
+      - hardware
+      - interfaces
+
 - name: Assert that sap_vm_temp_vip_default_ip is defined
   ansible.builtin.assert:
     that: sap_vm_temp_vip_default_ip is defined and sap_vm_temp_vip_default_ip | length > 0

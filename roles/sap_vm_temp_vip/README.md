@@ -15,12 +15,11 @@ This role does not update `/etc/hosts` or DNS records, as these steps are perfor
 ## Prerequisites
 <!-- BEGIN Prerequisites -->
 Environment:
-1. Execute role with `gather_facts: true`, as it uses `ansible_default_ipv4` facts.
-2. Assign hosts to correct groups, which are also used in other roles in our project
-    - Supported cluster groups: `hana_primary, hana_secondary, anydb_primary, anydb_secondary, nwas_ascs, nwas_ers`
+- Assign hosts to correct groups, which are also used in other roles in our project
+  - Supported cluster groups: `hana_primary, hana_secondary, anydb_primary, anydb_secondary, nwas_ascs, nwas_ers`
 
 Role dependency:
-1. [sap_vm_provision](https://github.com/sap-linuxlab/community.sap_infrastructure/tree/main/roles/sap_vm_provision), for creating the following required resources: DNS, Load Balancers and Health Checks.
+- [sap_vm_provision](https://github.com/sap-linuxlab/community.sap_infrastructure/tree/main/roles/sap_vm_provision), for creating required resources: DNS, Load Balancers and Health Checks.
 <!-- END Prerequisites -->
 
 ## Execution
