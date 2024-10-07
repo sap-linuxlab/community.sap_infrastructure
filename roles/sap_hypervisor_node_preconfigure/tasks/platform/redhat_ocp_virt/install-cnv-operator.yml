@@ -35,10 +35,6 @@
         sourceNamespace: openshift-marketplace
         name: kubevirt-hyperconverged
 
-- name: Wait
-  ansible.builtin.pause:
-    seconds: 300
-
 - name: Get Install Plan Name from Subscription
   retries: 10
   delay: 10
@@ -76,10 +72,6 @@
         msg: "Install Plan is not Complete after the specified wait period."
       when: __sap_hypervisor_node_preconfigure_register_wait_for_installplan.resources[0].status.phase != "Complete"
 
-- name: Wait
-  ansible.builtin.pause:
-    seconds: 300
-
 - name: Create CNV HyperConverged
   kubernetes.core.k8s:
     state: present
@@ -89,8 +81,35 @@
       metadata:
         name: kubevirt-hyperconverged
         namespace: "{{ sap_hypervisor_node_preconfigure_ocpv_namespace }}"
-      spec:
 
-- name: Wait
-  ansible.builtin.pause:
-    seconds: 300
+- name: Retrieve HyperConverged Status
+  kubernetes.core.k8s_info:
+    api_version: hco.kubevirt.io/v1beta1
+    kind: HyperConverged
+    name: kubevirt-hyperconverged
+    namespace: "{{ sap_hypervisor_node_preconfigure_ocpv_namespace }}"
+  register: hyperconverged_status
+  until: >
+    {{
+      (hyperconverged_status.resources[0].status.conditions |
+      selectattr('type', 'equalto', 'Available') |
+      selectattr('status', 'equalto', 'True') |
+      list | length > 0) | bool
+    }}
+  retries: 60
+  delay: 10
+
+- name: Set HyperConverged Available Fact
+  ansible.builtin.set_fact:
+    hyperconverged_available: >-
+      {{
+        (hyperconverged_status.resources[0].status.conditions |
+        selectattr('type', 'equalto', 'Available') |
+        selectattr('status', 'equalto', 'True') |
+        list | length > 0) | bool
+      }}
+
+- name: Fail if HyperConverged is not Available after waiting
+  ansible.builtin.fail:
+    msg: "HyperConverged is not Available after the specified wait period."
+  when: not hyperconverged_available
