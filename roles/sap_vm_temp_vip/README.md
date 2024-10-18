@@ -1,81 +1,77 @@
-`Beta`
-
+<!-- BEGIN Title -->
 # sap_vm_temp_vip Ansible Role
+<!-- END Title -->
 
-Ansible Role for assignment of Temporary Virtual IP (VIP) to OS Network Interface prior to Linux Pacemaker ownership.
+## Description
+<!-- BEGIN Description -->
+Ansible role `sap_vm_temp_vip` is used to enable installation of SAP Application and Database on High Availability clusters provisioned by [sap_vm_provision](https://github.com/sap-linuxlab/community.sap_infrastructure/tree/main/roles/sap_vm_provision) role.
 
-This Ansible Role will (dependent on detected Infrastructure Platform) perform assignment of a Virtual IP Address to the OS Network Interface.
+Installation of cluster environment requires temporary assignment of Virtual IP (VIP) before executing installation roles [sap_hana_install](https://github.com/sap-linuxlab/community.sap_install/tree/main/roles/sap_hana_install) and [sap_swpm](https://github.com/sap-linuxlab/community.sap_install/tree/main/roles/sap_swpm).
+- This is temporary and it will be replaced by Cluster VIP resource once cluster is configured by [sap_ha_pacemaker_cluster](https://github.com/sap-linuxlab/community.sap_install/tree/main/roles/sap_ha_pacemaker_cluster) role.
 
+This role does not update `/etc/hosts` or DNS records, as these steps are performed by the [sap_vm_provision](https://github.com/sap-linuxlab/community.sap_infrastructure/tree/main/roles/sap_vm_provision) role.
+<!-- END Description -->
 
-## Functionality
+## Prerequisites
+<!-- BEGIN Prerequisites -->
+Environment:
+- Assign hosts to correct groups, which are also used in other roles in our project
+  - Supported cluster groups: `hana_primary, hana_secondary, anydb_primary, anydb_secondary, nwas_ascs, nwas_ers`
 
-The hosts for SAP Software allocated for High Availability are configured with a temporary Virtual IP for the OS Network Interface; thereby allowing Linux Pacemaker to be installed once the SAP Software installation has concluded (best practice for Linux Pacemaker). When an Infrastructure Platform with specific requirements is detected (e.g. Load Balancers), then bespoke actions are performed.
-
-
-## Scope
-
-Only hosts required for High Availability (such as SAP HANA Primary node, SAP NetWeaver ASCS/ERS) should use this Ansible Role.
-
-Assumptions are made based upon the default High Availability configuration for a given Infrastructure Platform (e.g. using Linux Pacemaker `IPAddr2` resource agent).
-
-
-## Requirements
-
-### Target hosts
-
-**OS Versions:**
-- Red Hat Enterprise Linux 8.2+
-- SUSE Linux Enterprise Server 15 SP3+
-
-### Execution/Controller host
-
-**Dependencies:**
-- OS Packages
-  - Python 3.9.7+ (i.e. CPython distribution)
-- Python Packages
-    - None
-- Ansible
-    - Ansible Core 2.12.0+
-    - Ansible Collections:
-      - None
-
+Role dependency:
+- [sap_vm_provision](https://github.com/sap-linuxlab/community.sap_infrastructure/tree/main/roles/sap_vm_provision), for creating required resources: DNS, Load Balancers and Health Checks.
+<!-- END Prerequisites -->
 
 ## Execution
+<!-- BEGIN Execution -->
+Role can be execute separately or as part of [ansible.playbooks_for_sap](https://github.com/sap-linuxlab/ansible.playbooks_for_sap) playbooks.
+<!-- END Execution -->
 
-### Sample execution
+### Execution Flow
+<!-- BEGIN Execution Flow -->
+1. Assert that required inputs were provided.
+2. Collect missing inputs using provided inputs (example: Calculate prefix from netmask, if VIP prefix was not defined)
+3. Append VIP to network interface
+    - SAP HANA Primary host if both groups are present: `hana_primary, hana_secondary`
+    - SAP AnyDB Primary host if both groups are present: `anydb_primary, anydb_secondary`
+    - SAP ASCS host if both groups are present: `nwas_ascs, nwas_ers`
+    - SAP ERS host if both groups are present:` nwas_ascs, nwas_ers`
+4. Install `netcat` and start 12 hour process to ensure that Load Balancer Health Checks are working before Cluster is configured.
+    - Limited to platforms with Network Load Balancers and `IPAddr2` resource agent: Google Cloud, MS Azure, IBM Cloud.
+<!-- END Execution Flow -->
 
-For further information, see the [sample Ansible Playbooks in `/playbooks`](../playbooks/).
+### Example
+<!-- BEGIN Execution Example -->
+```yaml
+- name: Ansible Play for Temporary VIP setup on SAP ASCS/ERS hosts
+  hosts: nwas_ascs, nwas_ers
+  become: true
+  any_errors_fatal: true
+  max_fail_percentage: 0
+  tasks:
 
-### Suggested execution sequence
+    - name: Execute Ansible Role sap_vm_temp_vip
+      ansible.builtin.include_role:
+        name: community.sap_infrastructure.sap_vm_temp_vip
+```
+<!-- END Execution Example -->
 
-It is advised this Ansible Role is used only for High Availability and executed prior to execution of:
-- sap_hana_install
-- sap_swpm
+<!-- BEGIN Role Tags -->
+<!-- END Role Tags -->
 
-Prior to execution of this Ansible Role, there are no Ansible Roles suggested to be executed first.
-
-### Summary of execution flow
-
-- Identify IPv4 Address with CIDR and Broadcast Address
-- If SAP AnyDB or SAP NetWeaver, assign Virtual IP to OS Network Interface. If SAP HANA, skip
-- Start temporary listener for SAP HANA, SAP AnyDB or SAP NetWeaver when using Load Balancers _(GCP, IBM Cloud, MS Azure)_
-
-### Tags to control execution
-
-There are no tags used to control the execution of this Ansible Role
-
+<!-- BEGIN Further Information -->
+<!-- END Further Information -->
 
 ## License
-
+<!-- BEGIN License -->
 Apache 2.0
+<!-- END License -->
 
+## Maintainers
+<!-- BEGIN Maintainers -->
+- [Sean Freeman](https://github.com/sean-freeman)
+- [Marcel Mamula](https://github.com/marcelmamula)
+<!-- END Maintainers -->
 
-## Authors
-
-Sean Freeman
-
----
-
-## Ansible Role Input Variables
-
-Please first check the [/defaults parameters file](./defaults/main.yml).
+## Role Input Parameters
+All input parameters used by role are described in [INPUT_PARAMETERS.md](https://github.com/sap-linuxlab/community.sap_infrastructure/blob/main/roles/sap_vm_temp_vip/INPUT_PARAMETERS.md)
