@@ -148,7 +148,6 @@ sap_hypervisor_node_preconfigure_cluster_config:
                 prefix-length: 24
             auto-dns: false
             auto-gateway: false
-          enabled: true
           state: up
           type: linux-bridge
 
@@ -202,7 +201,6 @@ sap_hypervisor_node_preconfigure_cluster_config:
                 prefix-length: 24
             auto-dns: false
             auto-gateway: false
-          enabled: true
           state: up
           type: linux-bridge
 
