@@ -34,6 +34,7 @@
         source: redhat-operators
         sourceNamespace: openshift-marketplace
         name: kubevirt-hyperconverged
+        channel: "{{ sap_hypervisor_node_preconfigure_ocpv_subscription_channel }}"
 
 - name: Get Install Plan Name from Subscription
   retries: 10
