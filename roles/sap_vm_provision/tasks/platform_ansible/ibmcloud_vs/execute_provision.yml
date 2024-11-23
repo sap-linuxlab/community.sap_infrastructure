@@ -33,14 +33,29 @@
     zone: "{{ sap_vm_provision_ibmcloud_availability_zone }}"
     vpc: "{{ __sap_vm_provision_task_ibmcloud_vpc_subnet.resource.vpc }}"
 
-    # The Subnet assigned to the primary Virtual Network Interface (vNIC) cannot be changed
-    # The Name and Security Group assigned to the Primary Network Interface (vNIC) are editable
-    primary_network_interface:
-      - name: "{{ inventory_hostname }}-vnic0"
-        subnet: "{{ __sap_vm_provision_task_ibmcloud_vpc_subnet.resource.id }}"
-        allow_ip_spoofing: "{{ target_provision_host_spec.disable_ip_anti_spoofing }}" # When disable the Anti IP Spoofing = true, then Allow IP Spoofing = true
-        security_groups: "{{ __sap_vm_provision_task_ibmcloud_vpc_sg.results | map(attribute='resource.id') }}"
+    # The Subnet assigned to the deprecated primary Virtual Network Interface (vNIC) cannot be changed
+    # The Name and Security Group assigned are editable
+    # primary_network_interface:
+    #   - name: "{{ inventory_hostname }}-vnic0"
+    #     subnet: "{{ __sap_vm_provision_task_ibmcloud_vpc_subnet.resource.id }}"
+    #     allow_ip_spoofing: "{{ target_provision_host_spec.disable_ip_anti_spoofing }}" # When disable the Anti IP Spoofing = true, then Allow IP Spoofing = true
+    #     security_groups: "{{ __sap_vm_provision_task_ibmcloud_vpc_sg.results | map(attribute='resource.id') }}"
     #network_interfaces:
+
+    # The Subnet assigned to the primary Virtual Network Interface (VNI) cannot be changed
+    # The Name and Security Group assigned are editable
+    primary_network_attachment:
+      - name: "{{ inventory_hostname }}-vni0-attach"
+        virtual_network_interface:
+          - name: "{{ inventory_hostname }}-vni0"
+            resource_group: "{{ __sap_vm_provision_task_ibmcloud_resource_group.resource.id }}"
+            subnet: "{{ __sap_vm_provision_task_ibmcloud_vpc_subnet.resource.id }}"
+            security_groups: "{{ __sap_vm_provision_task_ibmcloud_vpc_sg.results | map(attribute='resource.id') }}"
+            allow_ip_spoofing: "{{ target_provision_host_spec.disable_ip_anti_spoofing }}" # When disable the Anti IP Spoofing = true, then Allow IP Spoofing = true
+            enable_infrastructure_nat: true # must be true as Virtual Server instances require Infrastructure NAT
+            protocol_state_filtering_mode: "auto"
+            auto_delete: true # if VNI created separately, must be false
+    #network_attachments:
 
     auto_delete_volume: true
     boot_volume:
@@ -143,7 +158,7 @@
 
 - name: Create fact for delegate host IP
   ansible.builtin.set_fact:
-    provisioned_private_ip: "{{ __sap_vm_provision_task_provision_host_single.resource.primary_network_interface[0].primary_ipv4_address }}"
+    provisioned_private_ip: "{{ __sap_vm_provision_task_provision_host_single.resource.primary_network_attachment[0].virtual_network_interface[0].primary_ip[0].address }}"
 
 
 - name: Copy facts to delegate host
@@ -155,7 +170,7 @@
     delegate_sap_vm_provision_bastion_ssh_port: "{{ sap_vm_provision_bastion_ssh_port }}"
     delegate_sap_vm_provision_ssh_bastion_private_key_file_path: "{{ sap_vm_provision_ssh_bastion_private_key_file_path }}"
     delegate_sap_vm_provision_ssh_host_private_key_file_path: "{{ sap_vm_provision_ssh_host_private_key_file_path }}"
-    delegate_private_ip: "{{ __sap_vm_provision_task_provision_host_single.resource.primary_network_interface[0].primary_ipv4_address }}"
+    delegate_private_ip: "{{ __sap_vm_provision_task_provision_host_single.resource.primary_network_attachment[0].virtual_network_interface[0].primary_ip[0].address }}"
     delegate_hostname: "{{ inventory_hostname }}"
     delegate_sap_vm_provision_dns_root_domain_name: "{{ sap_vm_provision_dns_root_domain }}"
 
