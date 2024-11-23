@@ -156,6 +156,21 @@
         instance_id: "{{ __sap_vm_provision_task_ibmcloud_pdns_service_instance.resource.guid }}"
         ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
 
+    - name: Identify IBM Cloud Private DNS Custom Resolvers info
+      no_log: "{{ __sap_vm_provision_no_log }}"
+      register: __sap_vm_provision_task_ibmcloud_pdns_custom_resolvers
+      run_once: true
+      ibm.cloudcollection.ibm_dns_custom_resolvers_info:
+        instance_id: "{{ __sap_vm_provision_task_ibmcloud_pdns_service_instance.resource.guid }}"
+        ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
+
+    - name: Check if input IBM Cloud Private DNS Customer Resolver IP exists
+      ansible.builtin.fail:
+        msg:
+          IBM Cloud Private DNS instance does not contain the input Custom Resolver IP Address.
+          Please create a Custom Resolver in this IBM Cloud Private DNS instance.
+      when: not sap_vm_provision_ibmcloud_private_dns_customer_resolver_ip in (__sap_vm_provision_task_ibmcloud_pdns_custom_resolvers.resource.custom_resolvers | map(attribute='locations') | list | flatten | map(attribute='dns_server_ip') | list)
+
     - name: Identify IBM Power Infrastructure OS Catalog Stock Image list
       no_log: "{{ __sap_vm_provision_no_log }}"
       register: __sap_vm_provision_task_ibmcloud_pi_os_image_list
@@ -376,7 +391,7 @@
     - name: Append IBM Cloud Private DNS to /etc/resolv.conf
       ansible.builtin.lineinfile:
         path: /etc/resolv.conf
-        line: nameserver 161.26.0.10
+        line: nameserver {{ sap_vm_provision_ibmcloud_private_dns_custom_resolver_ip }}
 
     # Required Web Forward Proxy
     # For IBM PowerVS Workspace enabled with Power Edge Router (from Q4-2023 onwards),

@@ -176,6 +176,7 @@ sap_vm_provision_ibmcloud_placement_resource_name: "sap-placement-group-spread"
 sap_vm_provision_ibmcloud_placement_strategy_spread: false
 
 # IBM Cloud, addendum for IBM Power VS
+sap_vm_provision_ibmcloud_private_dns_custom_resolver_ip: ""
 sap_vm_provision_ibmcloud_powervs_location: ""
 sap_vm_provision_ibmcloud_powervs_workspace_name: ""
 sap_vm_provision_ibmcloud_powervs_vlan_subnet_name: ""
