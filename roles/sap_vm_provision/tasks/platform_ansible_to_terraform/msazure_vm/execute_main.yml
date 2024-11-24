@@ -11,6 +11,7 @@
 
     - name: Terraform Template for SAP - MS Azure
       register: terraform_template1_result
+      run_once: true
       cloud.terraform.terraform:
         project_path: "{{ sap_vm_provision_terraform_work_dir_path }}"
         state: "{{ sap_vm_provision_terraform_state }}"
@@ -61,6 +62,7 @@
 
     - name: Read outputs from project path
       when: sap_vm_provision_terraform_state == "present"
+      run_once: true
       cloud.terraform.terraform_output:
         project_path: "{{ sap_vm_provision_terraform_work_dir_path }}"
       register: terraform_output_project_path

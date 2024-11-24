@@ -15,6 +15,7 @@
         AWS_ACCESS_KEY_ID: "{{ sap_vm_provision_aws_access_key }}"
         AWS_SECRET_ACCESS_KEY: "{{ sap_vm_provision_aws_secret_access_key }}"
         AWS_REGION: "{{ sap_vm_provision_aws_region }}"
+      run_once: true
       cloud.terraform.terraform:
         project_path: "{{ sap_vm_provision_terraform_work_dir_path }}"
         state: "{{ sap_vm_provision_terraform_state }}"
@@ -60,6 +61,7 @@
 
     - name: Read outputs from project path
       when: sap_vm_provision_terraform_state == "present"
+      run_once: true
       cloud.terraform.terraform_output:
         project_path: "{{ sap_vm_provision_terraform_work_dir_path }}"
       register: terraform_output_project_path
