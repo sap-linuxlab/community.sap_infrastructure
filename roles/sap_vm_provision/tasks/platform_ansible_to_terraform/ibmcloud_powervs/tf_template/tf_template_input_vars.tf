@@ -199,35 +199,13 @@ variable "map_os_image_regex_bastion" {
 
   default = {
 
-    rhel-7-6-sap-ha = ".*redhat.*7-6.*amd64.*hana.*"
+    rhel-8-8 = ".*redhat.*8-8.*minimal.*amd64.*"
+    rhel-8-10 = ".*redhat.*8-10.*minimal.*amd64.*"
+    rhel-9-2 = ".*redhat.*9-2.*minimal.*amd64.*"
+    rhel-9-4 = ".*redhat.*9-4.*minimal.*amd64.*"
 
-    rhel-8-1-sap-ha = ".*redhat.*8-1.*amd64.*hana.*"
-
-    rhel-8-2-sap-ha = ".*redhat.*8-2.*amd64.*hana.*"
-
-    rhel-8-4-sap-ha = ".*redhat.*8-4.*amd64.*hana.*"
-
-    rhel-7-6-sap-applications = ".*redhat.*7-6.*amd64.*applications.*"
-
-    rhel-8-1-sap-applications = ".*redhat.*8-1.*amd64.*applications.*"
-
-    rhel-8-2-sap-applications = ".*redhat.*8-2.*amd64.*applications.*"
-
-    rhel-8-4-sap-applications = ".*redhat.*8-4.*amd64.*applications.*"
-
-    rhel-8-4 = ".*redhat.*8-4.*minimal.*amd64.*"
-
-    sles-12-4-sap-ha = ".*sles.*12-4.*amd64.*hana.*"
-
-    sles-15-1-sap-ha = ".*sles.*15-1.*amd64.*hana.*"
-
-    sles-15-2-sap-ha = ".*sles.*15-2.*amd64.*hana.*"
-
-    sles-12-4-sap-applications = ".*sles.*12-4.*amd64.*applications.*"
-
-    sles-15-1-sap-applications = ".*sles.*15-1.*amd64.*applications.*"
-
-    sles-15-2-sap-applications = ".*sles.*15-2.*amd64.*applications.*"
+    sles-15-5 = ".*sles.*15-5.*amd64-[0-9]"
+    sles-15-6 = ".*sles.*15-6.*amd64-[0-9]"
 
   }
 
@@ -242,25 +220,24 @@ variable "map_os_image_regex" {
 
   default = {
 
-    rhel-8-4 = ".*RHEL.*8.*4"
+    # OS Image keys for IBM Power Virtual Server
+    rhel-8-4-sap-ha = "RHEL8-SP4-SAP"
+    rhel-8-4-sap-ha-byol = "RHEL8-SP4-SAP-BYOL"
+    rhel-8-6-sap-ha = "RHEL8-SP6-SAP"
+    rhel-8-6-sap-ha-byol = "RHEL8-SP6-SAP-BYOL"
+    rhel-8-8-sap-ha = "RHEL8-SP8-SAP"
+    rhel-8-8-sap-ha-byol = "RHEL8-SP8-SAP-BYOL"
+    rhel-9-2-sap-ha = "RHEL9-SP2-SAP"
+    rhel-9-2-sap-ha-byol = "RHEL9-SP2-SAP-BYOL"
 
-    rhel-8-6 = ".*RHEL.*8.*6"
-
-    rhel-9-2 = ".*RHEL.*9.*2"
-
-    sles-15-3 = ".*SLES.*15.*3"
-
-    sles-15-4 = ".*SLES.*15.*4"
-
-    rhel-8-4-sap-ha = ".*RHEL.*8.*4.*SAP$" # ensure string suffix using $
-
-    rhel-8-6-sap-ha = ".*RHEL.*8.*6.*SAP$" # ensure string suffix using $
-
-    sles-15-2-sap = ".*SLES.*15.*2.*SAP$" # ensure string suffix using $
-
-    sles-15-3-sap = ".*SLES.*15.*3.*SAP$" # ensure string suffix using $
-
-    sles-15-4-sap = ".*SLES.*15.*4.*SAP$" # ensure string suffix using $
+    sles-15-2-sap-ha = "SLES15-SP2-SAP"
+    sles-15-2-sap-ha-byol = "SLES15-SP2-SAP-BYOL"
+    sles-15-3-sap-ha = "SLES15-SP3-SAP"
+    sles-15-3-sap-ha-byol = "SLES15-SP3-SAP-BYOL"
+    sles-15-4-sap-ha = "SLES15-SP4-SAP"
+    sles-15-4-sap-ha-byol = "SLES15-SP4-SAP-BYOL"
+    sles-15-5-sap-ha = "SLES15-SP5-SAP"
+    sles-15-5-sap-ha-byol = "SLES15-SP5-SAP-BYOL"
 
   }
 
