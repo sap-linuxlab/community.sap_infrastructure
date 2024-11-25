@@ -4,10 +4,12 @@
   block:
 
     # Do not use ansible.builtin.copy as this will cause error 'not writable' on localhost (even if user has permissions)
-    - name: Copy Terraform Template files to temporary directory in current Ansible Playbook directory
+    # Should not cause overwrite of Terraform State files, but should overwrite populated Terraform Template files if they are updated
+    - name: Copy Terraform Template files to provided working directory path
+      run_once: true
       ansible.builtin.shell: |
         mkdir -p {{ sap_vm_provision_terraform_work_dir_path }}
-        cp -r {{ role_path }}/tasks/platform_ansible_to_terraform/{{ sap_vm_provision_iac_platform }}/tf_template/* {{ sap_vm_provision_terraform_work_dir_path }}
+        cp -R {{ role_path }}/tasks/platform_ansible_to_terraform/{{ sap_vm_provision_iac_platform }}/tf_template/* {{ sap_vm_provision_terraform_work_dir_path }}
 
     - name: Terraform Template for SAP - AWS
       register: terraform_template1_result
@@ -41,6 +43,7 @@
           sap_nwas_abap_pas_instance_no: "{{ sap_swpm_pas_instance_nr | default('') }}"
 
     - name: Terraform Template output
+      run_once: true
       ansible.builtin.debug:
         var: terraform_template1_result
 
