@@ -291,14 +291,13 @@ module "run_host_provision_module" {
 
   module_var_dns_custom_resolver_ip = module.run_powervs_interconnect_proxy_provision_module.output_dns_custom_resolver_ip
 
-  module_var_web_proxy_enable = true
-  module_var_os_vendor_enable = false # After Terraform has provisioned hosts, this will be done by Ansible
-
+  module_var_web_proxy_enable    = true
   module_var_web_proxy_url       = "http://${module.run_powervs_interconnect_proxy_provision_module.output_proxy_private_ip}:${module.run_powervs_interconnect_proxy_provision_module.output_proxy_port_squid}"
-  module_var_web_proxy_exclusion = "localhost,127.0.0.1,${var.dns_root_domain}" // Web Proxy exclusion list for hosts running on IBM Power (e.g. localhost,127.0.0.1,custom.root.domain)
+  module_var_web_proxy_exclusion = "localhost,127.0.0.1,${var.sap_vm_provision_dns_root_domain}" // Web Proxy exclusion list for hosts running on IBM Power (e.g. localhost,127.0.0.1,custom.root.domain)
 
-  module_var_os_vendor_account_user          = var.os_vendor_account_user
-  module_var_os_vendor_account_user_passcode = var.os_vendor_account_user_passcode
+  module_var_os_vendor_enable                = false # After Terraform has provisioned hosts, this will be done by Ansible
+  module_var_os_vendor_account_user          = ""
+  module_var_os_vendor_account_user_passcode = ""
 
   # Set Terraform Module Variables using for_each loop on a map Terraform Variable with nested objects
 
