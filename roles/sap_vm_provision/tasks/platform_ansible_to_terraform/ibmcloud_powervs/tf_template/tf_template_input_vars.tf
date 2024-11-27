@@ -144,7 +144,7 @@ variable "sap_vm_provision_host_specification_plan" {
   description = "Host specification plans are xsmall_256gb. This variable uses the locals mapping with a nested list of host specifications, and will alter host provisioning."
 }
 
-variable "sap_vm_provision_ibmcloud_vs_host_os_image" {
+variable "sap_vm_provision_ibmcloud_powervs_host_os_image" {
   description = "Host OS Image. This variable uses the locals mapping with regex of OS Images, and will alter host provisioning."
 }
 
@@ -254,6 +254,7 @@ variable "map_host_specifications" {
     small_256gb = {
 
       hana01 = { // Hostname
+        ibmcloud_powervs_hardware_machine_type  = "e1080"
         virtual_server_profile = "ush1-4x256"
         // An IBM PowerVS host will be set to Tier 1 or Tier 3 storage type, and cannot use block storage volumes from both storage types
         // Therefore all block storage volumes are provisioned with Tier 1 (this cannot be changed once provisioned)

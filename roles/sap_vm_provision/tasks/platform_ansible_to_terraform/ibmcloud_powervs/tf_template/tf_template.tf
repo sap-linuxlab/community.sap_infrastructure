@@ -15,37 +15,20 @@ terraform {
 # Terraform Provider declaration
 
 provider "ibm" {
-
   alias = "standard"
-
-  # Define Provider inputs manually
-  #  ibmcloud_api_key = "xxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-
   # Define Provider inputs from given Terraform Variables
   ibmcloud_api_key = var.ibmcloud_api_key
-
-  # If using IBM Cloud Automation Manager, the Provider declaration values are populated automatically
-  # from the Cloud Connection credentials (by using Environment Variables)
-
-  # If using IBM Cloud Schematics, the Provider declaration values are populated automatically
-
   region = local.ibmcloud_region
-
   zone = lower(var.ibmcloud_powervs_location) // Required for IBM Power VS only
-
 }
 
-
+# Terraform Provider (with Alias) declaration - for IBM Power Infrastructure environment via IBM Cloud
 provider "ibm" {
-
-  alias = "powervs_secure"
-
+  alias = "powervs_secure_enclave"
+  # Define Provider inputs from given Terraform Variables
   ibmcloud_api_key = var.ibmcloud_api_key
-
-  region = local.ibmcloud_powervs_region
-
-  zone = lower(var.ibmcloud_powervs_location) // Required for IBM Power VS only
-
+  region = local.ibmcloud_powervs_region // IBM Power VS Region
+  zone = lower(var.ibmcloud_powervs_location) // IBM Power VS Location
 }
 
 
@@ -163,7 +146,11 @@ module "run_account_bootstrap_powervs_workspace_module" {
 
   source = "github.com/sap-linuxlab/terraform.modules_for_sap//ibmcloud_powervs/account_bootstrap_powervs_workspace?ref=main"
 
-  providers = { ibm = ibm.standard }
+  # Define TF Module child provider name = TF Template parent provider name
+  providers = {
+    ibm.main = ibm.standard ,
+    ibm.powervs_secure_enclave = ibm.powervs_secure_enclave
+  }
 
   module_var_resource_group_id        = module.run_account_init_module.output_resource_group_id
   module_var_resource_prefix          = var.sap_vm_provision_resource_prefix
@@ -182,13 +169,18 @@ module "run_account_bootstrap_powervs_networks_module" {
 
   source = "github.com/sap-linuxlab/terraform.modules_for_sap//ibmcloud_powervs/account_bootstrap_powervs_networks?ref=main"
 
-  providers = { ibm = ibm.powervs_secure }
+  # Define TF Module child provider name = TF Template parent provider name
+  providers = {
+    ibm.main = ibm.standard ,
+    ibm.powervs_secure_enclave = ibm.powervs_secure_enclave
+  }
 
-  module_var_resource_group_id        = module.run_account_init_module.output_resource_group_id
-  module_var_resource_prefix          = var.sap_vm_provision_resource_prefix
-  module_var_ibmcloud_power_zone      = lower(var.ibmcloud_powervs_location)
-  module_var_ibmcloud_powervs_workspace_guid = module.run_account_bootstrap_powervs_workspace_module.output_power_group_guid
-  module_var_ibmcloud_vpc_crn         = module.run_account_bootstrap_powervs_workspace_module.output_power_target_vpc_crn
+  module_var_resource_group_id               = module.run_account_init_module.output_resource_group_id
+  module_var_resource_prefix                 = var.sap_vm_provision_resource_prefix
+  module_var_ibmcloud_power_zone             = lower(var.ibmcloud_powervs_location)
+  module_var_ibmcloud_powervs_workspace_guid = module.run_account_bootstrap_powervs_workspace_module.output_power_guid
+  module_var_ibmcloud_vpc_crn                = module.run_account_bootstrap_powervs_workspace_module.output_power_target_vpc_crn
+  module_var_ibmcloud_tgw_instance_name      = module.run_account_bootstrap_module.output_tgw_name
 
 }
 
@@ -204,10 +196,10 @@ module "run_powervs_interconnect_sg_update_module" {
 
   providers = { ibm = ibm.standard }
 
-  module_var_bastion_security_group_id = module.run_bastion_inject_module.output_bastion_security_group_id
-  module_var_host_security_group_id    = module.run_account_bootstrap_module.output_host_security_group_id
+  module_var_bastion_security_group_id    = module.run_bastion_inject_module.output_bastion_security_group_id
+  module_var_host_security_group_id       = module.run_account_bootstrap_module.output_host_security_group_id
 
-  module_var_power_group_network_private_subnet = module.run_account_bootstrap_powervs_networks_module.output_power_group_network_private_subnet
+  module_var_power_network_private_subnet = module.run_account_bootstrap_powervs_networks_module.output_power_network_private_subnet
 
 }
 
@@ -245,7 +237,7 @@ module "run_powervs_interconnect_proxy_provision_module" {
   module_var_host_private_ssh_key   = module.run_account_bootstrap_module.output_host_private_ssh_key
   module_var_host_security_group_id = module.run_account_bootstrap_module.output_host_security_group_id
 
-  module_var_proxy_os_image = var.map_os_image_regex[var.sap_vm_provision_bastion_os_image]
+  module_var_proxy_os_image = var.map_os_image_regex_bastion[var.sap_vm_provision_bastion_os_image]
 
   module_var_dns_root_domain_name  = var.sap_vm_provision_dns_root_domain
   module_var_dns_services_instance = module.run_account_bootstrap_module.output_host_dns_services_instance
@@ -269,14 +261,18 @@ module "run_host_provision_module" {
 
   source = "github.com/sap-linuxlab/terraform.modules_for_sap//ibmcloud_powervs/host_provision?ref=main"
 
-  providers = { ibm = ibm.powervs_secure }
+  # Define TF Module child provider name = TF Template parent provider name
+  providers = {
+    ibm.main = ibm.standard ,
+    ibm.powervs_secure_enclave = ibm.powervs_secure_enclave
+  }
 
   module_var_resource_group_id = module.run_account_init_module.output_resource_group_id
   module_var_resource_prefix   = var.sap_vm_provision_resource_prefix
   module_var_resource_tags     = var.resource_tags
 
-  module_var_ibm_power_group_guid = module.run_account_bootstrap_powervs_workspace_module.output_power_group_guid
-  module_var_power_group_networks = module.run_account_bootstrap_powervs_networks_module.output_power_group_networks
+  module_var_ibm_power_guid = module.run_account_bootstrap_powervs_workspace_module.output_power_guid
+  module_var_power_networks = module.run_account_bootstrap_powervs_networks_module.output_power_networks
 
   module_var_ibmcloud_vpc_subnet_name = local.ibmcloud_vpc_subnet_create_boolean ? module.run_account_init_module.output_vpc_subnet_name : var.ibmcloud_vpc_subnet_name
 
@@ -288,12 +284,21 @@ module "run_host_provision_module" {
   module_var_host_public_ssh_key  = module.run_account_bootstrap_module.output_host_public_ssh_key
   module_var_host_private_ssh_key = module.run_account_bootstrap_module.output_host_private_ssh_key
 
-  module_var_host_os_image = var.map_os_image_regex[var.sap_vm_provision_ibmcloud_vs_host_os_image]
+  module_var_host_os_image = var.map_os_image_regex[var.sap_vm_provision_ibmcloud_powervs_host_os_image]
 
   module_var_dns_root_domain_name  = var.sap_vm_provision_dns_root_domain
   module_var_dns_services_instance = module.run_account_bootstrap_module.output_host_dns_services_instance
 
-  module_var_dns_proxy_ip        = module.run_powervs_interconnect_proxy_provision_module.output_proxy_private_ip
+  module_var_dns_custom_resolver_ip = module.run_powervs_interconnect_proxy_provision_module.output_dns_custom_resolver_ip
+
+  module_var_web_proxy_enable = true
+  module_var_os_vendor_enable = false # After Terraform has provisioned hosts, this will be done by Ansible
+
+  module_var_web_proxy_url       = "http://${module.run_powervs_interconnect_proxy_provision_module.output_proxy_private_ip}:${module.run_powervs_interconnect_proxy_provision_module.output_proxy_port_squid}"
+  module_var_web_proxy_exclusion = "localhost,127.0.0.1,${var.dns_root_domain}" // Web Proxy exclusion list for hosts running on IBM Power (e.g. localhost,127.0.0.1,custom.root.domain)
+
+  module_var_os_vendor_account_user          = var.os_vendor_account_user
+  module_var_os_vendor_account_user_passcode = var.os_vendor_account_user_passcode
 
   # Set Terraform Module Variables using for_each loop on a map Terraform Variable with nested objects
 
@@ -303,17 +308,9 @@ module "run_host_provision_module" {
 
   module_var_virtual_server_hostname = each.key
 
-  module_var_virtual_server_profile = var.map_host_specifications[var.sap_vm_provision_host_specification_plan][each.key].virtual_server_profile
+  module_var_hardware_machine_type  = var.map_host_specifications[var.sap_vm_provision_host_specification_plan][each.key].ibmcloud_powervs_hardware_machine_type
+  module_var_virtual_server_profile = var.map_host_specifications[var.sap_vm_provision_host_specification_plan][each.key].virtual_machine_profile
 
   module_var_storage_definition = [ for storage_item in var.map_host_specifications[var.sap_vm_provision_host_specification_plan][each.key]["storage_definition"] : storage_item if contains(keys(storage_item),"disk_size") && try(storage_item.swap_path,"") == "" ]
-
-  module_var_web_proxy_enable = false
-  module_var_os_vendor_enable = false
-
-  module_var_web_proxy_url       = ""
-  module_var_web_proxy_exclusion = ""
-
-  module_var_os_vendor_account_user          = ""
-  module_var_os_vendor_account_user_passcode = ""
 
 }
