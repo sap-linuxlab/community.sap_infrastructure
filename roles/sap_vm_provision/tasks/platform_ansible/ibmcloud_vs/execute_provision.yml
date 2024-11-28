@@ -158,7 +158,7 @@
 
 - name: Create fact for delegate host IP
   ansible.builtin.set_fact:
-    provisioned_private_ip: "{{ __sap_vm_provision_task_provision_host_single.resource.primary_network_attachment[0].virtual_network_interface[0].primary_ip[0].address }}"
+    provisioned_private_ip: "{{ __sap_vm_provision_task_provision_host_single.resource.primary_network_attachment[0].virtual_network_interface[0].primary_ip[0].address | default(__sap_vm_provision_task_provision_host_single.resource.primary_network_attachment[0].primary_ip[0].address) }}" # use default to handle different r/ds data structure
 
 
 - name: Copy facts to delegate host
@@ -170,7 +170,7 @@
     delegate_sap_vm_provision_bastion_ssh_port: "{{ sap_vm_provision_bastion_ssh_port }}"
     delegate_sap_vm_provision_ssh_bastion_private_key_file_path: "{{ sap_vm_provision_ssh_bastion_private_key_file_path }}"
     delegate_sap_vm_provision_ssh_host_private_key_file_path: "{{ sap_vm_provision_ssh_host_private_key_file_path }}"
-    delegate_private_ip: "{{ __sap_vm_provision_task_provision_host_single.resource.primary_network_attachment[0].virtual_network_interface[0].primary_ip[0].address }}"
+    delegate_private_ip: "{{ __sap_vm_provision_task_provision_host_single.resource.primary_network_attachment[0].virtual_network_interface[0].primary_ip[0].address | default(__sap_vm_provision_task_provision_host_single.resource.primary_network_attachment[0].primary_ip[0].address) }}" # use default to handle different r/ds data structure
     delegate_hostname: "{{ inventory_hostname }}"
     delegate_sap_vm_provision_dns_root_domain_name: "{{ sap_vm_provision_dns_root_domain }}"
 
