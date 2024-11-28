@@ -169,7 +169,7 @@
         msg:
           IBM Cloud Private DNS instance does not contain the input Custom Resolver IP Address.
           Please create a Custom Resolver in this IBM Cloud Private DNS instance.
-      when: not sap_vm_provision_ibmcloud_private_dns_customer_resolver_ip in (__sap_vm_provision_task_ibmcloud_pdns_custom_resolvers.resource.custom_resolvers | map(attribute='locations') | list | flatten | map(attribute='dns_server_ip') | list)
+      when: not sap_vm_provision_ibmcloud_private_dns_custom_resolver_ip in (__sap_vm_provision_task_ibmcloud_pdns_custom_resolvers.resource.custom_resolvers | map(attribute='locations') | list | flatten | map(attribute='dns_server_ip') | list)
 
     - name: Identify IBM Power Infrastructure OS Catalog Stock Image list
       no_log: "{{ __sap_vm_provision_no_log }}"
