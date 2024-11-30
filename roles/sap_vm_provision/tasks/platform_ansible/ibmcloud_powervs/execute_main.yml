@@ -3,16 +3,21 @@
 - name: Set fact for IBM Power VS location to the colocated IBM Cloud Availability Zone (VPC)
   ansible.builtin.set_fact:
     list_ibmcloud_powervs_location_to_ibmcloud_availability_zone:
+      dal10: "us-south-1"
       dal12: "us-south-2"
-      us-south: "us-south-3" # naming of IBM Power VS location 'us-south' was previous naming convention, would otherwise be 'DAL13'
-      us-east: "us-east-1"  # naming of IBM Power VS location 'us-east' was previous naming convention, would otherwise be 'WDC04'
-      # wdc06: "us-east-2" # No Cloud Connection available at this location
+      us-south: "us-south-3" # naming of IBM Power VS location 'us-south' was previous naming convention, would otherwise be 'dal13'
+      us-east: "us-east-1" # naming of IBM Power VS location 'us-east' was previous naming convention, would otherwise be 'wdc04'
+      wdc06: "us-east-2"
+      wdc07: "us-east-3"
       sao01: "br-sao-1"
+      sao02: "br-sao-2"
       tor01: "ca-tor-1"
-      eu-de-1: "eu-de-2" # naming of IBM Power VS location 'eu-de-1' was previous naming convention, would otherwise be 'FRA04'
-      eu-de-2: "eu-de-3" # naming of IBM Power VS location 'eu-de-2' was previous naming convention, would otherwise be 'FRA05'
+      eu-de-1: "eu-de-2" # naming of IBM Power VS location 'eu-de-1' was previous naming convention, would otherwise be 'fra04'
+      eu-de-2: "eu-de-3" # naming of IBM Power VS location 'eu-de-2' was previous naming convention, would otherwise be 'fra05'
       lon04: "eu-gb-1"
       lon06: "eu-gb-3"
+      mad02: "eu-es-1"
+      mad04: "eu-es-2"
       syd04: "au-syd-2"
       syd05: "au-syd-3"
       tok04: "jp-tok-2"
@@ -23,16 +28,21 @@
 - name: Set fact for IBM Power VS location to the IBM Power VS Region API Endpoints
   ansible.builtin.set_fact:
     list_ibmcloud_powervs_location_to_powervs_region:
+      dal10: "us-south"
       dal12: "us-south"
       us-south: "us-south"
       us-east: "us-east"
-      # wdc06: "us-east" # no Cloud Connection available at this location
+      wdc06: "us-east"
+      wdc07: "us-east"
       sao01: "sao"
+      sao02: "sao"
       tor01: "tor"
       eu-de-1: "eu-de"
       eu-de-2: "eu-de"
       lon04: "lon"
       lon06: "lon"
+      mad02: "mad"
+      mad04: "mad"
       syd04: "syd"
       syd05: "syd"
       tok04: "tok"
@@ -145,6 +155,21 @@
       ibm.cloudcollection.ibm_dns_zones_info:
         instance_id: "{{ __sap_vm_provision_task_ibmcloud_pdns_service_instance.resource.guid }}"
         ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
+
+    - name: Identify IBM Cloud Private DNS Custom Resolvers info
+      no_log: "{{ __sap_vm_provision_no_log }}"
+      register: __sap_vm_provision_task_ibmcloud_pdns_custom_resolvers
+      run_once: true
+      ibm.cloudcollection.ibm_dns_custom_resolvers_info:
+        instance_id: "{{ __sap_vm_provision_task_ibmcloud_pdns_service_instance.resource.guid }}"
+        ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
+
+    - name: Check if input IBM Cloud Private DNS Customer Resolver IP exists
+      ansible.builtin.fail:
+        msg:
+          IBM Cloud Private DNS instance does not contain the input Custom Resolver IP Address.
+          Please create a Custom Resolver in this IBM Cloud Private DNS instance.
+      when: not sap_vm_provision_ibmcloud_private_dns_custom_resolver_ip in (__sap_vm_provision_task_ibmcloud_pdns_custom_resolvers.resource.custom_resolvers | map(attribute='locations') | list | flatten | map(attribute='dns_server_ip') | list)
 
     - name: Identify IBM Power Infrastructure OS Catalog Stock Image list
       no_log: "{{ __sap_vm_provision_no_log }}"
@@ -366,7 +391,7 @@
     - name: Append IBM Cloud Private DNS to /etc/resolv.conf
       ansible.builtin.lineinfile:
         path: /etc/resolv.conf
-        line: nameserver 161.26.0.10
+        line: nameserver {{ sap_vm_provision_ibmcloud_private_dns_custom_resolver_ip }}
 
     # Required Web Forward Proxy
     # For IBM PowerVS Workspace enabled with Power Edge Router (from Q4-2023 onwards),

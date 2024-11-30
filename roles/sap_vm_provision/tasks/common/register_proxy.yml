@@ -55,10 +55,10 @@
         path: "{{ non_interactive_login_shell_config_file }}"
         marker: "#-- {mark} ANSIBLE MANAGED BLOCK --#" # must have {mark} otherwise block will repeat append on re-run
         block: |
-          export http_proxy="{{ sap_vm_provision_proxy_web_forward_proxy_ip }}"
-          export https_proxy="{{ sap_vm_provision_proxy_web_forward_proxy_ip }}"
-          export HTTP_PROXY="{{ sap_vm_provision_proxy_web_forward_proxy_ip }}"
-          export HTTPS_PROXY="{{ sap_vm_provision_proxy_web_forward_proxy_ip }}"
+          export http_proxy="http://{{ sap_vm_provision_proxy_web_forward_proxy_ip }}"
+          export https_proxy="http://{{ sap_vm_provision_proxy_web_forward_proxy_ip }}"
+          export HTTP_PROXY="http://{{ sap_vm_provision_proxy_web_forward_proxy_ip }}"
+          export HTTPS_PROXY="http://{{ sap_vm_provision_proxy_web_forward_proxy_ip }}"
           #export ftp_proxy
           #export FTP_PROXY
           export no_proxy="{{ sap_vm_provision_proxy_web_forward_exclusions }},{{ sap_vm_provision_proxy_web_forward_exclusions_dynamic }}{{ __sap_vm_provision_task_proxy_platform_exclude if __sap_vm_provision_task_proxy_platform_exclude is defined }}"
@@ -75,4 +75,5 @@
           proxy=http://{{ sap_vm_provision_proxy_web_forward_proxy_ip }}
       when:
         - ansible_os_family == "RedHat"
+        - not __sap_vm_provision_task_ibmcloud_pi_workspace_capabilities.resource.pi_workspace_capabilities['power-edge-router']
         - __sap_vm_provision_task_proxy_platform_exclude is undefined

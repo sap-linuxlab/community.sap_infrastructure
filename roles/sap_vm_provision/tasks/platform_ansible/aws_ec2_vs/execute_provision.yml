@@ -193,11 +193,12 @@
       ansible.builtin.wait_for_connection:
         timeout: 300
 
+    # Remove everything before ssh-rsa/ed25519 but do not catch key comment that uses 'ssh-'
     - name: Fix root authorized_keys entries
       ansible.builtin.replace:
         path: /root/.ssh/authorized_keys
         backup: true
-        regexp: '(^.*ssh-)' # Allow ssh-rsa , ssh-ed25519 etc.
+        regexp: '(^.*command.* ssh-)'
         replace: 'ssh-'
 
     - name: Permit root login
