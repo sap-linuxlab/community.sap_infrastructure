@@ -14,6 +14,44 @@
     - sap_vm_provision_calculate_sap_hana_scaleout_active_coordinator is defined
     - not inventory_hostname in lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan].keys()
 
+- name: Set fact for host specifications of the provision target
+  ansible.builtin.set_fact:
+    target_provision_host_spec: "{{ lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan][scaleout_origin_host_spec | default(inventory_hostname)] }}"
+
+# Create flat list with names for each volume to be created.
+# Create flat list with disk tiers.
+- name: Set fact for target device map
+  ansible.builtin.set_fact:
+    storage_disks_map: |
+      {% set disks_map = [] -%}
+      {% for storage_item in target_provision_host_spec.storage_definition -%}
+        {% for idx in range(0, storage_item.disk_count | default(1)) -%}
+          {% if (storage_item.filesystem_type is defined) -%}
+            {% if ('swap' in storage_item.filesystem_type and storage_item.swap_path is not defined)
+            or ('swap' not in storage_item.filesystem_type and storage_item.nfs_path is not defined) -%}
+              {% set vol = disks_map.extend([
+              {
+                'definition_key': storage_item.name,
+                'name': storage_item.name + idx|string,
+                'size': storage_item.disk_size | default(0),
+                'type': storage_item.disk_type | default('tier3')
+              }
+              ]) %}
+            {%- endif %}
+          {%- endif %}
+        {%- endfor %}
+      {%- endfor %}
+      {{ disks_map }}
+    __sap_vm_provision_task_storage_type_tier: "{{ target_provision_host_spec.storage_definition | selectattr('disk_type','defined') | map(attribute='disk_type') | select() | list | unique }}"
+
+- name: Confirm IBM Power Virtual Server Storage Type Tier
+  ansible.builtin.fail:
+    msg:
+      IBM Power Virtual Servers require a static configuration for the Storage Type Tier,
+      and all attached Block Storage Volumes must use this Storage Type Tier.
+      Edit the Storage Definition variable to use the same Storage Type Tier for each Block Storage Volume.
+  when: __sap_vm_provision_task_storage_type_tier | length > 1
+
 
 # Status will change from Building > Warning (VM = Active, Health = Warning) > Active. The Ansible Task will continue once the Active status has been reached.
 - name: Provision IBM Power Virtual Server instance on IBM Cloud
@@ -25,20 +63,35 @@
     pi_instance_name: "{{ inventory_hostname }}"
     pi_image_id: "{{ __sap_vm_provision_task_ibmcloud_pi_os_image_existing.resource.id }}"
 
-    pi_sys_type: "{{ lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan][scaleout_origin_host_spec | default(inventory_hostname)].ibmcloud_powervs_hardware_machine_type }}"
+    pi_sys_type: "{{ target_provision_host_spec.ibmcloud_powervs_hardware_machine_type }}"
 
-    pi_sap_profile_id: "{{ lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan][scaleout_origin_host_spec | default(inventory_hostname)].virtual_machine_profile }}"
+    pi_sap_profile_id: "{{ target_provision_host_spec.virtual_machine_profile }}"
 
     pi_key_pair_name: "{{ sap_vm_provision_ibmcloud_powervs_key_pair_name_ssh_host_public_key }}"
 
     pi_network:
       - network_id: "{{ __sap_vm_provision_task_ibmcloud_pi_subnet.resource.id }}"
 
-    pi_storage_type: tier1
+    # Storage Type Tier is a static configuration for the Virtual Server, it cannot be amended
+    # All Block Storage Volumes attached to the Virtual Server, must use the set Storage Type Tier:
+    #   tier0 (25 IOPS/GB), tier1 (10 IOPS/GB), tier3 (3 IOPS/GB), tier5k (Fixed 5000 IOPS)
+    pi_storage_type: "{{ __sap_vm_provision_task_storage_type_tier | first }}"
+    pi_storage_pool_affinity: true
     #pi_volume_ids: []
 
     pi_pin_policy: none
     pi_health_status: OK
+
+    pi_placement_group_id: "{{ (
+      (__sap_vm_provision_task_ibmcloud_placement_groups_list.resource.placement_groups | selectattr('name','search','hana'))[0].id
+      if ('hana_primary' in target_provision_host_spec.sap_host_type or 'hana_secondary' in target_provision_host_spec.sap_host_type) and not __sap_vm_provision_task_ibmcloud_placement_groups_list is skipped
+      else
+      (__sap_vm_provision_task_ibmcloud_placement_groups_list.resource.placement_groups | selectattr('name','search','anydb'))[0].id
+      if ('anydb_primary' in target_provision_host_spec.sap_host_type or 'anydb_secondary' in target_provision_host_spec.sap_host_type) and not __sap_vm_provision_task_ibmcloud_placement_groups_list is skipped
+      else
+      (__sap_vm_provision_task_ibmcloud_placement_groups_list.resource.placement_groups | selectattr('name','search','nwas'))[0].id
+      if ('nwas_ascs' in target_provision_host_spec.sap_host_type or 'nwas_ers' in target_provision_host_spec.sap_host_type) and not __sap_vm_provision_task_ibmcloud_placement_groups_list is skipped
+      ) | default(omit) }}"
 
     ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
 
@@ -50,31 +103,6 @@
     pi_cloud_instance_id: "{{ __sap_vm_provision_task_ibmcloud_pi_workspace_service_instance.resource.guid }}" # must be GUID, not CRN
     pi_instance_name: "{{ inventory_hostname }}"
     ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
-
-
-# Create flat list with names for each volume to be created.
-- name: Set fact for target device map
-  ansible.builtin.set_fact:
-    storage_disks_map: |
-      {% set disks_map = [] -%}
-      {% for storage_item in lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan][scaleout_origin_host_spec | default(inventory_hostname)].storage_definition -%}
-        {% for idx in range(0, storage_item.disk_count | default(1)) -%}
-          {% if (storage_item.filesystem_type is defined) -%}
-            {% if ('swap' in storage_item.filesystem_type and storage_item.swap_path is not defined)
-            or ('swap' not in storage_item.filesystem_type and storage_item.nfs_path is not defined) -%}
-              {% set vol = disks_map.extend([
-              {
-                'definition_key': storage_item.name,
-                'name': storage_item.name + idx|string,
-                'size': storage_item.disk_size | default(0),
-                'type': storage_item.disk_type | default('general-purpose')
-              }
-              ]) %}
-            {%- endif %}
-          {%- endif %}
-        {%- endfor %}
-      {%- endfor %}
-      {{ disks_map }}
 
 
 - name: Provision IBM Power Infrastructure Block Storage volumes for IBM Power VS instance filesystems
@@ -218,7 +246,7 @@
 
 - name: Append loop value to register
   ansible.builtin.set_fact:
-    __sap_vm_provision_task_provision_host_single: "{{ __sap_vm_provision_task_provision_host_single | combine( { 'host_node' : inventory_hostname } , { 'sap_host_type' : lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan][scaleout_origin_host_spec | default(inventory_hostname)].sap_host_type } , { 'sap_system_type' : (lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan][scaleout_origin_host_spec | default(inventory_hostname)].sap_system_type | default('')) } ) }}"
+    __sap_vm_provision_task_provision_host_single: "{{ __sap_vm_provision_task_provision_host_single | combine( { 'host_node' : inventory_hostname } , { 'sap_host_type' : target_provision_host_spec.sap_host_type } , { 'sap_system_type' : (target_provision_host_spec.sap_system_type | default('')) } ) }}"
 
 - name: Append output to merged register
   ansible.builtin.set_fact:

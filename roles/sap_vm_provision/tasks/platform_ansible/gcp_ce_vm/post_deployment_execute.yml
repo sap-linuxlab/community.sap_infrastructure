@@ -10,7 +10,6 @@
   #   GCP_AUTH_KIND: "serviceaccount"
   #   GCP_SERVICE_ACCOUNT_FILE: "{{ sap_vm_provision_gcp_credentials_json }}"
   when:
-    - sap_ha_pacemaker_cluster_msazure_resource_group is defined
     - (groups["hana_secondary"] is defined and (groups["hana_secondary"] | length>0)) or (groups["nwas_ers"] is defined and (groups["nwas_ers"] | length>0)) or (groups["anydb_secondary"] is defined and (groups["anydb_secondary"] | length>0))
   block:
 
@@ -50,7 +49,7 @@
       google.cloud.gcp_compute_health_check:
         state: present
         project: "{{ sap_vm_provision_gcp_project }}"
-        name: "lb-probe-hc-vip-hana"
+        name: "{{ sap_vm_provision_ha_load_balancer_name_hana + '-probe-hc-vip' }}"
         type: TCP
         tcp_health_check:
           port: "{{ __sap_vm_provision_task_gcp_lb_healthcheck_hana }}"
@@ -70,7 +69,7 @@
       google.cloud.gcp_compute_health_check:
         state: present
         project: "{{ sap_vm_provision_gcp_project }}"
-        name: "lb-probe-hc-vip-anydb"
+        name: "{{ sap_vm_provision_ha_load_balancer_name_anydb + '-probe-hc-vip' }}"
         type: TCP
         tcp_health_check:
           port: 62700
@@ -90,7 +89,7 @@
       google.cloud.gcp_compute_health_check:
         state: present
         project: "{{ sap_vm_provision_gcp_project }}"
-        name: "lb-probe-hc-vip-nwas-ascs"
+        name: "{{ sap_vm_provision_ha_load_balancer_name_nwas + '-ascs-probe-hc-vip' }}"
         type: TCP
         tcp_health_check:
           port: "{{ __sap_vm_provision_task_gcp_lb_healthcheck_nwas_ascs }}"
@@ -110,7 +109,7 @@
       google.cloud.gcp_compute_health_check:
         state: present
         project: "{{ sap_vm_provision_gcp_project }}"
-        name: "lb-probe-hc-vip-nwas-ers"
+        name: "{{ sap_vm_provision_ha_load_balancer_name_nwas + '-ers-probe-hc-vip' }}"
         type: TCP
         tcp_health_check:
           port: "{{ __sap_vm_provision_task_gcp_lb_healthcheck_nwas_ers }}"

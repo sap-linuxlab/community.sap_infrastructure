@@ -1,48 +1,63 @@
 ---
+# Define listening port based on target host group. Same ports are used by sap_vm_provision during NLB creation
+# 55550 - SAP HANA and SAP AnyDB
+# 55551 - SAP SAP NetWeaver ASCS
+# 55552 - SAP NetWeaver ERS
+- name: Set fact for temporary listening port
+  ansible.builtin.set_fact:
+    __sap_vm_temp_vip_port: >-
+      {% if groups['hana_secondary'] | d([]) | length > 0 and inventory_hostname in groups["hana_primary"] -%}
+        55550
+      {%- elif groups['anydb_secondary'] | d([]) | length > 0 and inventory_hostname in groups["anydb_primary"] -%}
+        55550
+      {%- elif groups["nwas_ers"] | d([]) | length > 0 and inventory_hostname in groups["nwas_ascs"] -%}
+        55551
+      {%- elif groups["nwas_ers"] | d([]) | length > 0 and inventory_hostname in groups["nwas_ers"] -%}
+        55552
+      {%- endif %}
 
-- name: Install netcat and lsof utils
-  ansible.builtin.package:
-    name:
-      - nc
-      - lsof
-    state: present
 
-
-# Must use while loop to avoid netcat process ending too early
-# Required when using Load Balancers (i.e. Google Cloud, IBM Cloud, MS Azure)
-# Temporary listener for SAP HANA or SAP AnyDB used is 55550
-# Temporary listener for SAP NetWeaver ASCS used is 55551
-# Temporary listener for SAP NetWeaver ERS used is 55552; must be different to ASCS Health Check Port to avoid ASCS VIP distributing to ERS host
-
-- name: Start netcat temporary listen on port 55550 for SAP HANA or SAP AnyDB for 6 hours (until SAP installation complete) to respond to Load Balancer Health Check probe until Linux Pacemaker started
-  ansible.builtin.shell: |
-    if ! $(lsof -Pi :55550 -sTCP:LISTEN -t >/dev/null) ; then
-    nohup timeout 6h bash -c "while true; do nc -vvv -l -k 55550 ; done" </dev/null >/dev/null 2>&1 &
-    sleep 2
-    fi
+# Check if defined port is alreadu active and listening
+# ss is used as it is present on both SUSE and Red Hat OS without need to install lsof or netstat
+- name: Check if temporary port is already open
+  ansible.builtin.command:
+    cmd: ss -tulnH "sport = :{{ __sap_vm_temp_vip_port }}"
+  register: __sap_vm_temp_vip_port_check
   when:
-    - (groups["hana_secondary"] is defined and (groups["hana_secondary"]|length>0)) or (groups["anydb_secondary"] is defined and (groups["anydb_secondary"]|length>0))
-    - (groups["hana_secondary"] is defined and inventory_hostname in groups["hana_primary"]) or (groups["anydb_secondary"] is defined and inventory_hostname in groups["anydb_primary"])
-    - (ansible_product_name == 'Google Compute Engine') or (ansible_chassis_asset_tag == 'ibmcloud') or (ansible_chassis_vendor == 'Microsoft Corporation' and ansible_product_name == 'Virtual Machine')
+    - __sap_vm_temp_vip_port is defined and __sap_vm_temp_vip_port | length > 0
+  changed_when: false
 
-- name: Start netcat temporary listen on port 55551 for SAP NetWeaver ASCS for 6 hours (until SAP installation complete) to respond to Load Balancer Health Check probe until Linux Pacemaker started
-  ansible.builtin.shell: |
-    if ! $(lsof -Pi :55551 -sTCP:LISTEN -t >/dev/null) ; then
-    nohup timeout 6h bash -c "while true; do nc -vvv -l -k 55551 ; done" </dev/null >/dev/null 2>&1 &
-    sleep 2
-    fi
-  when:
-    - (groups["nwas_ers"] is defined and (groups["nwas_ers"]|length>0))
-    - (groups["nwas_ers"] is defined and inventory_hostname in groups["nwas_ascs"])
-    - (ansible_product_name == 'Google Compute Engine') or (ansible_chassis_asset_tag == 'ibmcloud') or (ansible_chassis_vendor == 'Microsoft Corporation' and ansible_product_name == 'Virtual Machine')
 
-- name: Start netcat temporary listen on port 55552 for SAP NetWeaver ERS for 6 hours (until SAP installation complete) to respond to Load Balancer Health Check probe until Linux Pacemaker started
-  ansible.builtin.shell: |
-    if ! $(lsof -Pi :55552 -sTCP:LISTEN -t >/dev/null) ; then
-    nohup timeout 6h bash -c "while true; do nc -vvv -l -k 55552 ; done" </dev/null >/dev/null 2>&1 &
-    sleep 2
-    fi
+- name: Block to start temporary netcat processes for Load Balancer Health Checks
   when:
-    - (groups["nwas_ers"] is defined and (groups["nwas_ers"]|length>0))
-    - (groups["nwas_ers"] is defined and inventory_hostname in groups["nwas_ers"])
-    - (ansible_product_name == 'Google Compute Engine') or (ansible_chassis_asset_tag == 'ibmcloud') or (ansible_chassis_vendor == 'Microsoft Corporation' and ansible_product_name == 'Virtual Machine')
+    - __sap_vm_temp_vip_address is defined and __sap_vm_temp_vip_address | length > 0
+    - __sap_vm_temp_vip_port is defined and __sap_vm_temp_vip_port | length > 0
+    - __sap_vm_temp_vip_port_check.stdout is defined and __sap_vm_temp_vip_port_check.stdout | length == 0
+    - __sap_vm_temp_vip_prefix | length > 0  # Dont execute if prefix was empty during VIP creation
+  block:
+
+    # Get content of ip address show filtered by VIP - Additional execution if VIP was previously created
+    - name: Check if VIP is was already attached to network interface
+      ansible.builtin.shell:
+        cmd: "set -o pipefail && ip --oneline address show | grep {{ __sap_vm_temp_vip_address }}/{{ __sap_vm_temp_vip_prefix }}"
+        executable: /bin/bash
+      register: __sap_vm_temp_vip_check_ip
+      changed_when: false
+      ignore_errors: true
+      failed_when: false
+
+    # Install netcat package that is used to temporarily listen on ports
+    - name: Install netcat package
+      ansible.builtin.package:
+        name:
+          - "{{ 'netcat' if ansible_os_family == 'Suse' else 'nc' }}"
+        state: present
+      when: __sap_vm_temp_vip_check_ip.stdout | length > 0
+
+
+    # Start netcat with timeout of 12 hours to ensure that SAP installation has enough time to complete.
+    - name: Start temporary 12 hour netcat process for Load Balancer Health Checks during SAP installation
+      ansible.builtin.shell: |
+        nohup timeout 12h bash -c "while true; do nc -vvv -l -k {{ __sap_vm_temp_vip_port }} ; done" </dev/null >/dev/null 2>&1 &
+        sleep 2
+      when: __sap_vm_temp_vip_check_ip.stdout | length > 0

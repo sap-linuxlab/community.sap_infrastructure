@@ -32,7 +32,8 @@ The code modularity and commonality of provisioning enables a wide gamut of SAP 
 - Microsoft Azure Virtual Machine/s
 - IBM PowerVM Virtual Machine/s _(formerly LPAR/s)_
 - OVirt Virtual Machine/s (e.g. Red Hat Enterprise Linux KVM)
-- KubeVirt Virtual Machine/s (e.g. Red Hat OpenShift Virtualization, SUSE Rancher with Harvester HCI) `[Experimental]`
+- KubeVirt Virtual Machine/s (e.g. SUSE Rancher with Harvester HCI) `[Experimental]`
+- Red Hat OpenShift Virtualization `[Experimental]`
 - VMware vSphere Virtual Machine/s `[Beta]`
 
 ### Known issues
@@ -57,8 +58,6 @@ For a list of requirements and recommended authorizations on each Infrastructure
 **Dependencies:**
 - OS Packages
     - Python 3.9.7+ (i.e. CPython distribution)
-    - AWS CLI _(when High Availability on AWS)_
-    - GCloud CLI _(when High Availability on GCP)_
     - IBM Cloud CLI _(when High Availability on IBM Cloud)_
     - Terraform 1.0.0-1.5.5 _(when Ansible to Terraform, or legacy Ansible Collection for IBM Cloud)_
 - Python Packages
@@ -71,6 +70,7 @@ For a list of requirements and recommended authorizations on each Infrastructure
     - `openstacksdk` for IBM PowerVM
     - `ovirt-engine-sdk-python` for OVirt
     - `aiohttp` for VMware
+    - `kubernetes` for Kubernetes based platforms such as Red Hat OpenShift Virtualization
 - Ansible
     - Ansible Core 2.12.0+
     - Ansible Collections:
@@ -82,10 +82,13 @@ For a list of requirements and recommended authorizations on each Infrastructure
         - `google.cloud`
         - `ibm.cloudcollection`
             - _(legacy, to be replaced with `ibm.cloud` in future)_
-        - `kubevirt.core`
+        - `kubevirt.core` for kubevirt_vm or Red Hat OpenShift Virtualization
         - `openstack.cloud`
         - `ovirt.ovirt`
         - `vmware.vmware_rest` <sup>_(requires `cloud.common`)_</sup>
+        - `community.okd` for Red Hat OpenShift Virtualization
+
+TODO: Split up above dependencies per platform.
 
 
 ## Execution
@@ -167,6 +170,7 @@ This required structure will:
 - For Hyperscaler Cloud Service Providers that use Resource Groups (IBM Cloud, Microsoft Azure):
     - Virtual Machine and associated resources (Disks, Network Interfaces, Load Balancer etc.) will be provisioned to the same Resource Group as the targeted network/subnet.
     - Optional: Private DNS may be allocated to another Resource Group, and an optional variable is provided for this.
+- Virtual Disk with defined IOPS is only possible on AWS, Google Cloud, IBM Cloud
 
 ### Tags to control execution
 
@@ -181,6 +185,7 @@ Apache 2.0
 ## Authors
 
 Sean Freeman
+Nils Koenig (nkoenig@redhat.com) kubevirt_vm / Red Hat OpenShift Virtualization
 
 ---
 

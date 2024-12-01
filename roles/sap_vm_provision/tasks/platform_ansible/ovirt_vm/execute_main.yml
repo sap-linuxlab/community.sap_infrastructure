@@ -50,7 +50,7 @@
 
     - name: Set fact to hold all inventory hosts in all groups
       ansible.builtin.set_fact:
-        groups_merged_list: "{{ [ [ groups['hana_primary'] | default([]) ] , [ groups['hana_secondary'] | default([]) ] , [ groups['nwas_ascs'] | default([]) ] , [ groups['nwas_ers'] | default([]) ] , [ groups['nwas_pas'] | default([]) ] , [ groups['nwas_aas'] | default([]) ] ] | flatten | select() }}"
+        groups_merged_list: "{{ [ [ groups['hana_primary'] | default([]) ] , [ groups['hana_secondary'] | default([]) ] , [ groups['anydb_primary'] | default([]) ] , [ groups['anydb_secondary'] | default([]) ] , [ groups['nwas_ascs'] | default([]) ] , [ groups['nwas_ers'] | default([]) ] , [ groups['nwas_pas'] | default([]) ] , [ groups['nwas_aas'] | default([]) ] ] | flatten | select() }}"
 
     - name: Set Ansible Vars
       register: __sap_vm_provision_task_ansible_vars_set

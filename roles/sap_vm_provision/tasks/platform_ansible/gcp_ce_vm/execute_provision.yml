@@ -14,12 +14,16 @@
     - sap_vm_provision_calculate_sap_hana_scaleout_active_coordinator is defined
     - not inventory_hostname in lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan].keys()
 
+- name: Set fact for host specifications of the provision target
+  ansible.builtin.set_fact:
+    target_provision_host_spec: "{{ lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan][scaleout_origin_host_spec | default(inventory_hostname)] }}"
+
 # Create flat list with names for each volume to be created.
 - name: Set fact for target device map
   ansible.builtin.set_fact:
     storage_disks_map: |
       {% set disks_map = [] -%}
-      {% for storage_item in lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan][scaleout_origin_host_spec | default(inventory_hostname)].storage_definition -%}
+      {% for storage_item in target_provision_host_spec.storage_definition -%}
         {% for idx in range(0, storage_item.disk_count | default(1)) -%}
           {% if (storage_item.filesystem_type is defined) -%}
             {% if ('swap' in storage_item.filesystem_type and storage_item.swap_path is not defined)
@@ -29,7 +33,8 @@
                 'definition_key': storage_item.name,
                 'name': storage_item.name + idx|string,
                 'size': storage_item.disk_size | default(0),
-                'type': storage_item.disk_type | default('')
+                'type': storage_item.disk_type | default('pd-balanced'),
+                'iops': storage_item.disk_iops | default(omit)
               }
               ]) %}
             {%- endif %}
@@ -51,6 +56,8 @@
     zone: "{{ sap_vm_provision_gcp_region_zone }}"
     name: "{{ inventory_hostname + '-vol-' + vol_item.name | replace('_', '-')}}"
     size_gb: "{{ vol_item.size }}"
+    type: "{{ vol_item.type }}"
+    provisioned_iops: "{{ vol_item.iops | default(omit) }}"
     auth_kind: "serviceaccount"
     service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
   loop: "{{ storage_disks_map }}"
@@ -101,8 +108,8 @@
     project: "{{ sap_vm_provision_gcp_project }}"
     zone: "{{ sap_vm_provision_gcp_region_zone }}"
     name: "{{ inventory_hostname }}"
-    machine_type: "{{ lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan][scaleout_origin_host_spec | default(inventory_hostname)].virtual_machine_profile }}"
-    can_ip_forward: "{{ lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan][scaleout_origin_host_spec | default(inventory_hostname)].disable_ip_anti_spoofing }}" # When disable the Anti IP Spoofing = true, then Can IP Forward = true
+    machine_type: "{{ target_provision_host_spec.virtual_machine_profile }}"
+    can_ip_forward: "{{ target_provision_host_spec.disable_ip_anti_spoofing }}" # When disable the Anti IP Spoofing = true, then Can IP Forward = true
     network_interfaces:
       - network:
           selfLink: "{{ __sap_vm_provision_task_gcp_vpc_info.resources[0].selfLink }}"
@@ -122,12 +129,6 @@
     auth_kind: "serviceaccount"
     service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
 
-# Required as state: present on Ansible Module gcp_compute_instance does not allow for waiting until VM has booted
-- name: Wait 90 seconds for Google Cloud VM to boot
-  ansible.builtin.pause:
-    seconds: 90
-    prompt: ""
-  when: __sap_vm_provision_task_provision_host_single.changed
 
 - name: Read Google Cloud VM information
   no_log: "{{ __sap_vm_provision_no_log }}"
@@ -171,6 +172,12 @@
     ansible_ssh_common_args: -o ConnectTimeout=180 -o ControlMaster=auto -o ControlPersist=3600s -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ForwardX11=no -o ProxyCommand='ssh -W %h:%p {{ delegate_sap_vm_provision_bastion_user }}@{{ delegate_sap_vm_provision_bastion_public_ip }} -p {{ delegate_sap_vm_provision_bastion_ssh_port }} -i {{ delegate_sap_vm_provision_ssh_bastion_private_key_file_path }} -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null'
   block:
 
+    # Required as state: present on Ansible Module gcp_compute_instance does not allow for waiting until VM has booted
+    # wait_for_connection is used instead to ensure connection is available before proceeding.
+    - name: Wait until SSH connection is available
+      ansible.builtin.wait_for_connection:
+        timeout: 300
+
     - name: Create .ssh directory for root user
       ansible.builtin.file:
         path: /root/.ssh
@@ -203,7 +210,7 @@
 
 - name: Append loop value to register
   ansible.builtin.set_fact:
-    __sap_vm_provision_task_provision_host_single: "{{ __sap_vm_provision_task_provision_host_single | combine( { 'host_node' : inventory_hostname } , { 'sap_host_type' : lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan][scaleout_origin_host_spec | default(inventory_hostname)].sap_host_type } , { 'sap_system_type' : (lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan][scaleout_origin_host_spec | default(inventory_hostname)].sap_system_type | default('')) } ) }}"
+    __sap_vm_provision_task_provision_host_single: "{{ __sap_vm_provision_task_provision_host_single | combine( { 'host_node' : inventory_hostname } , { 'sap_host_type' : target_provision_host_spec.sap_host_type } , { 'sap_system_type' : (target_provision_host_spec.sap_system_type | default('')) } ) }}"
 
 - name: Append output to merged register
   ansible.builtin.set_fact:

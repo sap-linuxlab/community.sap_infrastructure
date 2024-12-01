@@ -48,10 +48,11 @@
         line: "{{ item }}"
         state: present
       loop:
-        - "{{ (sap_ha_pacemaker_cluster_vip_hana_primary_ip_address | default('192.168.1.90/32')) | regex_replace('/.*', '') }}\t{{ sap_swpm_db_host }}.{{ ansible_domain }}\t{{ sap_swpm_db_host }}"
+        - "{{ sap_vm_provision_ha_vip_hana_primary | regex_replace('/.*', '') }}\t{{ sap_swpm_db_host }}.{{ ansible_domain }}\t{{ sap_swpm_db_host }}"
       when:
         - (groups["hana_secondary"] is defined and (groups["hana_secondary"] | length>0))
         - (not ansible_product_name == "Google Compute Engine" and not ansible_chassis_vendor == "Microsoft Corporation" and not ansible_chassis_asset_tag == 'ibmcloud') or ( (ansible_product_name == "Google Compute Engine" or ansible_chassis_vendor == "Microsoft Corporation" or ansible_chassis_asset_tag == 'ibmcloud') and (not inventory_hostname in groups["hana_primary"] or not inventory_hostname in groups["hana_secondary"]) )
+        - (sap_vm_provision_ha_vip_hana_primary | length) > 0
 
 
     - name: Update /etc/hosts file for SAP AnyDB HA
@@ -71,9 +72,10 @@
         line: "{{ item }}"
         state: present
       loop:
-        - "{{ (sap_vm_temp_vip_anydb_primary | default('192.168.1.90/32')) | regex_replace('/.*', '') }}\t{{ sap_swpm_db_host }}.{{ ansible_domain }}\t{{ sap_swpm_db_host }}"
+        - "{{ sap_vm_provision_ha_vip_anydb_primary | regex_replace('/.*', '') }}\t{{ sap_swpm_db_host }}.{{ ansible_domain }}\t{{ sap_swpm_db_host }}"
       when:
         - (groups["anydb_secondary"] is defined and (groups["anydb_secondary"] | length>0))
+        - (sap_vm_provision_ha_vip_anydb_primary | length) > 0
 
 
     - name: Update /etc/hosts file for SAP NetWeaver HA
@@ -84,9 +86,14 @@
       loop:
         - "{{ sap_vm_provision_dynamic_inventory_nw_ascs_ip }}\t{{ sap_vm_provision_dynamic_inventory_nw_ascs_hostname }}.{{ ansible_domain }}\t{{ sap_vm_provision_dynamic_inventory_nw_ascs_hostname }}"
         - "{{ sap_vm_provision_dynamic_inventory_nw_ers_ip }}\t{{ sap_vm_provision_dynamic_inventory_nw_ers_hostname }}.{{ ansible_domain }}\t{{ sap_vm_provision_dynamic_inventory_nw_ers_hostname }}"
-        - "{{ sap_vm_provision_dynamic_inventory_nw_pas_ip }}\t{{ sap_vm_provision_dynamic_inventory_nw_pas_hostname }}.{{ ansible_domain }}\t{{ sap_vm_provision_dynamic_inventory_nw_pas_hostname }}"
+#        - "{{ sap_vm_provision_dynamic_inventory_nw_pas_ip }}\t{{ sap_vm_provision_dynamic_inventory_nw_pas_hostname }}.{{ ansible_domain }}\t{{ sap_vm_provision_dynamic_inventory_nw_pas_hostname }}"
+        # Allows to build ASCS ERS cluster without PAS if PAS details are not provided
+        - "{{ sap_vm_provision_dynamic_inventory_nw_pas_ip | string + '\t' + sap_vm_provision_dynamic_inventory_nw_pas_hostname + '.' + ansible_domain + '\t' + sap_vm_provision_dynamic_inventory_nw_pas_hostname
+            if (sap_vm_provision_dynamic_inventory_nw_pas_hostname is defined and sap_vm_provision_dynamic_inventory_nw_pas_hostname | length > 0 )
+            and (sap_vm_provision_dynamic_inventory_nw_pas_ip is defined and sap_vm_provision_dynamic_inventory_nw_pas_ip | length > 0) else ''}}"
       when:
         - (groups["nwas_ers"] is defined and (groups["nwas_ers"] | length>0))
+        - item != ''
 
     - name: Update /etc/hosts file with Virtual IPs for SAP NetWeaver HA - ASCS / ERS
       ansible.builtin.lineinfile:
@@ -94,11 +101,13 @@
         line: "{{ item }}"
         state: present
       loop:
-        - "{{ (sap_ha_pacemaker_cluster_vip_nwas_abap_ascs_ip_address | default('192.168.2.10/32')) | regex_replace('/.*', '') }}\t{{ sap_swpm_ascs_instance_hostname }}.{{ ansible_domain }}\t{{ sap_swpm_ascs_instance_hostname }}"
-        - "{{ (sap_ha_pacemaker_cluster_vip_nwas_abap_ers_ip_address | default('192.168.2.11/32')) | regex_replace('/.*', '') }}\t{{ sap_swpm_ers_instance_hostname }}.{{ ansible_domain }}\t{{ sap_swpm_ers_instance_hostname }}"
+        - "{{ sap_vm_provision_ha_vip_nwas_abap_ascs | regex_replace('/.*', '') }}\t{{ sap_swpm_ascs_instance_hostname }}.{{ ansible_domain }}\t{{ sap_swpm_ascs_instance_hostname }}"
+        - "{{ sap_vm_provision_ha_vip_nwas_abap_ers | regex_replace('/.*', '') }}\t{{ sap_swpm_ers_instance_hostname }}.{{ ansible_domain }}\t{{ sap_swpm_ers_instance_hostname }}"
       when:
         - (groups["nwas_ers"] is defined and (groups["nwas_ers"] | length>0))
         - not ansible_chassis_asset_tag == 'ibmcloud' or ((not inventory_hostname_short in groups['nwas_ascs'] and not inventory_hostname_short in groups['nwas_ers']) and ansible_chassis_asset_tag == 'ibmcloud')
+        - (sap_vm_provision_ha_vip_nwas_abap_ascs | length) > 0
+        - (sap_vm_provision_ha_vip_nwas_abap_ers | length) > 0
 
     # - name: Update /etc/hosts file with Virtual IPs for SAP NetWeaver HA - PAS / AAS
     #   ansible.builtin.lineinfile:
@@ -106,11 +115,13 @@
     #     line: "{{ item }}"
     #     state: present
     #   loop:
-    #     - "{{ (sap_ha_pacemaker_cluster_vip_nwas_abap_pas_ip_address | default('192.168.2.12/32')) | regex_replace('/.*', '') }}\t{{ sap_swpm_pas_instance_hostname }}.{{ ansible_domain }}\t{{ sap_swpm_pas_instance_hostname }}"
-    #     - "{{ (sap_ha_pacemaker_cluster_vip_nwas_abap_aas_ip_address | default('192.168.2.13/32')) | regex_replace('/.*', '') }}\t{{ .sap_swpm_aas_instance_hostname }}.{{ ansible_domain }}\t{{ sap_swpm_aas_instance_hostname }}"
+    #     - "{{ sap_vm_provision_ha_vip_nwas_abap_pas | regex_replace('/.*', '') }}\t{{ sap_swpm_pas_instance_hostname }}.{{ ansible_domain }}\t{{ sap_swpm_pas_instance_hostname }}"
+    #     - "{{ sap_vm_provision_ha_vip_nwas_abap_aas | regex_replace('/.*', '') }}\t{{ .sap_swpm_aas_instance_hostname }}.{{ ansible_domain }}\t{{ sap_swpm_aas_instance_hostname }}"
     #   when:
     #     - (groups["nwas_aas"] is defined and (groups["nwas_aas"] | length>0))
     #     - not ansible_chassis_asset_tag == 'ibmcloud' or ((not inventory_hostname_short in groups['nwas_pas'] and not inventory_hostname_short in groups['nwas_pas']) and ansible_chassis_asset_tag == 'ibmcloud')
+    #     - (sap_vm_provision_ha_vip_nwas_abap_pas | length) > 0
+    #     - (sap_vm_provision_ha_vip_nwas_abap_aas | length) > 0
 
     - name: Update /etc/hosts file for SAP NetWeaver AAS
       ansible.builtin.lineinfile:
@@ -124,10 +135,11 @@
 
 
 # Ensure SAP AnyDB, SAP HANA or SAP NetWeaver hostname is not localhost in /etc/hosts. See SAP Note 1054467 - Local host name refers to loopback address.
-# However, as IBM Cloud Load Balancer is a secure design using Back-end Pool servers with singular Port Number and Front-end Listener with single Port Number,
-# and controls the Virtual IP from the Load Balancer. Therefore the Virtual IP is not added as a Secondary IP to the OS Network Interface,
-# which causes connectivity issues due to SAP NetWeaver instance random dynamic port usage.
-# As workaround, configure /etc/hosts to map Virtual Hostname to use the host IP Address instead of the Virtual IP Address
+# However, as IBM Cloud Load Balancer is a secure design (using Back-end Pool servers with singular Port Number and Front-end Listener with single Port Number),
+# which controls the Virtual IP from the Load Balancer - the Virtual IP is not added as a Secondary IP to the OS Network Interface.
+# This causes connectivity issues due to SAP NetWeaver instance random dynamic port usage.
+# As workaround, configure /etc/hosts to map Virtual Hostname to use the host IP Address instead of the Virtual IP Address,
+# by appending an alias of the Virtual Hostname to the existing /etc/hosts entry for the host IP Address.
 - name: Ansible Play for controlling execution to an Infrastructure Platform when High Availability is used - IBM Cloud
   when:
     - (groups["hana_secondary"] is defined and (groups["hana_secondary"] | length>0)) or (groups["nwas_ers"] is defined and (groups["nwas_ers"] | length>0)) or (groups["anydb_secondary"] is defined and (groups["anydb_secondary"] | length>0))
@@ -140,12 +152,14 @@
         line: "{{ item }}"
         state: present
       loop:
-        - "{{ sap_vm_provision_dynamic_inventory_nw_ascs_ip }}\t{{ sap_swpm_ascs_instance_hostname }}.{{ ansible_domain }}\t{{ sap_swpm_ascs_instance_hostname }}"
-        - "{{ (sap_ha_pacemaker_cluster_vip_nwas_abap_ers_ip_address | default('192.168.2.11/32')) | regex_replace('/.*', '') }}\t{{ sap_swpm_ers_instance_hostname }}.{{ ansible_domain }}\t{{ sap_swpm_ers_instance_hostname }}"
+        - "{{ sap_vm_provision_dynamic_inventory_nw_ascs_ip }}\t{{ sap_vm_provision_dynamic_inventory_nw_ascs_hostname }}.{{ ansible_domain }}\t{{ sap_vm_provision_dynamic_inventory_nw_ascs_hostname }}\t{{ sap_swpm_ascs_instance_hostname }}.{{ ansible_domain }}\t{{ sap_swpm_ascs_instance_hostname }}"
+        - "{{ sap_vm_provision_dynamic_inventory_nw_ers_ip }}\t{{ sap_vm_provision_dynamic_inventory_nw_ers_hostname }}.{{ ansible_domain }}\t{{ sap_vm_provision_dynamic_inventory_nw_ers_hostname }}"
+        - "{{ sap_vm_provision_ha_vip_nwas_abap_ers | regex_replace('/.*', '') }}\t{{ sap_swpm_ers_instance_hostname }}.{{ ansible_domain }}\t{{ sap_swpm_ers_instance_hostname }}"
       when:
         - (groups["nwas_ers"] is defined and (groups["nwas_ers"] | length>0))
         - ansible_chassis_asset_tag == 'ibmcloud'
         - inventory_hostname_short in groups['nwas_ascs']
+        - (sap_vm_provision_ha_vip_nwas_abap_ascs | length) > 0
 
     - name: Update /etc/hosts file with Virtual Hostname for SAP NetWeaver HA ERS on IBM Cloud
       ansible.builtin.lineinfile:
@@ -153,9 +167,41 @@
         line: "{{ item }}"
         state: present
       loop:
-        - "{{ (sap_ha_pacemaker_cluster_vip_nwas_abap_ascs_ip_address | default('192.168.2.10/32')) | regex_replace('/.*', '') }}\t{{ sap_swpm_ascs_instance_hostname }}.{{ ansible_domain }}\t{{ sap_swpm_ascs_instance_hostname }}"
-        - "{{ sap_vm_provision_dynamic_inventory_nw_ers_ip }}\t{{ sap_swpm_ers_instance_hostname }}.{{ ansible_domain }}\t{{ sap_swpm_ers_instance_hostname }}"
+        - "{{ sap_vm_provision_dynamic_inventory_nw_ascs_ip }}\t{{ sap_vm_provision_dynamic_inventory_nw_ascs_hostname }}.{{ ansible_domain }}\t{{ sap_vm_provision_dynamic_inventory_nw_ascs_hostname }}"
+        - "{{ sap_vm_provision_dynamic_inventory_nw_ers_ip }}\t{{ sap_vm_provision_dynamic_inventory_nw_ers_hostname }}.{{ ansible_domain }}\t{{ sap_vm_provision_dynamic_inventory_nw_ers_hostname }}\t{{ sap_swpm_ers_instance_hostname }}.{{ ansible_domain }}\t{{ sap_swpm_ers_instance_hostname }}"
+        - "{{ sap_vm_provision_ha_vip_nwas_abap_ascs | regex_replace('/.*', '') }}\t{{ sap_swpm_ascs_instance_hostname }}.{{ ansible_domain }}\t{{ sap_swpm_ascs_instance_hostname }}"
       when:
         - (groups["nwas_ers"] is defined and (groups["nwas_ers"] | length>0))
         - ansible_chassis_asset_tag == 'ibmcloud'
         - inventory_hostname_short in groups['nwas_ers']
+        - (sap_vm_provision_ha_vip_nwas_abap_ers | length) > 0
+
+    # Remove /etc/hosts entries and then consolidate into one entry with aliases
+    - name: Remove /etc/hosts multiple entries for SAP NetWeaver ASCS and ASCS HA Virtual Hostname
+      ansible.builtin.lineinfile:
+        dest: /etc/hosts
+        line: "{{ item }}"
+        state: absent
+      loop:
+        - "{{ sap_vm_provision_dynamic_inventory_nw_ascs_ip }}\t{{ sap_vm_provision_dynamic_inventory_nw_ascs_hostname }}.{{ ansible_domain }}\t{{ sap_vm_provision_dynamic_inventory_nw_ascs_hostname }}"
+        - "{{ sap_vm_provision_ha_vip_nwas_abap_ascs | regex_replace('/.*', '') }}\t{{ sap_swpm_ascs_instance_hostname }}.{{ ansible_domain }}\t{{ sap_swpm_ascs_instance_hostname }}"
+      when:
+        - (groups["nwas_ers"] is defined and (groups["nwas_ers"] | length>0))
+        - ansible_chassis_asset_tag == 'ibmcloud'
+        - inventory_hostname_short in groups['nwas_ascs']
+        - (sap_vm_provision_ha_vip_nwas_abap_ascs | length) > 0
+
+    # Remove /etc/hosts entries and then consolidate into one entry with aliases
+    - name: Remove /etc/hosts multiple entries for SAP NetWeaver ERS and ERS HA Virtual Hostname
+      ansible.builtin.lineinfile:
+        dest: /etc/hosts
+        line: "{{ item }}"
+        state: absent
+      loop:
+        - "{{ sap_vm_provision_dynamic_inventory_nw_ers_ip }}\t{{ sap_vm_provision_dynamic_inventory_nw_ers_hostname }}.{{ ansible_domain }}\t{{ sap_vm_provision_dynamic_inventory_nw_ers_hostname }}"
+        - "{{ sap_vm_provision_ha_vip_nwas_abap_ers | regex_replace('/.*', '') }}\t{{ sap_swpm_ers_instance_hostname }}.{{ ansible_domain }}\t{{ sap_swpm_ers_instance_hostname }}"
+      when:
+        - (groups["nwas_ers"] is defined and (groups["nwas_ers"] | length>0))
+        - ansible_chassis_asset_tag == 'ibmcloud'
+        - inventory_hostname_short in groups['nwas_ers']
+        - (sap_vm_provision_ha_vip_nwas_abap_ers | length) > 0

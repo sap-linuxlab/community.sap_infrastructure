@@ -3,7 +3,7 @@
   ansible.builtin.debug:
     var: __sap_hypervisor_node_preconfigure_register_worker_network
 
-- name: "Create NodeNetworkConfigurationPolicy\
+- name: "Create NodeNetworkConfigurationPolicy \
          {{ __sap_hypervisor_node_preconfigure_register_worker_network.name }} on \
          {{ __sap_hypervisor_node_preconfigure_register_worker.name }}"
   kubernetes.core.k8s:
@@ -20,6 +20,7 @@
           interfaces:
             - "{{ __sap_hypervisor_node_preconfigure_register_worker_network }}"
   when: __sap_hypervisor_node_preconfigure_register_worker_network.type == 'linux-bridge'
+          or __sap_hypervisor_node_preconfigure_register_worker_network.type == 'ethernet'
 
 - name: "Create NetworkAttachmentDefinition {{ __sap_hypervisor_node_preconfigure_register_worker_network.name }}"
   kubernetes.core.k8s:
@@ -54,7 +55,7 @@
     state: present
   when: __sap_hypervisor_node_preconfigure_register_worker_network.type == 'sriov'
 
-- name: "Create SRIOV NodeNetworkConfigurationPolicy \
+- name: "Create SR-IOV NodeNetworkConfigurationPolicy \
          {{ __sap_hypervisor_node_preconfigure_register_worker_network.name }} on \
          {{ __sap_hypervisor_node_preconfigure_register_worker.name }}"
   kubernetes.core.k8s:

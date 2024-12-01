@@ -30,9 +30,16 @@
         targetNamespaces:
           - openshift-nmstate
 
-- name: Pause to give operator a chance to install
-  ansible.builtin.pause:
-    minutes: 2
+- name: Wait for nmstate OperatorGroup to be created
+  kubernetes.core.k8s_info:
+    api_version: operators.coreos.com/v1
+    kind: OperatorGroup
+    name: openshift-nmstate-tn6k8
+    namespace: openshift-nmstate
+  register: operatorgroup_status
+  retries: 30
+  delay: 10
+  until: operatorgroup_status.resources | length > 0
 
 - name: Subscribe to the nmstate Operator
   kubernetes.core.k8s:
@@ -52,9 +59,27 @@
         source: redhat-operators
         sourceNamespace: openshift-marketplace
 
-- name: Pause to give operator a chance to install
-  ansible.builtin.pause:
-    minutes: 5
+- name: Wait for Subscription to have an InstallPlan
+  kubernetes.core.k8s_info:
+    api_version: operators.coreos.com/v1alpha1
+    kind: Subscription
+    name: kubernetes-nmstate-operator
+    namespace: openshift-nmstate
+  register: subscription_status
+  retries: 30
+  delay: 10
+  until: subscription_status.resources[0].status.installplan.name is defined
+
+- name: Wait for InstallPlan to complete
+  kubernetes.core.k8s_info:
+    api_version: operators.coreos.com/v1alpha1
+    kind: InstallPlan
+    name: "{{ subscription_status.resources[0].status.installplan.name }}"
+    namespace: openshift-nmstate
+  register: installplan_status
+  retries: 30
+  delay: 10
+  until: installplan_status.resources[0].status.phase == "Complete"
 
 - name: Create instance of the nmstate operator
   kubernetes.core.k8s:
@@ -65,6 +90,12 @@
       metadata:
         name: nmstate
 
-- name: Pause to give instance a chance to come up
-  ansible.builtin.pause:
-    minutes: 5
+- name: Wait for NMState instance to be created
+  kubernetes.core.k8s_info:
+    api_version: nmstate.io/v1
+    kind: NMState
+    name: nmstate
+  register: nmstate_status
+  retries: 30
+  delay: 10
+  until: nmstate_status.resources | length > 0

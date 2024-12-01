@@ -4,13 +4,16 @@
   block:
 
     # Do not use ansible.builtin.copy as this will cause error 'not writable' on localhost (even if user has permissions)
-    - name: Copy Terraform Template files to temporary directory in current Ansible Playbook directory
+    # Should not cause overwrite of Terraform State files, but should overwrite populated Terraform Template files if they are updated
+    - name: Copy Terraform Template files to provided working directory path
+      run_once: true
       ansible.builtin.shell: |
         mkdir -p {{ sap_vm_provision_terraform_work_dir_path }}
-        cp -r {{ role_path }}/tasks/platform_ansible_to_terraform/{{ sap_vm_provision_iac_platform }}/tf_template/* {{ sap_vm_provision_terraform_work_dir_path }}
+        cp -R {{ role_path }}/tasks/platform_ansible_to_terraform/{{ sap_vm_provision_iac_platform }}/tf_template/* {{ sap_vm_provision_terraform_work_dir_path }}
 
-    - name: Terraform Template for SAP - IBM Cloud
+    - name: Terraform Template for SAP - IBM Power Virtual Server with IBM Cloud
       register: terraform_template1_result
+      run_once: true
       cloud.terraform.terraform:
         project_path: "{{ sap_vm_provision_terraform_work_dir_path }}"
         state: "{{ sap_vm_provision_terraform_state }}"
@@ -19,8 +22,8 @@
         variables:
           ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
           ibmcloud_resource_group: "{{ sap_vm_provision_ibmcloud_resource_group_name }}"
-          ibmcloud_vpc_availability_zone: "{{ sap_vm_provision_ibmcloud_availability_zone }}"
           ibmcloud_vpc_subnet_name: "{{ sap_vm_provision_ibmcloud_vpc_subnet_name }}"
+          ibmcloud_powervs_location: "{{ sap_vm_provision_ibmcloud_powervs_location }}"
           sap_vm_provision_resource_prefix: "{{ sap_vm_provision_resource_prefix }}"
           sap_vm_provision_dns_root_domain: "{{ sap_vm_provision_dns_root_domain }}"
           sap_vm_provision_bastion_os_image: "{{ sap_vm_provision_bastion_os_image }}"
@@ -29,13 +32,14 @@
           map_os_image_regex: "{{ lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_os_image_dictionary') }}"
           map_host_specifications: "{{ lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary') }}"
           sap_vm_provision_host_specification_plan: "{{ sap_vm_provision_host_specification_plan }}"
-          sap_vm_provision_ibmcloud_vs_host_os_image: "{{ sap_vm_provision_ibmcloud_vs_host_os_image }}"
-          sap_software_download_directory: "{{ sap_software_download_directory }}"
+          sap_vm_provision_ibmcloud_powervs_host_os_image: "{{ sap_vm_provision_ibmcloud_powervs_host_os_image }}"
+          sap_install_media_detect_source_directory: "{{ sap_install_media_detect_source_directory }}"
           sap_hana_install_instance_nr: "{{ sap_hana_install_instance_nr | default('') }}"
           sap_nwas_abap_ascs_instance_no: "{{ sap_swpm_ascs_instance_nr | default('') }}"
           sap_nwas_abap_pas_instance_no: "{{ sap_swpm_pas_instance_nr | default('') }}"
 
     - name: Terraform Template output
+      run_once: true
       ansible.builtin.debug:
         var: terraform_template1_result
 
@@ -56,6 +60,7 @@
 
     - name: Read outputs from project path
       when: sap_vm_provision_terraform_state == "present"
+      run_once: true
       cloud.terraform.terraform_output:
         project_path: "{{ sap_vm_provision_terraform_work_dir_path }}"
       register: terraform_output_project_path

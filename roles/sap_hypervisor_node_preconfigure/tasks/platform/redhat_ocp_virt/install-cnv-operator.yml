@@ -6,21 +6,20 @@
       apiVersion: v1
       kind: Namespace
       metadata:
-        name: openshift-cnv
+        name: "{{ sap_hypervisor_node_preconfigure_ocpv_namespace }}"
 
 - name: Create CNV OperatorGroup kubevirt-hyperconverged-group
   kubernetes.core.k8s:
     state: present
-
     definition:
       apiVersion: operators.coreos.com/v1
       kind: OperatorGroup
       metadata:
         name: kubevirt-hyperconverged-group
-        namespace: openshift-cnv
+        namespace: "{{ sap_hypervisor_node_preconfigure_ocpv_namespace }}"
       spec:
         targetNamespaces:
-          - openshift-cnv
+          - "{{ sap_hypervisor_node_preconfigure_ocpv_namespace }}"
 
 - name: Create CNV Subscription
   kubernetes.core.k8s:
@@ -30,33 +29,49 @@
       kind: Subscription
       metadata:
         name: hco-operatorhub
-        namespace: openshift-cnv
+        namespace: "{{ sap_hypervisor_node_preconfigure_ocpv_namespace }}"
       spec:
         source: redhat-operators
         sourceNamespace: openshift-marketplace
         name: kubevirt-hyperconverged
+        channel: "{{ sap_hypervisor_node_preconfigure_ocpv_subscription_channel }}"
 
-- name: Wait
-  ansible.builtin.pause:
-    seconds: 300
-
-- name: Get Install Plan Name
+- name: Get Install Plan Name from Subscription
   retries: 10
   delay: 10
-  ansible.builtin.command: oc get subscriptions/hco-operatorhub --namespace openshift-cnv --output=jsonpath='{$.status.installplan.name}'
+  kubernetes.core.k8s_info:
+    api_version: operators.coreos.com/v1alpha1
+    kind: Subscription
+    name: hco-operatorhub
+    namespace: "{{ sap_hypervisor_node_preconfigure_ocpv_namespace }}"
   register: __sap_hypervisor_node_preconfigure_register_cnv_subscription_install_plan_name
-  until: __sap_hypervisor_node_preconfigure_register_cnv_subscription_install_plan_name.stdout != ""
-  changed_when: __sap_hypervisor_node_preconfigure_register_cnv_subscription_install_plan_name.stdout != ""
+  until: __sap_hypervisor_node_preconfigure_register_cnv_subscription_install_plan_name.resources[0].status.installPlanRef.name is defined
+  changed_when: True
+
+- name: Set Install Plan Name
+  ansible.builtin.set_fact:
+    install_plan_name: "{{ __sap_hypervisor_node_preconfigure_register_cnv_subscription_install_plan_name.resources[0].status.installPlanRef.name }}"
 
 - name: Wait for Install Plan to finish
-  ansible.builtin.command: "oc wait installplan \
-    {{ __sap_hypervisor_node_preconfigure_register_cnv_subscription_install_plan_name.stdout }} --namespace openshift-cnv --for=condition='Installed' --timeout='5m'"
-  register: __sap_hypervisor_node_preconfigure_register_wait_for_installplan
-  changed_when: __sap_hypervisor_node_preconfigure_register_wait_for_installplan.rc != 0
+  vars:
+    install_plan_name: "{{ __sap_hypervisor_node_preconfigure_register_cnv_subscription_install_plan_name.stdout }}"
+  block:
+    - name: Get Install Plan details
+      kubernetes.core.k8s_info:
+        api_version: operators.coreos.com/v1alpha1
+        kind: InstallPlan
+        name: "{{ install_plan_name }}"
+        namespace: "{{ sap_hypervisor_node_preconfigure_ocpv_namespace }}"
+      register: __sap_hypervisor_node_preconfigure_register_wait_for_installplan
+      until: __sap_hypervisor_node_preconfigure_register_wait_for_installplan.resources[0].status.phase == "Complete"
+      retries: 60
+      delay: 5
+      ignore_errors: true
 
-- name: Wait
-  ansible.builtin.pause:
-    seconds: 300
+    - name: Fail if Install Plan is not Complete after waiting
+      ansible.builtin.fail:
+        msg: "Install Plan is not Complete after the specified wait period."
+      when: __sap_hypervisor_node_preconfigure_register_wait_for_installplan.resources[0].status.phase != "Complete"
 
 - name: Create CNV HyperConverged
   kubernetes.core.k8s:
@@ -66,9 +81,36 @@
       kind: HyperConverged
       metadata:
         name: kubevirt-hyperconverged
-        namespace: openshift-cnv
-      spec:
+        namespace: "{{ sap_hypervisor_node_preconfigure_ocpv_namespace }}"
 
-- name: Wait
-  ansible.builtin.pause:
-    seconds: 300
+- name: Retrieve HyperConverged Status
+  kubernetes.core.k8s_info:
+    api_version: hco.kubevirt.io/v1beta1
+    kind: HyperConverged
+    name: kubevirt-hyperconverged
+    namespace: "{{ sap_hypervisor_node_preconfigure_ocpv_namespace }}"
+  register: hyperconverged_status
+  until: >
+    {{
+      (hyperconverged_status.resources[0].status.conditions |
+      selectattr('type', 'equalto', 'Available') |
+      selectattr('status', 'equalto', 'True') |
+      list | length > 0) | bool
+    }}
+  retries: 60
+  delay: 10
+
+- name: Set HyperConverged Available Fact
+  ansible.builtin.set_fact:
+    hyperconverged_available: >-
+      {{
+        (hyperconverged_status.resources[0].status.conditions |
+        selectattr('type', 'equalto', 'Available') |
+        selectattr('status', 'equalto', 'True') |
+        list | length > 0) | bool
+      }}
+
+- name: Fail if HyperConverged is not Available after waiting
+  ansible.builtin.fail:
+    msg: "HyperConverged is not Available after the specified wait period."
+  when: not hyperconverged_available

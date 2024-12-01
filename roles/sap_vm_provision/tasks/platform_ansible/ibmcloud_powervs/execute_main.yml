@@ -3,16 +3,21 @@
 - name: Set fact for IBM Power VS location to the colocated IBM Cloud Availability Zone (VPC)
   ansible.builtin.set_fact:
     list_ibmcloud_powervs_location_to_ibmcloud_availability_zone:
+      dal10: "us-south-1"
       dal12: "us-south-2"
-      us-south: "us-south-3" # naming of IBM Power VS location 'us-south' was previous naming convention, would otherwise be 'DAL13'
-      us-east: "us-east-1"  # naming of IBM Power VS location 'us-east' was previous naming convention, would otherwise be 'WDC04'
-      # wdc06: "us-east-2" # No Cloud Connection available at this location
+      us-south: "us-south-3" # naming of IBM Power VS location 'us-south' was previous naming convention, would otherwise be 'dal13'
+      us-east: "us-east-1" # naming of IBM Power VS location 'us-east' was previous naming convention, would otherwise be 'wdc04'
+      wdc06: "us-east-2"
+      wdc07: "us-east-3"
       sao01: "br-sao-1"
+      sao02: "br-sao-2"
       tor01: "ca-tor-1"
-      eu-de-1: "eu-de-2" # naming of IBM Power VS location 'eu-de-1' was previous naming convention, would otherwise be 'FRA04'
-      eu-de-2: "eu-de-3" # naming of IBM Power VS location 'eu-de-2' was previous naming convention, would otherwise be 'FRA05'
+      eu-de-1: "eu-de-2" # naming of IBM Power VS location 'eu-de-1' was previous naming convention, would otherwise be 'fra04'
+      eu-de-2: "eu-de-3" # naming of IBM Power VS location 'eu-de-2' was previous naming convention, would otherwise be 'fra05'
       lon04: "eu-gb-1"
       lon06: "eu-gb-3"
+      mad02: "eu-es-1"
+      mad04: "eu-es-2"
       syd04: "au-syd-2"
       syd05: "au-syd-3"
       tok04: "jp-tok-2"
@@ -23,16 +28,21 @@
 - name: Set fact for IBM Power VS location to the IBM Power VS Region API Endpoints
   ansible.builtin.set_fact:
     list_ibmcloud_powervs_location_to_powervs_region:
+      dal10: "us-south"
       dal12: "us-south"
       us-south: "us-south"
       us-east: "us-east"
-      # wdc06: "us-east" # no Cloud Connection available at this location
+      wdc06: "us-east"
+      wdc07: "us-east"
       sao01: "sao"
+      sao02: "sao"
       tor01: "tor"
       eu-de-1: "eu-de"
       eu-de-2: "eu-de"
       lon04: "lon"
       lon06: "lon"
+      mad02: "mad"
+      mad04: "mad"
       syd04: "syd"
       syd05: "syd"
       tok04: "tok"
@@ -56,6 +66,7 @@
     - name: Identify Resource Group info
       no_log: "{{ __sap_vm_provision_no_log }}"
       register: __sap_vm_provision_task_ibmcloud_resource_group
+      run_once: true
       ibm.cloudcollection.ibm_resource_group_info:
         name: "{{ sap_vm_provision_ibmcloud_resource_group_name }}"
         ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
@@ -65,6 +76,7 @@
     - name: Identify Resource Group info for IBM Cloud Private DNS
       no_log: "{{ __sap_vm_provision_no_log }}"
       register: __sap_vm_provision_task_ibmcloud_resource_group_dns
+      run_once: true
       ibm.cloudcollection.ibm_resource_group_info:
         name: "{{ sap_vm_provision_ibmcloud_private_dns_resource_group_name }}"
         ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
@@ -73,6 +85,7 @@
     - name: Identify IBM Power Infrastructure Workspace
       no_log: "{{ __sap_vm_provision_no_log }}"
       register: __sap_vm_provision_task_ibmcloud_pi_workspace_service_instance
+      run_once: true
       ibm.cloudcollection.ibm_resource_instance_info:
         resource_group_id: "{{ __sap_vm_provision_task_ibmcloud_resource_group.resource.id }}"
         location: "{{ sap_vm_provision_ibmcloud_powervs_location }}"
@@ -80,9 +93,20 @@
         name: "{{ sap_vm_provision_ibmcloud_powervs_workspace_name }}"
         ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
 
+    - name: Identify IBM Power Infrastructure Workspace capabilities
+      no_log: "{{ __sap_vm_provision_no_log }}"
+      register: __sap_vm_provision_task_ibmcloud_pi_workspace_capabilities
+      run_once: true
+      environment:
+        IC_REGION: "{{ sap_vm_provision_ibmcloud_powervs_region }}"
+      ibm.cloudcollection.ibm_pi_workspace_info:
+        pi_cloud_instance_id: "{{ __sap_vm_provision_task_ibmcloud_pi_workspace_service_instance.resource.guid }}" # must be GUID, not CRN
+        ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
+
     - name: Identify pre-loaded IBM Power Infrastructure SSH Public Key info
       no_log: "{{ __sap_vm_provision_no_log }}"
       register: __sap_vm_provision_task_ibmcloud_pi_ssh_public_key
+      run_once: true
       environment:
         IC_REGION: "{{ sap_vm_provision_ibmcloud_powervs_region }}"
       ibm.cloudcollection.ibm_pi_key_info:
@@ -93,6 +117,7 @@
     - name: Identify IBM Power Infrastructure VLAN Subnet info
       no_log: "{{ __sap_vm_provision_no_log }}"
       register: __sap_vm_provision_task_ibmcloud_pi_subnet
+      run_once: true
       environment:
         IC_REGION: "{{ sap_vm_provision_ibmcloud_powervs_region }}"
       ibm.cloudcollection.ibm_pi_network_info:
@@ -107,7 +132,7 @@
           then Subnet DNS Default should use IBM Cloud IaaS Backbone DNS Resolver 161.26.0.10/11 (which will be populated into /etc/resolv.conf).
           Otherwise cloud-init actions during provisioning may not be successful.
       when:
-        - not sap_vm_provision_proxy_web_forward_proxy_ip is defined
+        - __sap_vm_provision_task_ibmcloud_pi_workspace_capabilities.resource.pi_workspace_capabilities['power-edge-router']
         - not (__sap_vm_provision_task_ibmcloud_pi_subnet.resource.dns | first) in ['161.26.0.10', '161.26.0.11']
 
     # DNS may exist in separate Resource Group
@@ -115,6 +140,7 @@
     - name: Identify IBM Cloud Private DNS instance
       no_log: "{{ __sap_vm_provision_no_log }}"
       register: __sap_vm_provision_task_ibmcloud_pdns_service_instance
+      run_once: true
       ibm.cloudcollection.ibm_resource_instance_info:
         resource_group_id: "{{ __sap_vm_provision_task_ibmcloud_resource_group.resource.id if __sap_vm_provision_task_ibmcloud_resource_group_dns is skipped else __sap_vm_provision_task_ibmcloud_resource_group_dns.resource.id }}"
         location: global
@@ -125,13 +151,30 @@
     - name: Identify IBM Cloud Private DNS Zone info
       no_log: "{{ __sap_vm_provision_no_log }}"
       register: __sap_vm_provision_task_ibmcloud_pdns
+      run_once: true
       ibm.cloudcollection.ibm_dns_zones_info:
         instance_id: "{{ __sap_vm_provision_task_ibmcloud_pdns_service_instance.resource.guid }}"
         ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
 
+    - name: Identify IBM Cloud Private DNS Custom Resolvers info
+      no_log: "{{ __sap_vm_provision_no_log }}"
+      register: __sap_vm_provision_task_ibmcloud_pdns_custom_resolvers
+      run_once: true
+      ibm.cloudcollection.ibm_dns_custom_resolvers_info:
+        instance_id: "{{ __sap_vm_provision_task_ibmcloud_pdns_service_instance.resource.guid }}"
+        ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
+
+    - name: Check if input IBM Cloud Private DNS Customer Resolver IP exists
+      ansible.builtin.fail:
+        msg:
+          IBM Cloud Private DNS instance does not contain the input Custom Resolver IP Address.
+          Please create a Custom Resolver in this IBM Cloud Private DNS instance.
+      when: not sap_vm_provision_ibmcloud_private_dns_custom_resolver_ip in (__sap_vm_provision_task_ibmcloud_pdns_custom_resolvers.resource.custom_resolvers | map(attribute='locations') | list | flatten | map(attribute='dns_server_ip') | list)
+
     - name: Identify IBM Power Infrastructure OS Catalog Stock Image list
       no_log: "{{ __sap_vm_provision_no_log }}"
       register: __sap_vm_provision_task_ibmcloud_pi_os_image_list
+      run_once: true
       environment:
         IC_REGION: "{{ sap_vm_provision_ibmcloud_powervs_region }}"
       ibm.cloudcollection.ibm_pi_catalog_images_info:
@@ -146,6 +189,7 @@
     - name: Import Boot Image to current IBM Power Infrastructure Workspace from the IBM Power Infrastructure OS Catalog Stock Image
       no_log: "{{ __sap_vm_provision_no_log }}"
       register: __sap_vm_provision_task_ibmcloud_pi_os_image_provisioned
+      run_once: true
       environment:
         IC_REGION: "{{ sap_vm_provision_ibmcloud_powervs_region }}"
       ibm.cloudcollection.ibm_pi_image:
@@ -154,11 +198,11 @@
         pi_image_name: "{{ sap_vm_provision_ibmcloud_powervs_host_os_image }}-boot"
         ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
       failed_when: not __sap_vm_provision_task_ibmcloud_pi_os_image_provisioned.rc == 0 and not 'already exists' in __sap_vm_provision_task_ibmcloud_pi_os_image_provisioned.stderr
-      run_once: true
 
     - name: Identify IBM Power Infrastructure Workspace imported OS Image list
       no_log: "{{ __sap_vm_provision_no_log }}"
       register: __sap_vm_provision_task_ibmcloud_pi_imported_os_image_list
+      run_once: true
       environment:
         IC_REGION: "{{ sap_vm_provision_ibmcloud_powervs_region }}"
       ibm.cloudcollection.ibm_pi_images_info:
@@ -173,13 +217,43 @@
     - name: Check for existing Boot Image imported already from IBM Power Infrastructure OS Catalog Stock Image
       no_log: "{{ __sap_vm_provision_no_log }}"
       register: __sap_vm_provision_task_ibmcloud_pi_os_image_existing
+      run_once: true
       environment:
         IC_REGION: "{{ sap_vm_provision_ibmcloud_powervs_region }}"
       ibm.cloudcollection.ibm_pi_image_info:
         pi_cloud_instance_id: "{{ __sap_vm_provision_task_ibmcloud_pi_workspace_service_instance.resource.guid }}" # must be GUID, not CRN
         pi_image_name: "{{ register_ibmcloud_pi_imported_os_image_selected.name }}"
         ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
+
+    - name: Create IBM Power Infrastructure Server Placement Groups when High Availability
+      no_log: "{{ __sap_vm_provision_no_log }}"
+      register: __sap_vm_provision_task_ibmcloud_placement_group
       run_once: true
+      ibm.cloudcollection.ibm_pi_placement_group:
+        pi_cloud_instance_id: "{{ __sap_vm_provision_task_ibmcloud_pi_workspace_service_instance.resource.guid }}" # must be GUID, not CRN
+        pi_placement_group_name: "{{ sap_vm_provision_ibmcloud_placement_resource_name }}-{{ item }}"
+        pi_placement_group_policy: "anti-affinity"
+        ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
+      loop:
+        - "{{ 'hana'  if 'hana_secondary' in lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan] | json_query('*') | map(attribute='sap_host_type') else '' }}"
+        - "{{ 'anydb' if 'anydb_secondary' in lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan] | json_query('*') | map(attribute='sap_host_type') else '' }}"
+        - "{{ 'nwas'  if 'nwas_ers' in lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan] | json_query('*') | map(attribute='sap_host_type') else '' }}"
+      when:
+        - sap_vm_provision_ibmcloud_placement_resource_name is defined
+        - sap_vm_provision_ibmcloud_placement_strategy_spread
+        - not item == ''
+
+    - name: Identify created IBM Power Infrastructure Server Placement Groups when High Availability
+      no_log: "{{ __sap_vm_provision_no_log }}"
+      register: __sap_vm_provision_task_ibmcloud_placement_groups_list
+      run_once: true
+      ibm.cloudcollection.ibm_pi_placement_groups_info:
+        pi_cloud_instance_id: "{{ __sap_vm_provision_task_ibmcloud_pi_workspace_service_instance.resource.guid }}" # must be GUID, not CRN
+        ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
+      when:
+        - sap_vm_provision_ibmcloud_placement_resource_name is defined
+        - sap_vm_provision_ibmcloud_placement_strategy_spread
+
 
     - name: Set fact to hold loop variables from include_tasks
       ansible.builtin.set_fact:
@@ -215,7 +289,7 @@
 
     - name: Set fact to hold all inventory hosts in all groups
       ansible.builtin.set_fact:
-        groups_merged_list: "{{ [ [ groups['hana_primary'] | default([]) ] , [ groups['hana_secondary'] | default([]) ] , [ groups['nwas_ascs'] | default([]) ] , [ groups['nwas_ers'] | default([]) ] , [ groups['nwas_pas'] | default([]) ] , [ groups['nwas_aas'] | default([]) ] ] | flatten | select() }}"
+        groups_merged_list: "{{ [ [ groups['hana_primary'] | default([]) ] , [ groups['hana_secondary'] | default([]) ] , [ groups['anydb_primary'] | default([]) ] , [ groups['anydb_secondary'] | default([]) ] , [ groups['nwas_ascs'] | default([]) ] , [ groups['nwas_ers'] | default([]) ] , [ groups['nwas_pas'] | default([]) ] , [ groups['nwas_aas'] | default([]) ] ] | flatten | select() }}"
 
     - name: Set Ansible Vars
       register: __sap_vm_provision_task_ansible_vars_set
@@ -317,10 +391,15 @@
     - name: Append IBM Cloud Private DNS to /etc/resolv.conf
       ansible.builtin.lineinfile:
         path: /etc/resolv.conf
-        line: nameserver 161.26.0.10
+        line: nameserver {{ sap_vm_provision_ibmcloud_private_dns_custom_resolver_ip }}
 
-    # Not applicable to the IBM PowerVS Workspace enabled with Power Edge Router (from Q4-2023 onwards)
-    - name: Register Web Forward Proxy (for legacy Power Infrastructure Cloud Connections networking configuration)
+    # Required Web Forward Proxy
+    # For IBM PowerVS Workspace enabled with Power Edge Router (from Q4-2023 onwards),
+    # the SNAT (VPC Public Gateway) service is not routable from IBM Power Virtual Server hosts
+    # and cannot be used for outbound Public Internet connectivity
+    # For IBM PowerVS Workspace with legacy Cloud Connection,
+    # required for both outbound Public Internet connectivity and internal traffic to other IBM Cloud Services
+    - name: Register Web Forward Proxy
       ansible.builtin.include_tasks:
         file: common/register_proxy.yml
       when: sap_vm_provision_proxy_web_forward_proxy_ip is defined
@@ -337,7 +416,11 @@
         set -o pipefail && if [ "${workspace_legacy_cc}" = true ]; then activation_script_exec=$(cat /usr/share/powervs-fls/powervs-fls-readme.md | grep networklayer.com | sed "s|Private.proxy.IP.address:3128|$web_proxy_ip_port|" | sed 's|. ||') ; fi
         set -o pipefail && if [ "${workspace_legacy_cc}" = true ]; then nohup $activation_script_exec >/dev/null 2>&1 ; fi
         set -o pipefail && if [ "${workspace_legacy_cc}" = true ]; then sleep 120 ; fi
-      when: ansible_os_family == "RedHat"
+      when:
+        - ansible_os_family == 'RedHat'
+        - sap_vm_provision_os_registration_script_command is undefined
+        - (sap_vm_provision_os_online_registration_user is undefined) or (sap_vm_provision_os_online_registration_passcode is undefined)
+        - not __sap_vm_provision_task_ibmcloud_pi_workspace_capabilities.resource.pi_workspace_capabilities['power-edge-router']
 
     # Not applicable to the IBM PowerVS Workspace enabled with Power Edge Router (from Q4-2023 onwards)
     # Extract the generated command string and activation key from /usr/share, then execute script from /usr/local/bin
@@ -351,7 +434,15 @@
         set -o pipefail && if [ "${workspace_legacy_cc}" = true ]; then nohup $activation_script_exec >/dev/null 2>&1 ; fi
         set -o pipefail && if [ "${workspace_legacy_cc}" = true ]; then sleep 120 ; fi
         set -o pipefail && SUSEConnect --product PackageHub/{{ ansible_distribution_version }}/ppc64le
-      when: ansible_os_family == "Suse"
+      when:
+        - ansible_os_family == 'Suse'
+        - sap_vm_provision_os_registration_script_command is undefined
+        - (sap_vm_provision_os_online_registration_user is undefined) or (sap_vm_provision_os_online_registration_passcode is undefined)
+        - not __sap_vm_provision_task_ibmcloud_pi_workspace_capabilities.resource.pi_workspace_capabilities['power-edge-router']
+
+    - name: Register Package Repositories for OS Images with Bring-Your-Own-Subscription (BYOS)
+      ansible.builtin.include_tasks:
+        file: common/register_os.yml
 
     - name: Verify connection to NFS
       ansible.builtin.wait_for:
@@ -361,7 +452,9 @@
         sleep: 10
         connect_timeout: 15
         timeout: 120
-      when: sap_vm_provision_nfs_mount_point is defined
+      when:
+        - sap_vm_provision_nfs_mount_point is defined
+        - (sap_vm_provision_nfs_mount_point | default('')) | length > 0
 
     - name: Verify connection to separate NFS for SAP Transport Directory
       ansible.builtin.wait_for:
@@ -371,7 +464,9 @@
         sleep: 10
         connect_timeout: 15
         timeout: 120
-      when: sap_vm_provision_nfs_mount_point_separate_sap_transport_dir is defined
+      when:
+        - sap_vm_provision_nfs_mount_point_separate_sap_transport_dir is defined
+        - (sap_vm_provision_nfs_mount_point_separate_sap_transport_dir | default('')) | length > 0
 
     # Ensure lock to RHEL major.minor version
     # Lock using subscription-manager release --set or /var/lib/rhsm/cache/releasever.json, alternatively using /etc/yum/vars/releasever or /etc/dnf/vars/releasever

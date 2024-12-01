@@ -14,6 +14,10 @@
     - sap_vm_provision_calculate_sap_hana_scaleout_active_coordinator is defined
     - not inventory_hostname in lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan].keys()
 
+- name: Set fact for host specifications of the provision target
+  ansible.builtin.set_fact:
+    target_provision_host_spec: "{{ lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan][scaleout_origin_host_spec | default(inventory_hostname)] }}"
+
 - name: Verify if network interface for MS Azure VM already exists (i.e. re-run)
   no_log: "{{ __sap_vm_provision_no_log }}"
   register: __sap_vm_provision_task_provision_host_single_vnic_info
@@ -41,7 +45,17 @@
         primary: true
         #private_ip_allocation_method: "Static" # When static, must define the specific IP Address
     enable_accelerated_networking: true
-    enable_ip_forwarding: "{{ lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan][scaleout_origin_host_spec | default(inventory_hostname)].disable_ip_anti_spoofing }}" # When disable the Anti IP Spoofing = true, then Enable IP Forwarding = true
+    enable_ip_forwarding: "{{ target_provision_host_spec.disable_ip_anti_spoofing }}" # When disable the Anti IP Spoofing = true, then Enable IP Forwarding = true
+    availability_set: "{{ (
+      (__sap_vm_provision_task_msazure_availability_set.results | selectattr('item','==','hana'))[0].state.name
+      if ('hana_primary' in target_provision_host_spec.sap_host_type or 'hana_secondary' in target_provision_host_spec.sap_host_type)
+      else
+      (__sap_vm_provision_task_msazure_availability_set.results | selectattr('item','==','anydb'))[0].state.name
+      if ('anydb_primary' in target_provision_host_spec.sap_host_type or 'anydb_secondary' in target_provision_host_spec.sap_host_type)
+      else
+      (__sap_vm_provision_task_msazure_availability_set.results | selectattr('item','==','nwas'))[0].state.name
+      if ('nwas_ascs' in target_provision_host_spec.sap_host_type or 'nwas_ers' in target_provision_host_spec.sap_host_type)
+      ) | default(omit) }}"
     # Azure credentials
     subscription_id: "{{ sap_vm_provision_msazure_subscription_id }}"
     tenant: "{{ sap_vm_provision_msazure_tenant_id }}"
@@ -61,7 +75,7 @@
     ssh_public_keys:
       - path: /home/azureadmin/.ssh/authorized_keys
         key_data: "{{ __sap_vm_provision_task_msazure_key_pair_name_ssh_host_public_key_value }}"
-    vm_size: "{{ lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan][scaleout_origin_host_spec | default(inventory_hostname)].virtual_machine_profile }}"
+    vm_size: "{{ target_provision_host_spec.virtual_machine_profile }}"
     image:
       publisher: "{{ lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_os_image_dictionary')[sap_vm_provision_msazure_vm_host_os_image].publisher }}"
       offer: "{{ lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_os_image_dictionary')[sap_vm_provision_msazure_vm_host_os_image].offer }}"
@@ -121,11 +135,7 @@
     delegate_sap_vm_provision_ssh_bastion_private_key_file_path: "{{ sap_vm_provision_ssh_bastion_private_key_file_path }}"
     delegate_sap_vm_provision_ssh_host_private_key_file_path: "{{ sap_vm_provision_ssh_host_private_key_file_path }}"
 
-- name: Collect only facts about hardware
-  register: __sap_vm_provision_task_ansible_facts_host_disks_info
-  ansible.builtin.setup:
-    gather_subset:
-      - hardware
+- name: Block to collect only facts about hardware
   remote_user: azureadmin
   become: true
   become_user: root
@@ -134,6 +144,22 @@
   vars:
     ansible_ssh_private_key_file: "{{ delegate_sap_vm_provision_ssh_host_private_key_file_path }}"
     ansible_ssh_common_args: -o ConnectTimeout=180 -o ControlMaster=auto -o ControlPersist=3600s -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ForwardX11=no -o ProxyCommand='ssh -W %h:%p {{ delegate_sap_vm_provision_bastion_user }}@{{ delegate_sap_vm_provision_bastion_public_ip }} -p {{ delegate_sap_vm_provision_bastion_ssh_port }} -i {{ delegate_sap_vm_provision_ssh_bastion_private_key_file_path }} -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null'
+  block:
+
+    # Required as state: present on Ansible Module azure_rm_virtualmachine does waiting enough until VM has booted
+    # wait_for_connection is used instead to ensure connection is available before proceeding.
+    - name: Wait until SSH connection is available
+      ansible.builtin.wait_for_connection:
+        timeout: 300
+
+    - name: Collect only facts about hardware
+      register: __sap_vm_provision_task_ansible_facts_host_disks_info
+      ansible.builtin.setup:
+        gather_subset:
+          - hardware
+      retries: 60
+      delay: 10
+
 
 #- name: Output disks
 #  ansible.builtin.debug:
@@ -171,7 +197,7 @@
     filesystem_volume_map: |
       {% set volume_map = [] -%}
       {% set av_vol = available_volumes -%}
-      {% for storage_item in lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan][scaleout_origin_host_spec | default(inventory_hostname)].storage_definition -%}
+      {% for storage_item in target_provision_host_spec.storage_definition -%}
         {% for idx in range(0, storage_item.disk_count | default(1)) -%}
           {% if (storage_item.filesystem_type is defined) -%}
             {% if ('swap' in storage_item.filesystem_type and storage_item.swap_path is not defined)
@@ -270,8 +296,8 @@
       ansible.builtin.replace:
         path: /root/.ssh/authorized_keys
         backup: true
-        regexp: '(^.*ssh-rsa)'
-        replace: 'ssh-rsa'
+        regexp: '(^.*ssh-)' # Allow ssh-rsa , ssh-ed25519 etc.
+        replace: 'ssh-'
 
     - name: Permit root login
       register: __sap_vm_provision_task_os_sshd_config
@@ -292,7 +318,7 @@
 
 - name: Append loop value to register
   ansible.builtin.set_fact:
-    __sap_vm_provision_task_provision_host_single: "{{ __sap_vm_provision_task_provision_host_single | combine( { 'host_node' : inventory_hostname } , { 'sap_host_type' : lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan][scaleout_origin_host_spec | default(inventory_hostname)].sap_host_type } , { 'sap_system_type' : (lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan][scaleout_origin_host_spec | default(inventory_hostname)].sap_system_type | default('')) } ) }}"
+    __sap_vm_provision_task_provision_host_single: "{{ __sap_vm_provision_task_provision_host_single | combine( { 'host_node' : inventory_hostname } , { 'sap_host_type' : target_provision_host_spec.sap_host_type } , { 'sap_system_type' : (target_provision_host_spec.sap_system_type | default('')) } ) }}"
 
 - name: Append output to merged register
   ansible.builtin.set_fact:

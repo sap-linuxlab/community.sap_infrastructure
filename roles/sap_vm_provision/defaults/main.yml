@@ -10,6 +10,8 @@ sap_vm_provision_iac_type: ""
 # aws_ec2_vs , gcp_ce_vm , ibmcloud_vs , ibmcloud_powervs , msazure_vm , ibmpowervm_vm , kubevirt_vm , ovirt_vm , vmware_vm
 sap_vm_provision_iac_platform: ""
 
+# execution_host where ansible playbook will delegate_to
+sap_vm_provision_execution_host: "localhost"
 
 ####
 # VM Provision Infrastructure-as-Code (IaC) Configuration - Ansible provisioning - Cloud Hyperscaler
@@ -57,16 +59,21 @@ sap_vm_provision_dns_root_domain: ""
 
 
 ####
-# VM Provision - Generic configuration - Hypervsior
+# VM Provision - Generic configuration - Hypervisor or Cloud Hyperscaler OS Images with Bring-Your-Own-Subscription (BYOS)
 ####
 
 # Register to OS Vendor online subscription to package repositories
-sap_vm_provision_os_online_registration_passcode: ""
-sap_vm_provision_os_online_registration_user: ""
+# sap_vm_provision_os_online_registration_passcode: ""
+# sap_vm_provision_os_online_registration_user: ""
 
 # Register to Hosted Mirror of OS Vendor package repositories
 # sap_vm_provision_os_registration_ca_file_path: ""
 # sap_vm_provision_os_registration_script_command: ""
+
+
+####
+# VM Provision - Generic configuration - Hypervisor
+####
 
 # Proxy - Web Forward, when SNAT not available for Hypervisor VMs
 # sap_vm_provision_proxy_web_forward_proxy_ip: "" # IP:Port only, no http:// prefix
@@ -134,6 +141,15 @@ sap_vm_provision_aws_vpc_subnet_id: "" # if ansible_to_terraform, use "new"
 sap_vm_provision_aws_vpc_subnet_create_boolean: "{{ true | default(false) if sap_vm_provision_aws_vpc_subnet_id == 'new' else false }}"
 sap_vm_provision_aws_vpc_sg_names: "" # comma-separated, if ansible_to_terraform then ignore this variable
 sap_vm_provision_aws_key_pair_name_ssh_host_public_key: ""
+sap_vm_provision_aws_placement_resource_name: "sap-placement-group-spread"
+sap_vm_provision_aws_placement_strategy_spread: false
+# Specify role/profile names to allow multiple clusters
+# Example for HANA HA: "HA-Role-Pacemaker-{{ sap_system_hana_db_sid }}"
+sap_vm_provision_aws_ha_iam_role: "HA-Role-Pacemaker"
+sap_vm_provision_aws_ha_iam_instance_profile: "HA-Instance-Profile-Pacemaker-Cluster"
+# Enable to overwrite existing DNS record.
+# AWS Route53 module fails when DNS record already exists.
+sap_vm_provision_aws_dns_overwrite: false
 
 # Google Cloud
 sap_vm_provision_gcp_credentials_json: ""
@@ -142,6 +158,8 @@ sap_vm_provision_gcp_region: "{{ sap_vm_provision_gcp_region_zone[:-2] }}"
 sap_vm_provision_gcp_region_zone: ""
 sap_vm_provision_gcp_vpc_name: ""
 sap_vm_provision_gcp_vpc_subnet_name: ""
+sap_vm_provision_gcp_placement_resource_name: "sap-placement-policy-spread"
+sap_vm_provision_gcp_placement_strategy_spread: false
 
 # IBM Cloud
 sap_vm_provision_ibmcloud_api_key: ""
@@ -154,8 +172,11 @@ sap_vm_provision_ibmcloud_vpc_name: ""
 sap_vm_provision_ibmcloud_vpc_subnet_name: ""
 sap_vm_provision_ibmcloud_vpc_sg_names: "" # comma-separated, if ansible_to_terraform then ignore this variable
 sap_vm_provision_ibmcloud_key_pair_name_ssh_host_public_key: ""
+sap_vm_provision_ibmcloud_placement_resource_name: "sap-placement-group-spread"
+sap_vm_provision_ibmcloud_placement_strategy_spread: false
 
 # IBM Cloud, addendum for IBM Power VS
+sap_vm_provision_ibmcloud_private_dns_custom_resolver_ip: ""
 sap_vm_provision_ibmcloud_powervs_location: ""
 sap_vm_provision_ibmcloud_powervs_workspace_name: ""
 sap_vm_provision_ibmcloud_powervs_vlan_subnet_name: ""
@@ -173,6 +194,41 @@ sap_vm_provision_msazure_location_availability_zone_no: 1
 sap_vm_provision_msazure_vnet_name: ""
 sap_vm_provision_msazure_vnet_subnet_name: ""
 sap_vm_provision_msazure_key_pair_name_ssh_host_public_key: ""
+sap_vm_provision_msazure_placement_resource_name: "sap-availability-set-spread"
+sap_vm_provision_msazure_placement_strategy_spread: false
+# Specify role name for fence agent
+sap_vm_provision_msazure_ha_iam_role: "Linux Fence Agent Role"
+
+####
+# Infrastructure Platform - Cloud Hyperscaler - High Availability resources
+####
+
+# Default names for Load Balancer resources on Google Cloud, IBM Cloud, Microsoft Azure
+sap_vm_provision_ha_load_balancer_name_hana: "lb-sap-ha-hana"
+sap_vm_provision_ha_load_balancer_name_anydb: "lb-sap-ha-anydb"
+sap_vm_provision_ha_load_balancer_name_nwas: "lb-sap-ha-nwas"
+
+
+####
+# Infrastructure Platform - Cloud Hyperscaler - High Availability Virtual IPs (VIPs)
+#
+# AWS:                  the VIP must be **outside** of any VPC Subnet ranges
+# GCP:                  the VIP must be within the VPC Subnetwork range attached to GCP Backend Service for the Internal passthrough Network Load Balancer
+# IBM Cloud:            the VIP is within the VPC Subnet range and is statically defined by the IBM Cloud Load Balancer (NLB L4 or ALB L7)
+# IBM Cloud, Power VS:  the VIP must be within the IBM Power Infrastructure VLAN Subnet range
+# MS Azure:             the VIP must be within the VNet Subnet range attached to the Azure Load Balancer (NLB L4)
+# IBM PowerVM:          the VIP must be within the VLAN Subnet range
+# OVirt KVM:            the VIP must be within the VLAN Subnet range
+# KubeVirt:             the VIP must be within the VLAN Subnet range
+####
+
+# Blank defaults for High Availability Virtual IPs (VIPs), with CIDR
+sap_vm_provision_ha_vip_hana_primary: "" # e.g. 192.168.1.90/32
+sap_vm_provision_ha_vip_anydb_primary: "" # e.g. 192.168.1.90/32
+sap_vm_provision_ha_vip_nwas_abap_ascs: "" # e.g. 192.168.2.10/32
+sap_vm_provision_ha_vip_nwas_abap_ers: "" # e.g. 192.168.2.11/32
+# sap_vm_provision_ha_vip_nwas_abap_pas: # not implemented
+# sap_vm_provision_ha_vip_nwas_abap_aas: # not implemented
 
 
 ####
@@ -190,6 +246,8 @@ sap_vm_provision_ibmpowervm_network_name: ""
 sap_vm_provision_ibmpowervm_network_vnic_type: "normal" # 'direct' == SR-IOV, 'normal' == Shared Ethernet Adapter (SEA)
 sap_vm_provision_ibmpowervm_storage_template_name: "" # aka. Openstack Cinder Volume Type
 sap_vm_provision_ibmpowervm_key_pair_name_ssh_host_public_key: ""
+sap_vm_provision_ibmpowervm_placement_resource_name: "sap-collocation-rule-spread"
+sap_vm_provision_ibmpowervm_placement_strategy_spread: false
 
 # Kubevirt
 sap_vm_provision_kubevirt_api_key: ""
@@ -250,36 +308,67 @@ sap_vm_provision_ibmpowervm_vm_host_os_image: ""
 # OS Images - AWS AMI
 sap_vm_provision_aws_ec2_vs_host_os_image_dictionary:
   rhel-8-1: "*RHEL-8.1*_HVM*x86_64*"
-  rhel-8-2: "*RHEL-8.2*_HVM*x86_64*"
+  # rhel-8-2: "*RHEL-8.2*_HVM*x86_64*" # removed
   rhel-8-4: "*RHEL-8.4*_HVM*x86_64*"
   rhel-8-6: "*RHEL-8.6*_HVM*x86_64*"
   rhel-8-8: "*RHEL-8.8*_HVM*x86_64*"
+  rhel-8-10: "*RHEL-8.10*_HVM*x86_64*"
+  rhel-9-0: "*RHEL-9.0*_HVM*x86_64*"
+  rhel-9-1: "*RHEL-9.1*_HVM*x86_64*"
+  rhel-9-2: "*RHEL-9.2*_HVM*x86_64*"
+  rhel-9-3: "*RHEL-9.3*_HVM*x86_64*"
+  rhel-9-4: "*RHEL-9.4*_HVM*x86_64*"
+  sles-12-5: "*suse-sles-12-sp5-v202*-hvm-ssd-x86_64*"
+  # sles-15-2: "*suse-sles-15-sp2-v202*-hvm-ssd-x86_64*" # removed
+  # sles-15-3: "*suse-sles-15-sp3-v202*-hvm-ssd-x86_64*" # removed
+  # sles-15-4: "*suse-sles-15-sp4-v202*-hvm-ssd-x86_64*" # removed
+  sles-15-5: "*suse-sles-15-sp5-v202*-hvm-ssd-x86_64*"
+  sles-15-6: "*suse-sles-15-sp6-v202*-hvm-ssd-x86_64*"
+  # rhel-7-7-sap-ha: "*RHEL-SAP-8.1.0*" # removed
+  # rhel-7-9-sap-ha: "*RHEL-SAP-8.1.0*" # removed
   rhel-8-1-sap-ha: "*RHEL-SAP-8.1.0*"
   rhel-8-2-sap-ha: "*RHEL-SAP-8.2.0*"
   rhel-8-4-sap-ha: "*RHEL-SAP-8.4.0*"
   rhel-8-6-sap-ha: "*RHEL-SAP-8.6.0*"
   rhel-8-8-sap-ha: "*RHEL-SAP-8.8.0*"
+  rhel-8-10-sap-ha: "*RHEL-SAP-8.10.0*"
   rhel-9-0-sap-ha: "*RHEL-SAP-9.0.0*"
   rhel-9-2-sap-ha: "*RHEL-SAP-9.2.0*"
-  sles-15-2: "*suse-sles-15-sp2-v202*-hvm-ssd-x86_64*"
-  sles-15-3: "*suse-sles-15-sp3-v202*-hvm-ssd-x86_64*"
-  sles-15-4: "*suse-sles-15-sp4-v202*-hvm-ssd-x86_64*"
-  sles-15-5: "*suse-sles-15-sp5-v202*-hvm-ssd-x86_64*"
+  rhel-9-4-sap-ha: "*RHEL-SAP-9.4.0*"
   sles-12-5-sap-ha: "*suse-sles-sap-12-sp5-v202*-hvm-ssd-x86_64*"
   sles-15-1-sap-ha: "*suse-sles-sap-15-sp1-v202*-hvm-ssd-x86_64*"
   sles-15-2-sap-ha: "*suse-sles-sap-15-sp2-v202*-hvm-ssd-x86_64*"
   sles-15-3-sap-ha: "*suse-sles-sap-15-sp3-v202*-hvm-ssd-x86_64*"
   sles-15-4-sap-ha: "*suse-sles-sap-15-sp4-v202*-hvm-ssd-x86_64*"
   sles-15-5-sap-ha: "*suse-sles-sap-15-sp5-v202*-hvm-ssd-x86_64*"
+  sles-15-6-sap-ha: "*suse-sles-sap-15-sp6-v202*-hvm-ssd-x86_64*"
+  sles-15-4-sap-ha-byos: "*suse-sles-sap-15-sp4-byos-v202*-hvm-ssd-x86_64*"
+  sles-15-5-sap-ha-byos: "*suse-sles-sap-15-sp5-byos-v202*-hvm-ssd-x86_64*"
+  sles-15-6-sap-ha-byos: "*suse-sles-sap-15-sp6-byos-v202*-hvm-ssd-x86_64*"
 
 # OS Images - Google Cloud
 sap_vm_provision_gcp_ce_vm_host_os_image_dictionary:
   rhel-8-latest:
     project: "rhel-cloud"
     family: "rhel-8"
-  rhel-8-1-sap-ha:
+  rhel-9-latest:
+    project: "rhel-cloud"
+    family: "rhel-9"
+  sles-12-latest:
+    project: "suse-cloud"
+    family: "sles-12"
+  sles-15-latest:
+    project: "suse-cloud"
+    family: "sles-15"
+  # rhel-7-7-sap-ha: # removed
+  #   project: "rhel-sap-cloud"
+  #   family: "rhel-7-7-sap-ha"
+  rhel-7-9-sap-ha:
     project: "rhel-sap-cloud"
-    family: "rhel-8-1-sap-ha"
+    family: "rhel-7-9-sap-ha"
+  # rhel-8-1-sap-ha: # removed
+  #   project: "rhel-sap-cloud"
+  #   family: "rhel-8-1-sap-ha"
   rhel-8-2-sap-ha:
     project: "rhel-sap-cloud"
     family: "rhel-8-2-sap-ha"
@@ -289,57 +378,193 @@ sap_vm_provision_gcp_ce_vm_host_os_image_dictionary:
   rhel-8-6-sap-ha:
     project: "rhel-sap-cloud"
     family: "rhel-8-6-sap-ha"
-  rhel-8-8-sap-ha:
-    project: "rhel-sap-cloud"
-    family: "rhel-8-8-sap-ha"
-  sles-15-latest:
-    project: "suse-cloud"
-    family: "sles-15"
-  sles-15-sp3-sap:
+  sles-12-5-sap-ha:
+    project: "suse-sap-cloud"
+    family: "sles-12-sp5-sap"
+  # sles-15-1-sap-ha: # removed
+  #   project: "suse-sap-cloud"
+  #   family: "sles-15-sp1-sap"
+  sles-15-2-sap-ha:
+    project: "suse-sap-cloud"
+    family: "sles-15-sp2-sap"
+  sles-15-3-sap-ha:
     project: "suse-sap-cloud"
     family: "sles-15-sp3-sap"
-  sles-15-sp4-sap:
+  sles-15-4-sap-ha:
     project: "suse-sap-cloud"
     family: "sles-15-sp4-sap"
-  sles-15-sp5-sap:
+  sles-15-5-sap-ha:
     project: "suse-sap-cloud"
     family: "sles-15-sp5-sap"
+  sles-15-6-sap-ha:
+    project: "suse-sap-cloud"
+    family: "sles-15-sp6-sap"
+  sles-12-5-sap-ha-byos:
+    project: "suse-byos-cloud"
+    family: "sles-12-sp5-sap-byos"
+  sles-15-2-sap-byos:
+    project: "suse-byos-cloud"
+    family: "sles-15-sp2-sap-byos"
+  sles-15-3-sap-byos:
+    project: "suse-byos-cloud"
+    family: "sles-15-sp3-sap-byos"
+  sles-15-4-sap-byos:
+    project: "suse-byos-cloud"
+    family: "sles-15-sp4-sap-byos"
+  sles-15-5-sap-byos:
+    project: "suse-byos-cloud"
+    family: "sles-15-sp5-sap-byos"
+  sles-15-6-sap-byos:
+    project: "suse-byos-cloud"
+    family: "sles-15-sp6-sap-byos"
 
 # OS Images - IBM Cloud
 sap_vm_provision_ibmcloud_vs_host_os_image_dictionary:
   rhel-8-4: ".*redhat.*8-4.*minimal.*amd64.*"
   rhel-8-6: ".*redhat.*8-6.*minimal.*amd64.*"
+  rhel-8-8: ".*redhat.*8-8.*minimal.*amd64.*"
+  rhel-8-10: ".*redhat.*8-10.*minimal.*amd64.*"
   rhel-9-0: ".*redhat.*9-0.*minimal.*amd64.*"
   rhel-9-2: ".*redhat.*9-2.*minimal.*amd64.*"
+  rhel-9-4: ".*redhat.*9-4.*minimal.*amd64.*"
+  sles-15-5: ".*sles.*15-5.*amd64-[0-9]"
+  sles-15-6: ".*sles.*15-6.*amd64-[0-9]"
+  # rhel-7-6-sap-ha: ".*redhat.*7-6.*amd64.*hana.*" # retrievable from deprecated list
+  # rhel-7-9-sap-ha: ".*redhat.*7-9.*amd64.*hana.*" # retrievable from deprecated list
+  # rhel-8-1-sap-ha: ".*redhat.*8-1.*amd64.*hana.*" # retrievable from deprecated list
+  # rhel-8-2-sap-ha: ".*redhat.*8-2.*amd64.*hana.*" # retrievable from deprecated list
   rhel-8-4-sap-ha: ".*redhat.*8-4.*amd64.*hana.*"
   rhel-8-6-sap-ha: ".*redhat.*8-6.*amd64.*hana.*"
   rhel-8-8-sap-ha: ".*redhat.*8-8.*amd64.*hana.*"
+  rhel-8-10-sap-ha: ".*redhat.*8-10.*amd64.*hana.*"
   rhel-9-0-sap-ha: ".*redhat.*9-0.*amd64.*hana.*"
-  rhel-9-2-sap-ha: ".*redhat.*9-0.*amd64.*hana.*"
+  rhel-9-2-sap-ha: ".*redhat.*9-2.*amd64.*hana.*"
+  rhel-9-4-sap-ha: ".*redhat.*9-4.*amd64.*hana.*"
+  # sles-12-4-sap-ha: ".*sles.*12-4.*amd64.*hana.*" # retrievable from deprecated list
+  # sles-12-5-sap-ha: ".*sles.*12-5.*amd64.*hana.*" # retrievable from deprecated list
+  # sles-15-1-sap-ha: ".*sles.*15-1.*amd64.*hana.*" # retrievable from deprecated list
   sles-15-3-sap-ha: ".*sles.*15-3.*amd64.*hana.*"
   sles-15-4-sap-ha: ".*sles.*15-4.*amd64.*hana.*"
   sles-15-5-sap-ha: ".*sles.*15-5.*amd64.*hana.*"
+  sles-15-6-sap-ha: ".*sles.*15-6.*amd64.*hana.*"
 
 # OS Images - IBM Cloud, IBM Power VS 'Full Linux subscription' with support and activation keys
 sap_vm_provision_ibmcloud_powervs_host_os_image_dictionary:
-  rhel-8-4: ".*RHEL.*8.*4"
-  rhel-8-6: ".*RHEL.*8.*6"
+  rhel-8-8: ".*RHEL.*8.*8"
   rhel-9-2: ".*RHEL.*9.*2"
-  sles-15-3: ".*SLES.*15.*3"
-  sles-15-4: ".*SLES.*15.*4"
+  rhel-9-4: ".*RHEL.*9.*4"
+  sles-15-5: ".*SLES.*15.*5$"
+  rhel-8-4-sap-ha: "RHEL8-SP4-SAP"
   rhel-8-6-sap-ha: ".*RHEL.*8.*6.*SAP$" # ensure string suffix using $
   rhel-8-8-sap-ha: ".*RHEL.*8.*8.*SAP$" # ensure string suffix using $
   rhel-9-2-sap-ha: ".*RHEL.*9.*2.*SAP$" # ensure string suffix using $
   sles-15-2-sap-ha: ".*SLES.*15.*2.*SAP$" # ensure string suffix using $
   sles-15-3-sap-ha: ".*SLES.*15.*3.*SAP$" # ensure string suffix using $
   sles-15-4-sap-ha: ".*SLES.*15.*4.*SAP$" # ensure string suffix using $
+  sles-15-5-sap-ha: "SLES15-SP5-SAP"
+  # rhel-8-4-sap-ha-byol: "RHEL8-SP4-SAP-BYOL"
+  # rhel-8-6-sap-ha-byol: ".*RHEL.*8.*6.*SAP-BYOL$" # ensure string suffix using $
+  # rhel-8-8-sap-ha-byol: ".*RHEL.*8.*8.*SAP-BYOL$" # ensure string suffix using $
+  # rhel-9-2-sap-ha-byol: ".*RHEL.*9.*2.*SAP-BYOL$" # ensure string suffix using $
+  # sles-15-2-sap-ha-byol: ".*SLES.*15.*2.*SAP-BYOL$" # ensure string suffix using $
+  # sles-15-3-sap-ha-byol: ".*SLES.*15.*3.*SAP-BYOL$" # ensure string suffix using $
+  # sles-15-4-sap-ha-byol: ".*SLES.*15.*4.*SAP-BYOL$" # ensure string suffix using $
+  # sles-15-5-sap-ha-byol: "SLES15-SP5-SAP-BYOL"
 
 # OS Images - MS Azure
 sap_vm_provision_msazure_vm_host_os_image_dictionary:
+  rhel-8-0:
+    publisher: "RedHat"
+    offer: "RHEL"
+    sku: "8-gen2"
+  rhel-8-1:
+    publisher: "RedHat"
+    offer: "RHEL"
+    sku: "81-gen2"
+  rhel-8-2:
+    publisher: "RedHat"
+    offer: "RHEL"
+    sku: "82-gen2"
+  rhel-8-3:
+    publisher: "RedHat"
+    offer: "RHEL"
+    sku: "83-gen2"
   rhel-8-4:
     publisher: "RedHat"
     offer: "RHEL"
     sku: "84-gen2"
+  rhel-8-5:
+    publisher: "RedHat"
+    offer: "RHEL"
+    sku: "85-gen2"
+  rhel-8-6:
+    publisher: "RedHat"
+    offer: "RHEL"
+    sku: "86-gen2"
+  rhel-8-7:
+    publisher: "RedHat"
+    offer: "RHEL"
+    sku: "87-gen2"
+  rhel-8-8:
+    publisher: "RedHat"
+    offer: "RHEL"
+    sku: "88-gen2"
+  rhel-8-9:
+    publisher: "RedHat"
+    offer: "RHEL"
+    sku: "89-gen2"
+  rhel-8-10:
+    publisher: "RedHat"
+    offer: "RHEL"
+    sku: "810-gen2"
+  rhel-9-0:
+    publisher: "RedHat"
+    offer: "RHEL"
+    sku: "90-gen2"
+  rhel-9-1:
+    publisher: "RedHat"
+    offer: "RHEL"
+    sku: "91-gen2"
+  rhel-9-2:
+    publisher: "RedHat"
+    offer: "RHEL"
+    sku: "92-gen2"
+  rhel-9-3:
+    publisher: "RedHat"
+    offer: "RHEL"
+    sku: "93-gen2"
+  rhel-9-4:
+    publisher: "RedHat"
+    offer: "RHEL"
+    sku: "94-gen2"
+  sles-12-5:
+    publisher: "SUSE"
+    offer: "sles-12-sp5"
+    sku: "gen2"
+  sles-15-1:
+    publisher: "SUSE"
+    offer: "sles-15-sp1"
+    sku: "gen2"
+  sles-15-2:
+    publisher: "SUSE"
+    offer: "sles-15-sp2"
+    sku: "gen2"
+  sles-15-3:
+    publisher: "SUSE"
+    offer: "sles-15-sp3"
+    sku: "gen2"
+  sles-15-4:
+    publisher: "SUSE"
+    offer: "sles-15-sp4"
+    sku: "gen2"
+  sles-15-5:
+    publisher: "SUSE"
+    offer: "sles-15-sp5"
+    sku: "gen2"
+  sles-15-6:
+    publisher: "SUSE"
+    offer: "sles-15-sp6"
+    sku: "gen2"
   rhel-8-1-sap-ha:
     publisher: "RedHat"
     offer: "RHEL-SAP-HA"
@@ -360,6 +585,10 @@ sap_vm_provision_msazure_vm_host_os_image_dictionary:
     publisher: "RedHat"
     offer: "RHEL-SAP-HA"
     sku: "88sapha-gen2"
+  rhel-8-10-sap-ha:
+    publisher: "RedHat"
+    offer: "RHEL-SAP-HA"
+    sku: "810sapha-gen2"
   rhel-9-0-sap-ha:
     publisher: "RedHat"
     offer: "RHEL-SAP-HA"
@@ -368,45 +597,61 @@ sap_vm_provision_msazure_vm_host_os_image_dictionary:
     publisher: "RedHat"
     offer: "RHEL-SAP-HA"
     sku: "92sapha-gen2"
-  rhel-8-1-sap-applications:
+  rhel-9-4-sap-ha:
     publisher: "RedHat"
     offer: "RHEL-SAP-HA"
-    sku: "81sapapps-gen2"
-  rhel-8-2-sap-applications:
-    publisher: "RedHat"
-    offer: "RHEL-SAP-HA"
-    sku: "82sapapps-gen2"
-  rhel-8-4-sap-applications:
-    publisher: "RedHat"
-    offer: "RHEL-SAP-HA"
-    sku: "84sapapps-gen2"
-  rhel-8-6-sap-applications:
-    publisher: "RedHat"
-    offer: "RHEL-SAP-applications"
-    sku: "86sapapps-gen2"
-  rhel-8-8-sap-applications:
-    publisher: "RedHat"
-    offer: "RHEL-SAP-applications"
-    sku: "88sapapps-gen2"
-  rhel-9-0-sap-applications:
-    publisher: "RedHat"
-    offer: "RHEL-SAP-applications"
-    sku: "90sapapps-gen2"
-  rhel-9-2-sap-applications:
-    publisher: "RedHat"
-    offer: "RHEL-SAP-applications"
-    sku: "92sapapps-gen2"
-  sles-15-sp3-sap:
+    sku: "94sapha-gen2"
+  sles-12-5-sap-ha:
+    publisher: "SUSE"
+    offer: "sles-sap-12-sp5"
+    sku: "gen2"
+  sles-15-1-sap-ha:
+    publisher: "SUSE"
+    offer: "sles-sap-15-sp1"
+    sku: "gen2"
+  sles-15-2-sap-ha:
+    publisher: "SUSE"
+    offer: "sles-sap-15-sp2"
+    sku: "gen2"
+  sles-15-3-sap-ha:
     publisher: "SUSE"
     offer: "sles-sap-15-sp3"
     sku: "gen2"
-  sles-15-sp4-sap:
+  sles-15-4-sap-ha:
     publisher: "SUSE"
     offer: "sles-sap-15-sp4"
     sku: "gen2"
-  sles-15-sp5-sap:
+  sles-15-5-sap-ha:
     publisher: "SUSE"
     offer: "sles-sap-15-sp5"
+    sku: "gen2"
+  sles-15-6-sap-ha:
+    publisher: "SUSE"
+    offer: "sles-sap-15-sp6"
+    sku: "gen2"
+  sles-15-1-sap-byos:
+    publisher: "SUSE"
+    offer: "sles-sap-15-sp1-byos"
+    sku: "gen2"
+  sles-15-2-sap-byos:
+    publisher: "SUSE"
+    offer: "sles-sap-15-sp2-byos"
+    sku: "gen2"
+  sles-15-3-sap-byos:
+    publisher: "SUSE"
+    offer: "sles-sap-15-sp3-byos"
+    sku: "gen2"
+  sles-15-4-sap-byos:
+    publisher: "SUSE"
+    offer: "sles-sap-15-sp4-byos"
+    sku: "gen2"
+  sles-15-5-sap-byos:
+    publisher: "SUSE"
+    offer: "sles-sap-15-sp5-byos"
+    sku: "gen2"
+  sles-15-6-sap-byos:
+    publisher: "SUSE"
+    offer: "sles-sap-15-sp6-byos"
     sku: "gen2"
 
 
@@ -516,23 +761,109 @@ sap_vm_provision_ibmpowervm_vm_host_specifications_dictionary:
           disk_size: 512                 # size in GB, integer
 
 
-# KubeVirt
+#######################################################
+# kubevirt / Red Hat OpenShift Virtualization         #
+#######################################################
+
+# Namespace where the VM should be created in
+sap_vm_provision_kubevirt_vm_target_namespace: sap
+
+# Username to be created on guest
+sap_vm_provision_kubevirt_vm_os_user: cloud-user
+
+# Password for the above user
+sap_vm_provision_kubevirt_vm_os_user_password: ""
+
+# how to authenticate to the guest vm [password|private_key|private_key_data]
+# password: uses provided password in sap_vm_provision_kubevirt_vm_os_user_password, make sure your ssh config allows password authentication
+# private_key: use the private ssh key at the location defined by sap_vm_provision_ssh_host_private_key_file_path
+# private_key_data: use the private ssh key provided in sap_vm_provision_ssh_host_private_key_data and write it to the location defined in sap_vm_provision_ssh_host_private_key_file_path
+sap_vm_provision_kubevirt_vm_guest_ssh_auth_mechanism: private-key
+
+# Private SSH key file, must be accessible on the ansible controller
+# sap_vm_provision_ssh_host_private_key_file_path: <your private ssh key file>
+
+# private ssh key, make sure the indentation is correct, here it's two spaces at the beginning of every line
+# sap_vm_provision_ssh_host_private_key_data: |
+#  < your key data>
+
+# Should the CA cert and the API endpoint be extracted from the kubeconfig file?
+sap_vm_provision_kubevirt_vm_extract_kubeconfig: true
+
+# Should an existing VM be overwritten?
+sap_vm_provision_kubevirt_vm_overwrite_vm: false
+
+# Kubeconfig file for cluster where VMs should be created
+sap_vm_provision_kubevirt_vm_kubeconfig_path: /path/to/clusterconfigs/kubeconfig
+
+# In order to use secured communication, provide the CA cert bundle for the cluster.
+# This can be extracted from the kubeconfig file with the following command from the
+# kubeconfig file:
+#   grep certificate-authority-data ${KUBECONFIG} | awk '{ print $2 }' | base64 --decode > cluster-ca-cert.pem
+# This variable will not be used if sap_vm_provision_kubevirt_vm_extract_kubeconfig = true
+# sap_vm_provision_kubevirt_vm_ca_cert: /path/to/clusterconfigs/cluster-ca-cert.pem
+
+# API endpoint of the cluster
+# This variable will not be used if sap_vm_provision_kubevirt_vm_extract_kubeconfig = true
+# sap_vm_provision_kubevirt_api_vm_endpoint: https://api.cluster.domain.tld:6443
+
+# Admin username for the cluster communication
+sap_vm_provision_kubevirt_vm_admin_username: kubeadmin
+
+# Password for the above admin user
+sap_vm_provision_kubevirt_vm_admin_password: AAAAA-BBBBB-CCCCC-DDDDD
+
+# RAM Overhead [GiB] for virt-launcher container, this can be small for VMs < 1 TB and without SRIOV but should be increased to 16 or more for VMs > 1TB
+sap_vm_provision_kubevirt_vm_container_memory_overhead: 1
+
+# hostname of the ansible controller
+sap_vm_provision_kubevirt_vm_ansible_controller: localhost # on AAP, this is localhost
+
 sap_vm_provision_kubevirt_vm_host_specifications_dictionary:
   example_host_specification_plan:
     host1: # Hostname, must be 13 characters or less
       # SMT-2 (i.e. 2 CPU Threads per CPU Core) is default for Intel CPU Hyper-Threading, optionally can be altered to SMT-1
       kubevirt_vm_cpu_smt: 2
-      kubevirt_vm_cpu_threads: 32
-      kubevirt_vm_memory_gib: 256
-      #sap_system_type: project_dev # project_dev, project_tst, project_prd
+      kubevirt_vm_cpu_cores: 2
+      kubevirt_vm_memory_gib: 24
+      sap_system_type: project_dev # project_dev, project_tst, project_prd
       sap_host_type: hana_primary # hana_primary, hana_secondary, anydb_primary, anydb_secondary, nwas_ascs, nwas_ers, nwas_pas, nwas_aas
+      # Provide either an existing PVC or a URL for an OS image
+      os_image: # either url or source_pvc_name have to be provided
+        # URL for an image to be used
+        url: "docker://registry.redhat.io/rhel8/rhel-guest-image:8.8.0"
+        # Name for a PVC to be cloned
+        # source_pvc_name: "rhel-8.8"
+        namespace: openshift-virtualization-os-images
+        size: "50Gi"
+      network_definition:
+        - name: sapbridge
+          type: bridge
+          networkName: sapbridge-network-definition
+          model: virtio
       storage_definition:
-        - name: data_0
-          mountpoint: /data0
+        - name: hana
+          mountpoint: /hana
           disk_count: 1                  # default: 1
-          disk_size: 512                 # size in GB, integer
-          disk_type: nas                 # KubeVirt Storage Clas
-
+          disk_size: 2048                # size in GB, integer
+          disk_type: nas                 # KubeVirt Storage Class
+      cloudinit:
+        userData: |-
+          #cloud-config
+          timezone: Europe/Berlin
+          hostname: "{{ scaleout_origin_host_spec }}"
+          user: {{ sap_vm_provision_kubevirt_vm_os_user if sap_vm_provision_kubevirt_vm_os_user is defined }}
+          password: {{ sap_vm_provision_kubevirt_vm_os_user_password if sap_vm_provision_kubevirt_vm_os_user_password is defined }}
+          chpasswd:
+            expire: false
+          ssh_authorized_keys:
+            - "{{ lookup('ansible.builtin.file', sap_vm_provision_ssh_host_public_key_file_path ) }}"
+        networkData: |-
+          network:
+            version: 2
+            ethernets:
+              eth0:
+                dhcp4: true
 
 # OVirt
 sap_vm_provision_ovirt_vm_boot_menu: false

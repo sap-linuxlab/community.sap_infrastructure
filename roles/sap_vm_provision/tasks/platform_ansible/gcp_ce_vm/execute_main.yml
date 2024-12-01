@@ -44,6 +44,50 @@
         auth_kind: "serviceaccount"
         service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
 
+    - name: Gather GCP Private DNS information
+      no_log: "{{ __sap_vm_provision_no_log }}"
+      register: __sap_vm_provision_task_gcp_pdns_info
+      google.cloud.gcp_dns_managed_zone_info:
+        project: "{{ sap_vm_provision_gcp_project }}"
+        dns_name: "{{ sap_vm_provision_dns_root_domain }}."
+        auth_kind: "serviceaccount"
+        service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
+
+    # There is no reason to proceed if resources were not found.
+    - name: "Check if resources were found (OS Image, VPC, VPC Subnet, DNS)"
+      # Ensure that fail message is shown in rescue block
+      register: __sap_vm_provision_task_gcp_resources_found
+      ansible.builtin.fail:
+        msg: |
+          Variable {{ item[0] }} has no resources.
+          Ensure that provided {{ item[1] }} exists.
+      loop_control:
+        label: "{{ item[1] }}"
+      loop:
+        - ["{{ __sap_vm_provision_task_gcp_os_image_info }}", "OS Image"]
+        - ["{{ __sap_vm_provision_task_gcp_vpc_info }}", "VPC"]
+        - ["{{ __sap_vm_provision_task_gcp_vpc_subnet_info }}", "VPC Subnet"]
+        - ["{{ __sap_vm_provision_task_gcp_pdns_info }}", "DNS"]
+      when: item[0].resources is not defined or item[0].resources | length == 0
+
+
+    # - name: Create Placement Policies when High Availability
+    #   no_log: "{{ __sap_vm_provision_no_log }}"
+    #   register: __sap_vm_provision_task_gcp_availability_policy
+    #   run_once: true
+    #   google.cloud.gcp_compute_resource_policy:
+    #     project: "{{ sap_vm_provision_gcp_project }}"
+    #     region: "{{ sap_vm_provision_gcp_region }}"
+    #     name: "{{ sap_vm_provision_aws_placement_resource_name }}-{{ item }}"
+    #     description: "Spread Placement Policy created by Ansible Playbooks for SAP"
+    #     # VM instances (HA Pairs) spread across up to 3 Availability Domains (different racks)
+    #     group_placement_policy:
+    #       availability_domain_count: 3 # Set Placement Policy to Spread
+    #       # collocation: COLLOCATED    # Set Placement Policy to Collocated, not used
+    #       # vm_count: 0  # Use when bulk-create of VMs, not used
+    #     auth_kind: "serviceaccount"
+    #     service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
+
     - name: Set fact to hold loop variables from include_tasks
       ansible.builtin.set_fact:
         register_provisioned_host_all: []
@@ -77,7 +121,7 @@
 
     - name: Set fact to hold all inventory hosts in all groups
       ansible.builtin.set_fact:
-        groups_merged_list: "{{ [ [ groups['hana_primary'] | default([]) ] , [ groups['hana_secondary'] | default([]) ] , [ groups['nwas_ascs'] | default([]) ] , [ groups['nwas_ers'] | default([]) ] , [ groups['nwas_pas'] | default([]) ] , [ groups['nwas_aas'] | default([]) ] ] | flatten | select() }}"
+        groups_merged_list: "{{ [ [ groups['hana_primary'] | default([]) ] , [ groups['hana_secondary'] | default([]) ] , [ groups['anydb_primary'] | default([]) ] , [ groups['anydb_secondary'] | default([]) ] , [ groups['nwas_ascs'] | default([]) ] , [ groups['nwas_ers'] | default([]) ] , [ groups['nwas_pas'] | default([]) ] , [ groups['nwas_aas'] | default([]) ] ] | flatten | select() }}"
 
     - name: Set Ansible Vars
       register: __sap_vm_provision_task_ansible_vars_set
@@ -95,25 +139,6 @@
         auth_kind: "serviceaccount"
         service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
 
-    - name: Gather GCP VPC Subnet information
-      no_log: "{{ __sap_vm_provision_no_log }}"
-      register: __sap_vm_provision_task_gcp_vpc_subnet_info
-      google.cloud.gcp_compute_subnetwork_info:
-        project: "{{ sap_vm_provision_gcp_project }}"
-        region: "{{ sap_vm_provision_gcp_region }}"
-        filters:
-          - name = {{ sap_vm_provision_gcp_vpc_subnet_name }}
-        auth_kind: "serviceaccount"
-        service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
-
-    - name: Gather GCP Private DNS information
-      no_log: "{{ __sap_vm_provision_no_log }}"
-      register: __sap_vm_provision_task_gcp_pdns_info
-      google.cloud.gcp_dns_managed_zone_info:
-        project: "{{ sap_vm_provision_gcp_project }}"
-        dns_name: "{{ sap_vm_provision_dns_root_domain }}."
-        auth_kind: "serviceaccount"
-        service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
 
     # - name: Gather information about GCP Router and table for the VPC Subnet
     #   no_log: "{{ __sap_vm_provision_no_log }}"
@@ -171,10 +196,10 @@
         - __sap_vm_provision_task_provision_host_single
         - __sap_vm_provision_task_provision_host_single_info
         - __sap_vm_provision_task_provision_host_all_add
-        - __sap_vm_provision_task_gcp_vpc_subnet_info
         - __sap_vm_provision_task_gcp_pdns_info
         - __sap_vm_provision_task_gcp_router_info
         - __sap_vm_provision_task_gcp_pdns_records
+        - __sap_vm_provision_task_gcp_resources_found
       loop_control:
         loop_var: loop_item
         index_var: loop_item_index
@@ -282,6 +307,10 @@
       ansible.builtin.include_tasks:
         file: common/set_ansible_vars_storage.yml
 
+    - name: Register Package Repositories for OS Images with Bring-Your-Own-Subscription (BYOS)
+      ansible.builtin.include_tasks:
+        file: common/register_os.yml
+
 
 - name: Ansible Task block to execute on target inventory hosts - High Availability
   delegate_to: "{{ inventory_hostname }}"
@@ -295,6 +324,37 @@
         name: firewalld
         state: stopped
         enabled: false
+
+    # Ensure that backend load balancer configuration is allowed before Load balancers are created
+    # SUSE: https://cloud.google.com/solutions/sap/docs/netweaver-ha-config-sles#enable-back-end-comms
+    # RHEL: https://cloud.google.com/solutions/sap/docs/netweaver-ha-config-rhel#enable-back-end-comms
+    - name: Stop google-guest-agent service
+      ansible.builtin.service:
+        name: google-guest-agent
+        state: stopped
+
+    - name: Update /etc/default/instance_configs.cfg file
+      register: __sap_vm_provision_task_gcp_instance_config
+      ansible.builtin.blockinfile:
+        path: /etc/default/instance_configs.cfg
+        create: true
+        mode: '0644'
+        block: |
+          [IpForwarding]
+          ethernet_proto_id = 66
+          ip_aliases = true
+          target_instance_ips = false
+
+          [NetworkInterfaces]
+          dhclient_script = /sbin/google-dhclient-script
+          dhcp_command =
+          ip_forwarding = false
+          setup = true
+
+    - name: Start google-guest-agent service
+      ansible.builtin.service:
+        name: google-guest-agent
+        state: started
 
 
 - name: Ansible Task block for looped provisioning of High Availability resources for Google Cloud CE VMs

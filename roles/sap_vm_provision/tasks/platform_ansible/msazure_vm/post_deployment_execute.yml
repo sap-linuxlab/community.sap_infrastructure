@@ -64,7 +64,7 @@
         lb_frontend_virtual_ips1: "{{ lb_frontend_virtual_ips1 | default([]) + [__ip_element] }}"
       vars:
         __ip_element:
-          name: "lb-vip-hana{{ vip_index_nr }}"
+          name: "{{ sap_vm_provision_ha_load_balancer_name_hana + '-vip' + (vip_index_nr | string) }}"
           private_ip_address: "{{ vip_item | regex_replace('/.*', '') }}"
           private_ip_allocation_method: "Static"
           subnet: "{{ __sap_vm_provision_task_msazure_vnet_subnet_info.subnets[0].id }}"
@@ -73,7 +73,7 @@
         - vip_item | length > 0
         - groups["hana_secondary"] is defined and (groups["hana_secondary"]|length>0)
       loop:
-        - "{{ sap_ha_pacemaker_cluster_vip_hana_primary_ip_address | default() }}"
+        - "{{ sap_vm_provision_ha_vip_hana_primary }}"
       loop_control:
         index_var: vip_index_nr
         loop_var: vip_item
@@ -83,7 +83,7 @@
         lb_frontend_virtual_ips1: "{{ lb_frontend_virtual_ips1 | default([]) + [__ip_element] }}"
       vars:
         __ip_element:
-          name: "lb-vip-anydb{{ vip_index_nr }}"
+          name: "{{ sap_vm_provision_ha_load_balancer_name_anydb + '-vip' + (vip_index_nr | string) }}"
           private_ip_address: "{{ vip_item | regex_replace('/.*', '') }}"
           private_ip_allocation_method: "Static"
           subnet: "{{ __sap_vm_provision_task_msazure_vnet_subnet_info.subnets[0].id }}"
@@ -92,7 +92,7 @@
         - vip_item | length > 0
         - groups["anydb_secondary"] is defined and (groups["anydb_secondary"]|length>0)
       loop:
-        - "{{ sap_vm_temp_vip_anydb_primary | default() }}"
+        - "{{ sap_vm_provision_ha_vip_anydb_primary }}"
       loop_control:
         index_var: vip_index_nr
         loop_var: vip_item
@@ -102,7 +102,7 @@
         lb_frontend_virtual_ips2: "{{ lb_frontend_virtual_ips2 | default([]) + [__ip_element] }}"
       vars:
         __ip_element:
-          name: "lb-vip-nwas{{ vip_index_nr }}"
+          name: "{{ sap_vm_provision_ha_load_balancer_name_nwas + '-vip' + (vip_index_nr | string) }}"
           private_ip_address: "{{ vip_item | regex_replace('/.*', '') }}"
           private_ip_allocation_method: "Static"
           subnet: "{{ __sap_vm_provision_task_msazure_vnet_subnet_info.subnets[0].id }}"
@@ -111,8 +111,8 @@
         - vip_item | length > 0
         - groups["nwas_ers"] is defined and (groups["nwas_ers"]|length>0)
       loop:
-        - "{{ sap_ha_pacemaker_cluster_vip_nwas_abap_ascs_ip_address | default() }}"
-        - "{{ sap_ha_pacemaker_cluster_vip_nwas_abap_ers_ip_address | default() }}"
+        - "{{ sap_vm_provision_ha_vip_nwas_abap_ascs }}"
+        - "{{ sap_vm_provision_ha_vip_nwas_abap_ers }}"
       loop_control:
         index_var: vip_index_nr
         loop_var: vip_item
@@ -123,7 +123,7 @@
         lb_probes1: "{{ lb_probes1 | default([]) + [__probe_element] }}"
       vars:
         __probe_element:
-          name: "lb-probe-hc-vip-hana{{ healthcheck_index_nr }}"
+          name: "{{ sap_vm_provision_ha_load_balancer_name_hana + '-probe-hc-vip' + (healthcheck_index_nr | string) }}"
           protocol: Tcp
           port: "{{ healthcheck_item }}"
           interval: 5
@@ -142,7 +142,7 @@
         lb_probes1: "{{ lb_probes1 | default([]) + [__probe_element] }}"
       vars:
         __probe_element:
-          name: "lb-probe-hc-vip-anydb"
+          name: "{{ sap_vm_provision_ha_load_balancer_name_anydb + '-probe-hc-vip' }}"
           protocol: Tcp
           port: "62700"
           interval: 5
@@ -155,7 +155,7 @@
         lb_probes2: "{{ lb_probes2 | default([]) + [__probe_element] }}"
       vars:
         __probe_element:
-          name: "lb-probe-hc-vip-nwas{{ healthcheck_index_nr }}"
+          name: "{{ sap_vm_provision_ha_load_balancer_name_nwas + '-probe-hc-vip' + (healthcheck_index_nr | string) }}"
           protocol: Tcp
           port: "{{ healthcheck_item }}"
           interval: 5
@@ -176,13 +176,13 @@
         lb_rules1: "{{ lb_rules1 | default([]) + [__rule_element] }}"
       vars:
         __rule_element:
-          name: "lb-rule-hana{{ rule_index_nr }}"
-          frontend_ip_configuration: "lb-vip-hana{{ rule_index_nr }}"
-          backend_address_pool: lb-backend-pool-hana
+          name: "{{ sap_vm_provision_ha_load_balancer_name_hana + '-rule' + (rule_index_nr | string) }}"
+          frontend_ip_configuration: "{{ sap_vm_provision_ha_load_balancer_name_hana + '-vip' + (rule_index_nr | string) }}"
+          backend_address_pool: "{{ sap_vm_provision_ha_load_balancer_name_hana + '-backend-pool' }}"
           protocol: All
           frontend_port: 0 # High Availability Ports (AnyPort), only on Internal Standard Load Balancer
           backend_port: 0 # High Availability Ports (AnyPort), only on Internal Standard Load Balancer
-          probe: "lb-probe-hc-vip-hana{{ rule_index_nr }}"
+          probe: "{{ sap_vm_provision_ha_load_balancer_name_hana + '-probe-hc-vip' + (rule_index_nr | string) }}"
           load_distribution: Default # Session persistence = None
           idle_timeout: 30 # 30 minutes
           enable_floating_ip: true # enable Frontend IP as a Floating IP (aka. Direct Server Return), if disabled then only 1 LB Rule allowed
@@ -190,7 +190,7 @@
         - rule_item | length > 0
         - groups["hana_secondary"] is defined and (groups["hana_secondary"]|length>0)
       loop:
-        - "{{ sap_ha_pacemaker_cluster_vip_hana_primary_ip_address | default() }}"
+        - "{{ sap_vm_provision_ha_vip_hana_primary }}"
       loop_control:
         index_var: rule_index_nr
         loop_var: rule_item
@@ -200,13 +200,13 @@
         lb_rules1: "{{ lb_rules1 | default([]) + [__rule_element] }}"
       vars:
         __rule_element:
-          name: "lb-rule-anydb{{ rule_index_nr }}"
-          frontend_ip_configuration: "lb-vip-anydb{{ rule_index_nr }}"
-          backend_address_pool: lb-backend-pool-anydb
+          name: "{{ sap_vm_provision_ha_load_balancer_name_anydb + '-rule' + (rule_index_nr | string) }}"
+          frontend_ip_configuration: "{{ sap_vm_provision_ha_load_balancer_name_anydb + '-vip' + (rule_index_nr | string) }}"
+          backend_address_pool: "{{ sap_vm_provision_ha_load_balancer_name_anydb + '-backend-pool' }}"
           protocol: All
           frontend_port: 0 # High Availability Ports (AnyPort), only on Internal Standard Load Balancer
           backend_port: 0 # High Availability Ports (AnyPort), only on Internal Standard Load Balancer
-          probe: "lb-probe-hc-vip-anydb"
+          probe: "{{ sap_vm_provision_ha_load_balancer_name_anydb + '-probe-hc-vip' }}"
           load_distribution: Default # Session persistence = None
           idle_timeout: 30 # 30 minutes
           enable_floating_ip: true # enable Frontend IP as a Floating IP (aka. Direct Server Return), if disabled then only 1 LB Rule allowed
@@ -214,7 +214,7 @@
         - rule_item | length > 0
         - groups["anydb_secondary"] is defined and (groups["anydb_secondary"]|length>0)
       loop:
-        - "{{ sap_vm_temp_vip_anydb_primary | default() }}"
+        - "{{ sap_vm_provision_ha_vip_anydb_primary }}"
       loop_control:
         index_var: rule_index_nr
         loop_var: rule_item
@@ -224,13 +224,13 @@
         lb_rules2: "{{ lb_rules2 | default([]) + [__rule_element] }}"
       vars:
         __rule_element:
-          name: "lb-rule-nwas{{ rule_index_nr }}"
-          frontend_ip_configuration: "lb-vip-nwas{{ rule_index_nr }}"
-          backend_address_pool: lb-backend-pool-nwas-ascs
+          name: "{{ sap_vm_provision_ha_load_balancer_name_nwas + '-rule' + (rule_index_nr | string) }}"
+          frontend_ip_configuration: "{{ sap_vm_provision_ha_load_balancer_name_nwas + '-vip' + (rule_index_nr | string) }}"
+          backend_address_pool: "{{ sap_vm_provision_ha_load_balancer_name_nwas + '-ascs-backend-pool' }}"
           protocol: All
           frontend_port: 0 # High Availability Ports (AnyPort), only on Internal Standard Load Balancer
           backend_port: 0 # High Availability Ports (AnyPort), only on Internal Standard Load Balancer
-          probe: "lb-probe-hc-vip-nwas{{ rule_index_nr }}"
+          probe: "{{ sap_vm_provision_ha_load_balancer_name_nwas + '-probe-hc-vip' + (rule_index_nr | string) }}"
           load_distribution: Default # Session persistence = None
           idle_timeout: 30 # 30 minutes
           enable_floating_ip: true # enable Frontend IP as a Floating IP (aka. Direct Server Return), if disabled then only 1 LB Rule allowed
@@ -238,8 +238,8 @@
         - rule_item | length > 0
         - groups["nwas_ers"] is defined and (groups["nwas_ers"]|length>0)
       loop:
-        - "{{ sap_ha_pacemaker_cluster_vip_nwas_abap_ascs_ip_address | default() }}"
-        - "{{ sap_ha_pacemaker_cluster_vip_nwas_abap_ers_ip_address | default() }}"
+        - "{{ sap_vm_provision_ha_vip_nwas_abap_ascs }}"
+        - "{{ sap_vm_provision_ha_vip_nwas_abap_ers }}"
       loop_control:
         index_var: rule_index_nr
         loop_var: rule_item
@@ -250,11 +250,11 @@
       register: __sap_vm_provision_task_msazure_lb1_info
       azure.azcollection.azure_rm_loadbalancer:
         resource_group: "{{ sap_vm_provision_msazure_resource_group_name }}"
-        name: "lb-sap-hana-ha" # "lb-sap-ha"
+        name: "{{ sap_vm_provision_ha_load_balancer_name_hana }}"
         sku: "Standard" # AnyPort (HA Port) Protocol rule is not allowed for basic SKU load balancer, use standard SKU load balancer instead
         frontend_ip_configurations: "{{ (lb_frontend_virtual_ips1 | default([])) }}" # "{{ (lb_frontend_virtual_ips1 | default([])) + (lb_frontend_virtual_ips2 | default([])) }}"
         backend_address_pools:
-          - name: lb-backend-pool-hana
+          - name: "{{ sap_vm_provision_ha_load_balancer_name_hana + '-backend-pool' }}"
         probes: "{{ (lb_probes1 | default([])) }}" # "{{ (lb_probes1 | default([])) + (lb_probes2 | default([])) }}"
         load_balancing_rules: "{{ (lb_rules1 | default([])) }}" # "{{ (lb_rules1 | default([])) + (lb_rules2 | default([])) }}"
         # Azure credentials
@@ -269,11 +269,11 @@
       register: __sap_vm_provision_task_msazure_lb1_info
       azure.azcollection.azure_rm_loadbalancer:
         resource_group: "{{ sap_vm_provision_msazure_resource_group_name }}"
-        name: "lb-sap-anydb-ha" # "lb-sap-ha"
+        name: "{{ sap_vm_provision_ha_load_balancer_name_anydb }}"
         sku: "Standard" # AnyPort (HA Port) Protocol rule is not allowed for basic SKU load balancer, use standard SKU load balancer instead
         frontend_ip_configurations: "{{ (lb_frontend_virtual_ips1 | default([])) }}" # "{{ (lb_frontend_virtual_ips1 | default([])) + (lb_frontend_virtual_ips2 | default([])) }}"
         backend_address_pools:
-          - name: lb-backend-pool-anydb
+          - name: "{{ sap_vm_provision_ha_load_balancer_name_anydb + '-backend-pool' }}"
         probes: "{{ (lb_probes1 | default([])) }}" # "{{ (lb_probes1 | default([])) + (lb_probes2 | default([])) }}"
         load_balancing_rules: "{{ (lb_rules1 | default([])) }}" # "{{ (lb_rules1 | default([])) + (lb_rules2 | default([])) }}"
         # Azure credentials
@@ -288,11 +288,11 @@
       register: __sap_vm_provision_task_msazure_lb2_info
       azure.azcollection.azure_rm_loadbalancer:
         resource_group: "{{ sap_vm_provision_msazure_resource_group_name }}"
-        name: "lb-sap-nwas-ha"
+        name: "{{ sap_vm_provision_ha_load_balancer_name_nwas }}"
         sku: "Standard" # AnyPort (HA Port) Protocol rule is not allowed for basic SKU load balancer, use standard SKU load balancer instead
         frontend_ip_configurations: "{{ (lb_frontend_virtual_ips2 | default([])) }}"
         backend_address_pools:
-          - name: lb-backend-pool-nwas-ascs
+          - name: "{{ sap_vm_provision_ha_load_balancer_name_nwas + '-ascs-backend-pool' }}"
         probes: "{{ (lb_probes2 | default([])) }}"
         load_balancing_rules: "{{ (lb_rules2 | default([])) }}"
         # Azure credentials

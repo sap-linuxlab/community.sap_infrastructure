@@ -5,8 +5,8 @@
 - name: Create Tempdir
   ansible.builtin.tempfile:
     state: directory
-    suffix: "_sap_hypervisor_node_preconfigure"
-  register: __sap_hypervisor_node_preconfigure_register_tmpdir
+    suffix: "_sap_hypervisor_node_preconfigure_role"
+  register: __sap_hypervisor_node_preconfigure_register_tmpdir_role
 
 - name: "Create VM namespace {{ sap_hypervisor_node_preconfigure_cluster_config.vm_namespace }}"
   kubernetes.core.k8s:

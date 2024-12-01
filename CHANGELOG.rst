@@ -4,6 +4,43 @@ community.sap_infrastructure Release Notes
 
 .. contents:: Topics
 
+v1.1.0
+======
+
+Release Summary
+---------------
+
+| Release Date: 2024-12-01
+| sap_hypervisor_node_preconfigure: OCPv improve auth and add namespace targets
+| sap_hypervisor_node_preconfigure: OCPv update default vars and var prefixes
+| sap_hypervisor_node_preconfigure: OCPv add waits for resource readiness
+| sap_hypervisor_node_preconfigure: OCPv improve SR-IOV handling
+| sap_vm_provision: update platform guidance document
+| sap_vm_provision: remove AWS CLI and GCloud CLI dependency
+| sap_vm_provision: add spread placement strategy for AWS, GCP, IBM Cloud, MS Azure, IBM PowerVM
+| sap_vm_provision: add AWS Route53 record overwrite
+| sap_vm_provision: add IBM Cloud Private DNS Custom Resolver for IBM Power VS
+| sap_vm_provision: add var for Virtual IP handling across multiple roles
+| sap_vm_provision: fix /etc/hosts for Virtual IPs
+| sap_vm_provision: add var for Load Balancer naming on GCP, IBM Cloud, MS Azure
+| sap_vm_provision: update OS Images for AWS, GCP, IBM Cloud, MS Azure
+| sap_vm_provision: add vars for Kubevirt VM
+| sap_vm_provision: fix OS Subscription registration logic and BYOL/BYOS
+| sap_vm_provision: improve Web Proxy logic
+| sap_vm_provision: fix handling of nested variables within host_specifications_dictionary
+| sap_vm_provision: fix handling of custom IOPS on AWS, GCP, IBM Cloud
+| sap_vm_provision: fix handling of AWS IAM Policy for HA
+| sap_vm_provision: fix handling of MS Azure IAM Role for HA
+| sap_vm_provision: add google-guest-agent service for load balancer config
+| sap_vm_provision: add readiness for AnyDB HA (e.g. IBM Db2 HADR)
+| sap_vm_provision: update IBM Power VS locations lookup list
+| sap_vm_provision: update logic for IBM Power VS Workspace with latest backend routing (PER)
+| sap_vm_provision: update logic for IBM Cloud Virtual Network Interfaces (VNI)
+| sap_vm_provision: fix Ansible to Terraform copy to working directory logic and note
+| sap_vm_provision: update embedded Terraform Template with updated var names for imported Terraform Modules
+| sap_vm_temp_vip: overhaul replace all shell logic with Ansible Modules and use special vars to determine OS network devices reliably
+| sap_vm_temp_vip: overhaul documentation
+
 v1.0.1
 ======
 

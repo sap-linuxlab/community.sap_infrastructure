@@ -34,9 +34,9 @@ See below for the drop-down list of required environment resources on an Infrast
     - VPC Subnetwork
 - Compute Firewall
 - Compute Router
-    - SNAT
+    - Cloud NAT (SNAT)
 - DNS Managed Zone (Private DNS)
-- Filestore (NFS)
+- Filestore (NFS) or NFS server
 - Bastion host (GCP CE VM)
 
 </details>
@@ -96,6 +96,31 @@ See below for the drop-down list of required environment resources on an Infrast
 - Network Configuration (for SEA or SR-IOV)
 - VM OS Image
 - Key Pair for hosts
+
+</details>
+
+<details>
+<summary><b>Red Hat OpenShift Virtualization (kubevirt_vm)</b></summary>
+
+- IMPORTANT: The playbook has to run with the environment variable `ANSIBLE_JINJA2_NATIVE=true` otherwise you will see an unmarshalling error when the VM is created. On Ansible Automation Platform Controller (AAPC) you have to set this in Settings --> Job Settings --> Extra Environment Variables, e.g.
+```
+{
+  "ANSIBLE_JINJA2_NATIVE": "true",
+  "HOME": "/var/lib/awx"
+}
+```
+
+- Kubeconfig file, kubeadmin user and password for the cluster you want to deploy. Default behavior is to extract CA certificate and API endpoint from kubeconfig (`sap_vm_provision_kubevirt_vm_extract_kubeconfig: true`). Kubeconfig location will be read from `sap_vm_provision_kubevirt_vm_kubeconfig_path` and if that variable is not defined from environment variable `K8S_AUTH_KUBECONFIG`.
+
+- SSH Key Pair for VMs or provide a password
+  - `sap_vm_provision_ocp_guest_ssh_auth_mechanism`: Authentication mechanism to be used to connect to the guest. Possible options are:
+    - `password`: Make sure to set password in `sap_vm_provision_ocp_os_user_password`.
+    - `private_key`: Use the private ssh key at the location defined by `sap_vm_provision_ssh_host_private_key_file_path`.
+    - `private_key_data`: use the private ssh key provided in `sap_vm_provision_ssh_host_private_key_data` and write it to the location defined in `sap_vm_provision_ssh_host_private_key_file_path`.
+
+- Optional: Execution host with access to OpenShift cluster. 
+
+- Native Kubernetes with KubeVirt has not been tested.
 
 </details>
 
@@ -212,6 +237,58 @@ The Google Cloud User credentials (Client ID and Client Secret) JSON file with a
 - Enable the Cloud Filestore API, using https://console.cloud.google.com/apis/library/file.googleapis.com
 - Enable the Service Networking API (Private Services Connection to Filestore), using https://console.cloud.google.com/apis/library/servicenetworking.googleapis.com
 
+It is recommended to create new custom IAM role with detailed actions to improve security.
+- Following permissions are minimum requirement to provision SAP HA system.
+```shell
+compute.addresses.createInternal
+compute.addresses.deleteInternal
+compute.addresses.get
+compute.addresses.useInternal
+compute.disks.create
+compute.disks.get
+compute.disks.use
+compute.forwardingRules.create
+compute.forwardingRules.get
+compute.forwardingRules.update
+compute.healthChecks.create
+compute.healthChecks.get
+compute.healthChecks.update
+compute.healthChecks.useReadOnly
+compute.images.get
+compute.images.list
+compute.instanceGroups.create
+compute.instanceGroups.get
+compute.instanceGroups.update
+compute.instanceGroups.use
+compute.instances.attachDisk
+compute.instances.create
+compute.instances.get
+compute.instances.list
+compute.instances.setMetadata
+compute.instances.setServiceAccount
+compute.instances.update
+compute.instances.use
+compute.networks.list
+compute.regionBackendServices.create
+compute.regionBackendServices.get
+compute.regionBackendServices.list
+compute.regionBackendServices.use
+compute.subnetworks.list
+compute.subnetworks.use
+compute.zoneOperations.get
+dns.changes.create
+dns.changes.get
+dns.changes.list
+dns.managedZones.create
+dns.managedZones.get
+dns.managedZones.list
+dns.managedZones.update
+dns.resourceRecordSets.create
+dns.resourceRecordSets.get
+dns.resourceRecordSets.list
+dns.resourceRecordSets.update
+```
+
 </details>
 
 <details>
@@ -241,6 +318,51 @@ az role assignment create --assignee "$AZ_SERVICE_PRINCIPAL_ID" \
 
 # Reset Azure Application, to provide the Client ID and Client Secret to use the Azure Service Principal
 az ad sp credential reset --name $AZ_CLIENT_ID
+```
+
+It is recommended to create new Azure custom role with detailed actions to improve security.
+```json
+{
+    "properties": {
+        "roleName": "ansible-sap-automation",
+        "description": "Custom role for SAP LinuxLab ansible automation.",
+        "permissions": [
+            {
+                "actions": [
+                    "Microsoft.Authorization/roleAssignments/read",
+                    "Microsoft.Authorization/roleAssignments/write",
+                    "Microsoft.Authorization/roleDefinitions/read",
+                    "Microsoft.Authorization/roleDefinitions/write",
+                    "Microsoft.Compute/disks/read",
+                    "Microsoft.Compute/disks/write",
+                    "Microsoft.Compute/sshPublicKeys/read",
+                    "Microsoft.Compute/sshPublicKeys/write",
+                    "Microsoft.Compute/virtualMachines/instanceView/read",
+                    "Microsoft.Compute/virtualMachines/read",
+                    "Microsoft.Compute/virtualMachines/write",
+                    "Microsoft.Network/loadBalancers/backendAddressPools/join/action",
+                    "Microsoft.Network/loadBalancers/read",
+                    "Microsoft.Network/loadBalancers/write",
+                    "Microsoft.Network/networkInterfaces/join/action",
+                    "Microsoft.Network/networkInterfaces/read",
+                    "Microsoft.Network/networkInterfaces/write",
+                    "Microsoft.Network/networkSecurityGroups/read",
+                    "Microsoft.Network/privateDnsZones/A/read",
+                    "Microsoft.Network/privateDnsZones/A/write",
+                    "Microsoft.Network/privateDnsZones/read",
+                    "Microsoft.Network/privateDnsZones/virtualNetworkLinks/read",
+                    "Microsoft.Network/virtualNetworks/privateDnsZoneLinks/read",
+                    "Microsoft.Network/virtualNetworks/subnets/join/action",
+                    "Microsoft.Network/virtualNetworks/subnets/read",
+                    "Microsoft.Resources/subscriptions/resourceGroups/read",
+                ],
+                "notActions": [],
+                "dataActions": [],
+                "notDataActions": []
+            }
+        ]
+    }
+}
 ```
 
 Note: MS Azure VMs provisioned will contain Hyper-V Hypervisor virtual interfaces using eth* on the OS, and when Accelerated Networking (AccelNet) is enabled for the MS Azure VM then the Mellanox SmartNIC/DPU SR-IOV Virtual Function (VF) may use enP* on the OS. For further information, see [MS Azure - How Accelerated Networking works](https://learn.microsoft.com/en-us/azure/virtual-network/accelerated-networking-how-it-works). During High Availability executions, failures may occur and may require additional variable 'sap_ha_pacemaker_cluster_vip_client_interface' to be defined.
@@ -295,6 +417,21 @@ The recommended [IBM PowerVC Security Role](https://www.ibm.com/docs/en/powervc/
 See below for the drop-down list of recommended configurations for each Infrastructure Platform.
 
 <details>
+<summary><b>Google Cloud (GCP):</b></summary>
+
+Using Cloud NAT to allow outbound communication can result in registration issues on SLES images.
+Please follow troubleshooting guide at [Troubleshooting SLES pay-as-you-go registration](https://cloud.google.com/compute/docs/troubleshooting/troubleshooting-suse-registration)
+
+These issues were detected when using SLES PAYG (Pay As You Go) images
+Issues were resolved by following [Troubleshooting SLES pay-as-you-go registration - Registration failed](https://cloud.google.com/compute/docs/troubleshooting/troubleshooting-suse-registration#registration_failed)
+```
+Cloud NAT parameter "minimum ports per VM instance" has to be increased to higher than 160 (Recommended higher).
+```
+
+
+</details>
+
+<details>
 <summary><b>VMware vCenter:</b></summary>
 
 The VM Template must be prepared with cloud-init. This process is subjective to VMware, cloud-init and Guest OS (RHEL / SLES) versions; success will vary. This requires:
@@ -347,3 +484,23 @@ When VMware vCenter and vSphere clusters with VMware NSX virtualized network ove
 N.B. When VMware vCenter and vSphere clusters with direct network subnet IP allocations to the VMXNet network adapter (no VMware NSX network overlays), the above actions may not be required.
 
 </details>
+
+
+## Notice regarding SAP High Availability and hardware placement strategies
+
+Each Hyperscaler Cloud Service Provider provides a different approach to the placement strategy of a Virtual Machine to the physical/hardware Hypervisor node it runs atop.
+
+The `sap_vm_provision` Ansible Role enforces scope control for this capability, only providing a "spread" placement strategy for the High Availability scenarios. As such the variable used is `sap_vm_provision_<<infrastructure_platform>>_placement_strategy_spread: true/false`.
+
+The following are the equivalent Placement Strategies, commonly referenced as 'Anti-Affinity', in each Infrastructure Platform:
+
+- **AWS EC2 VS Placement Group, Rack-level Spread strategy** - each VS on different hosts, in different racks with distinct network source and power supply. See [AWS EC2 Networking - Placement Strategies documentation](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/placement-strategies.html#placement-groups-spread)
+- <s> **GCP CE VM Resource Policy (type: Group Placement Policy), Availability Domain Spread strategy** - each VM on different hosts, in different racks with distinct power supply (dual redundancy from different sources). See [GCP CE 'Spread Group Placement Policy' documentation](https://cloud.google.com/compute/docs/instances/use-spread-placement-policies#create-spread-policy) </s> Not provided due to [google.cloud Ansible Collection issue 323](https://github.com/ansible-collections/google.cloud/issues/323)
+- **IBM Cloud VS Placement Group Strategy, Power Spread strategy** - each VS on different hosts, in different racks with distinct network source and power supplies (dual redundancy from different sources). See [IBM Cloud Infrastructure Services Placement Groups documentation](https://cloud.ibm.com/docs/vpc?topic=vpc-about-placement-groups-for-vpc)
+- **IBM Cloud, IBM Power VS Placement Group Collocation Policy, Server Anti-Affinity (aka. Different Server) Spread strategy** - each VS on different hosts, in different racks with distinct network source and power supplies (dual redundancy from different sources). See [IBM Cloud, IBM Power VS Placement Group Collocation Policy documentation](https://cloud.ibm.com/docs/power-iaas?topic=power-iaas-managing-placement-groups) and the associated [FAQ for IBM Power VS related to Anti-Affinity Rules](https://cloud.ibm.com/docs/power-iaas?topic=power-iaas-powervs-faqs#affinity)
+- **MS Azure Availability Set, Fault Domain Spread strategy** - each VM on different hosts, in different racks with distinct network source and power supply. See [MS Azure 'Availability Set' documentation](https://learn.microsoft.com/en-us/azure/virtual-machines/availability-set-overview); not to be confused with [MS Azure 'VM Scale Set' (VMSS)](https://learn.microsoft.com/en-us/azure/virtual-machine-scale-sets/virtual-machine-scale-sets-manage-fault-domains)
+- **IBM PowerVM Collocation Rule, Anti-Affinity Spread strategy** - each VM (aka. LPAR) on different hosts. See [IBM PowerVC Collocation Rules documentation](www.ibm.com/docs/en/powervc/latest?topic=powervc-collocation-rules)
+- TBD:
+    - KubeVirt VM
+    - OVirt VM
+    - VMware VM
