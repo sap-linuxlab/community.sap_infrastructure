@@ -71,6 +71,22 @@
           nodeSelector:
             kubernetes.io/os: linux
 
+- name: Wait for HostPathProvisioner status to become Available
+  kubernetes.core.k8s_info:
+    api_version: hostpathprovisioner.kubevirt.io/v1beta1
+    kind: HostPathProvisioner
+    name: hostpath-provisioner
+  register: hostpath_status
+  until: >
+      (hostpath_status.resources | length > 0 and
+      hostpath_status.resources[0].status is defined and
+      hostpath_status.resources[0].status.conditions |
+      selectattr('type', 'equalto', 'Available') |
+      selectattr('status', 'equalto', 'True') |
+      list | length > 0) | bool
+  retries: 8
+  delay: 50
+
 - name: Create storage class for HPP
   kubernetes.core.k8s:
     state: present
