@@ -73,6 +73,27 @@
         msg: "Install Plan is not Complete after the specified wait period."
       when: __sap_hypervisor_node_preconfigure_register_wait_for_installplan.resources[0].status.phase != "Complete"
 
+- name: Wait and check for pod with label name hyperconverged-cluster-webhook under "{{ sap_hypervisor_node_preconfigure_ocpv_namespace }}" namespace
+  kubernetes.core.k8s_info:
+    kind: Pod
+    namespace: "{{ sap_hypervisor_node_preconfigure_ocpv_namespace }}"
+    label_selectors:
+      - name=hyperconverged-cluster-webhook
+  register: hco_webhook_pod
+  retries: 5
+  delay: 60
+  until: hco_webhook_pod.resources | selectattr('status.phase', 'equalto', 'Running') | list | length == hco_webhook_pod.resources | length
+
+- name: Wait and check if hco-webhook-service exists in "{{ sap_hypervisor_node_preconfigure_ocpv_namespace }}" namespace
+  kubernetes.core.k8s_info:
+    kind: Service
+    namespace: "{{ sap_hypervisor_node_preconfigure_ocpv_namespace }}"
+    name: hco-webhook-service
+  register: webhook_service
+  retries: 2
+  delay: 60
+  until: webhook_service.resources
+
 - name: Create CNV HyperConverged
   kubernetes.core.k8s:
     state: present
@@ -88,29 +109,15 @@
     api_version: hco.kubevirt.io/v1beta1
     kind: HyperConverged
     name: kubevirt-hyperconverged
+    wait: true
     namespace: "{{ sap_hypervisor_node_preconfigure_ocpv_namespace }}"
+    wait_condition:
+      type: Available
+      status: "True"
+    wait_timeout: 600
   register: hyperconverged_status
-  until: >
-    {{
-      (hyperconverged_status.resources[0].status.conditions |
-      selectattr('type', 'equalto', 'Available') |
-      selectattr('status', 'equalto', 'True') |
-      list | length > 0) | bool
-    }}
-  retries: 60
-  delay: 10
 
-- name: Set HyperConverged Available Fact
-  ansible.builtin.set_fact:
-    hyperconverged_available: >-
-      {{
-        (hyperconverged_status.resources[0].status.conditions |
-        selectattr('type', 'equalto', 'Available') |
-        selectattr('status', 'equalto', 'True') |
-        list | length > 0) | bool
-      }}
-
-- name: Fail if HyperConverged is not Available after waiting
+- name: Fail if HyperConverged is not Available
   ansible.builtin.fail:
     msg: "HyperConverged is not Available after the specified wait period."
-  when: not hyperconverged_available
+  when: hyperconverged_status.failed
