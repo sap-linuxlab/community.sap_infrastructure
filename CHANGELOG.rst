@@ -4,6 +4,16 @@ community.sap_infrastructure Release Notes
 
 .. contents:: Topics
 
+v1.1.1
+======
+
+Release Summary
+---------------
+
+| Release Date: 2024-12-19
+| sap_hypervisor_node_preconfigure: Bug fix for HPP wait
+| sap_hypervisor_node_preconfigure: Bug fix for HCO wait and validate
+
 v1.1.0
 ======
 
