@@ -13,6 +13,18 @@ sap_vm_provision_iac_platform: ""
 # execution_host where ansible playbook will delegate_to
 sap_vm_provision_execution_host: "localhost"
 
+# Customized group names are used by sap_host_type in host_specifications_dictionary plan during provisioning.
+# Variables are also used in sap_vm_temp_vip role
+sap_vm_provision_group_hana_primary: hana_primary
+sap_vm_provision_group_hana_secondary: hana_secondary
+sap_vm_provision_group_nwas_ascs: nwas_ascs
+sap_vm_provision_group_nwas_scs: nwas_scs
+sap_vm_provision_group_nwas_ers: nwas_ers
+sap_vm_provision_group_nwas_pas: nwas_pas
+sap_vm_provision_group_nwas_aas: nwas_aas
+sap_vm_provision_group_anydb_primary: anydb_primary
+sap_vm_provision_group_anydb_secondary: anydb_secondary
+
 ####
 # VM Provision Infrastructure-as-Code (IaC) Configuration - Ansible provisioning - Cloud Hyperscaler
 # Only for use when 'ansible' is value provided for variable sap_vm_provision_iac_type
@@ -666,7 +678,7 @@ sap_vm_provision_aws_ec2_vs_host_specifications_dictionary:
       virtual_machine_profile: r5.8xlarge
       disable_ip_anti_spoofing: false
       #sap_system_type: project_dev # project_dev, project_tst, project_prd
-      sap_host_type: "" # hana_primary, hana_secondary, anydb_primary, anydb_secondary, nwas_ascs, nwas_ers, nwas_pas, nwas_aas
+      sap_host_type: hana_primary # hana_primary, hana_secondary, anydb_primary, anydb_secondary, nwas_ascs, nwas_ers, nwas_pas, nwas_aas
       storage_definition:
         - name: data_0
           mountpoint: /data0

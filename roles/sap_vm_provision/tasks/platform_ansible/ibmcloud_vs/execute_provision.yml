@@ -68,13 +68,13 @@
 
     placement_group: "{{ (
       (__sap_vm_provision_task_ibmcloud_placement_group.results | selectattr('item','==','hana'))[0].resource.id
-      if ('hana_primary' in target_provision_host_spec.sap_host_type or 'hana_secondary' in target_provision_host_spec.sap_host_type) and not __sap_vm_provision_task_ibmcloud_placement_group is skipped
+      if (sap_vm_provision_group_hana_primary in target_provision_host_spec.sap_host_type or sap_vm_provision_group_hana_secondary in target_provision_host_spec.sap_host_type) and not __sap_vm_provision_task_ibmcloud_placement_group is skipped
       else
       (__sap_vm_provision_task_ibmcloud_placement_group.results | selectattr('item','==','anydb'))[0].resource.id
-      if ('anydb_primary' in target_provision_host_spec.sap_host_type or 'anydb_secondary' in target_provision_host_spec.sap_host_type) and not __sap_vm_provision_task_ibmcloud_placement_group is skipped
+      if (sap_vm_provision_group_anydb_primary in target_provision_host_spec.sap_host_type or sap_vm_provision_group_anydb_secondary in target_provision_host_spec.sap_host_type) and not __sap_vm_provision_task_ibmcloud_placement_group is skipped
       else
       (__sap_vm_provision_task_ibmcloud_placement_group.results | selectattr('item','==','nwas'))[0].resource.id
-      if ('nwas_ascs' in target_provision_host_spec.sap_host_type or 'nwas_ers' in target_provision_host_spec.sap_host_type) and not __sap_vm_provision_task_ibmcloud_placement_group is skipped
+      if (sap_vm_provision_group_nwas_ascs in target_provision_host_spec.sap_host_type or sap_vm_provision_group_nwas_ers in target_provision_host_spec.sap_host_type) and not __sap_vm_provision_task_ibmcloud_placement_group is skipped
       ) | default(omit) }}"
 
     ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"

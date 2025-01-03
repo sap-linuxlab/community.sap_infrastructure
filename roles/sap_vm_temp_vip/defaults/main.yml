@@ -14,3 +14,15 @@ sap_vm_temp_vip_nwas_abap_ascs: "{{ sap_ha_pacemaker_cluster_vip_nwas_abap_ascs_
 sap_vm_temp_vip_nwas_abap_ers: "{{ sap_ha_pacemaker_cluster_vip_nwas_abap_ers_ip_address | default('') }}"
 # sap_vm_temp_vip_nwas_abap_pas: "{{ sap_ha_pacemaker_cluster_vip_nwas_abap_pas_ip_address | default('') }}"
 # sap_vm_temp_vip_nwas_abap_aas: "{{ sap_ha_pacemaker_cluster_vip_nwas_abap_aas_ip_address | default('') }}"
+
+# Customized group names are used by sap_host_type in host_specifications_dictionary plan during provisioning.
+# Variables are loaded from sap_vm_provision variables first.
+sap_vm_temp_vip_group_hana_primary: "{{ sap_vm_provision_group_hana_primary | d('hana_primary') }}"
+sap_vm_temp_vip_group_hana_secondary: "{{ sap_vm_provision_group_hana_secondary | d('hana_secondary') }}"
+sap_vm_temp_vip_group_nwas_ascs: "{{ sap_vm_provision_group_nwas_ascs | d('nwas_ascs') }}"
+sap_vm_temp_vip_group_nwas_scs: "{{ sap_vm_provision_group_nwas_scs | d('nwas_scs') }}"
+sap_vm_temp_vip_group_nwas_ers: "{{ sap_vm_provision_group_nwas_ers | d('nwas_ers') }}"
+sap_vm_temp_vip_group_nwas_pas: "{{ sap_vm_provision_group_nwas_pas | d('nwas_pas') }}"
+sap_vm_temp_vip_group_nwas_aas: "{{ sap_vm_provision_group_nwas_aas | d('nwas_aas') }}"
+sap_vm_temp_vip_group_anydb_primary: "{{ sap_vm_provision_group_anydb_primary | d('anydb_primary') }}"
+sap_vm_temp_vip_group_anydb_secondary: "{{ sap_vm_provision_group_anydb_secondary | d('anydb_secondary') }}"

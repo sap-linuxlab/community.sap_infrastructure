@@ -37,7 +37,7 @@
         line: "{{ sap_vm_provision_dynamic_inventory_hana_primary_ip }}\t{{ sap_vm_provision_dynamic_inventory_hana_primary_hostname }}.{{ sap_vm_provision_dns_root_domain }}\t{{ sap_vm_provision_dynamic_inventory_hana_primary_hostname }}"
         state: present
       when:
-        - groups["hana_primary"] is defined and inventory_hostname_short in groups['hana_primary']
+        - groups[sap_vm_provision_group_hana_primary] is defined and inventory_hostname_short in groups[sap_vm_provision_group_hana_primary]
         - not (ansible_play_hosts_all | length) > 1
 
     - name: Update /etc/hosts file when single sandbox host (nwas_pas)
@@ -45,7 +45,7 @@
         dest: /etc/hosts
         line: "{{ sap_vm_provision_dynamic_inventory_nw_pas_ip }}\t{{ sap_vm_provision_dynamic_inventory_nw_pas_hostname }}.{{ sap_vm_provision_dns_root_domain }}\t{{ sap_vm_provision_dynamic_inventory_nw_pas_hostname }}"
       when:
-        - groups["nwas_pas"] is defined and inventory_hostname_short in groups['nwas_pas']
+        - groups[sap_vm_provision_group_nwas_pas] is defined and inventory_hostname_short in groups[sap_vm_provision_group_nwas_pas]
         - not (ansible_play_hosts_all | length) > 1
 
 
@@ -55,7 +55,7 @@
         line: "{{ sap_vm_provision_dynamic_inventory_hana_primary_ip }}\t{{ sap_vm_provision_dynamic_inventory_hana_primary_hostname }}.{{ sap_vm_provision_dns_root_domain }}\t{{ sap_vm_provision_dynamic_inventory_hana_primary_hostname }}"
         state: present
       when:
-        - (groups["hana_primary"] is defined and (groups["hana_primary"] | length>0))
+        - (groups[sap_vm_provision_group_hana_primary] is defined and (groups[sap_vm_provision_group_hana_primary] | length>0))
         - (ansible_play_hosts_all | length) > 1
 
 
@@ -65,7 +65,7 @@
         line: "{{ sap_vm_provision_dynamic_inventory_anydb_primary_ip }}\t{{ sap_vm_provision_dynamic_inventory_anydb_primary_hostname }}.{{ sap_vm_provision_dns_root_domain }}\t{{ sap_vm_provision_dynamic_inventory_anydb_primary_hostname }}"
         state: present
       when:
-        - (groups["anydb_primary"] is defined and (groups["anydb_primary"] | length>0))
+        - (groups[sap_vm_provision_group_anydb_primary] is defined and (groups[sap_vm_provision_group_anydb_primary] | length>0))
         - (ansible_play_hosts_all | length) > 1
 
 
@@ -75,7 +75,7 @@
         line: "{{ sap_vm_provision_dynamic_inventory_nw_ascs_ip }}\t{{ sap_vm_provision_dynamic_inventory_nw_ascs_hostname }}.{{ sap_vm_provision_dns_root_domain }}\t{{ sap_vm_provision_dynamic_inventory_nw_ascs_hostname }}"
         state: present
       when:
-        - (groups["nwas_ascs"] is defined and (groups["nwas_ascs"] | length>0))
+        - (groups[sap_vm_provision_group_nwas_ascs] is defined and (groups[sap_vm_provision_group_nwas_ascs] | length>0))
         - (ansible_play_hosts_all | length) > 1
 
     - name: Update /etc/hosts file for SAP NetWeaver PAS
@@ -84,7 +84,7 @@
         line: "{{ sap_vm_provision_dynamic_inventory_nw_pas_ip }}\t{{ sap_vm_provision_dynamic_inventory_nw_pas_hostname }}.{{ sap_vm_provision_dns_root_domain }}\t{{ sap_vm_provision_dynamic_inventory_nw_pas_hostname }}"
         state: present
       when:
-        - (groups["nwas_pas"] is defined and (groups["nwas_pas"] | length>0))
+        - (groups[sap_vm_provision_group_nwas_pas] is defined and (groups[sap_vm_provision_group_nwas_pas] | length>0))
         - (ansible_play_hosts_all | length) > 1
 
     - name: Update /etc/hosts file for SAP NetWeaver AAS
@@ -93,5 +93,5 @@
         line: "{{ sap_vm_provision_dynamic_inventory_nw_aas_ip }}\t{{ sap_vm_provision_dynamic_inventory_nw_aas_hostname }}.{{ sap_vm_provision_dns_root_domain }}\t{{ sap_vm_provision_dynamic_inventory_nw_aas_hostname }}"
         state: present
       when:
-        - (groups["nwas_aas"] is defined and (groups["nwas_aas"] | length>0))
+        - (groups[sap_vm_provision_group_nwas_aas] is defined and (groups[sap_vm_provision_group_nwas_aas] | length>0))
         - (ansible_play_hosts_all | length) > 1

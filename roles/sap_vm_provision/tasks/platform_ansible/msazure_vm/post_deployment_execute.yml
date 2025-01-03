@@ -13,7 +13,7 @@
     # AZURE_SECRET: "{{ sap_vm_provision_msazure_app_client_secret }}"
   when:
     - sap_ha_pacemaker_cluster_msazure_resource_group is defined
-    - (groups["hana_secondary"] is defined and (groups["hana_secondary"] | length>0)) or (groups["nwas_ers"] is defined and (groups["nwas_ers"] | length>0)) or (groups["anydb_secondary"] is defined and (groups["anydb_secondary"] | length>0))
+    - (groups[sap_vm_provision_group_hana_secondary] is defined and (groups[sap_vm_provision_group_hana_secondary] | length>0)) or (groups[sap_vm_provision_group_nwas_ers] is defined and (groups[sap_vm_provision_group_nwas_ers] | length>0)) or (groups[sap_vm_provision_group_anydb_secondary] is defined and (groups[sap_vm_provision_group_anydb_secondary] | length>0))
   block:
 
     - name: Inherit variable - set fact for Azure Load Balancer - VIP Health Check - SAP HANA
@@ -71,7 +71,7 @@
           zones: ["1", "2", "3"] # Zone-redundant
       when:
         - vip_item | length > 0
-        - groups["hana_secondary"] is defined and (groups["hana_secondary"]|length>0)
+        - groups[sap_vm_provision_group_hana_secondary] is defined and (groups[sap_vm_provision_group_hana_secondary]|length>0)
       loop:
         - "{{ sap_vm_provision_ha_vip_hana_primary }}"
       loop_control:
@@ -90,7 +90,7 @@
           zones: ["1", "2", "3"] # Zone-redundant
       when:
         - vip_item | length > 0
-        - groups["anydb_secondary"] is defined and (groups["anydb_secondary"]|length>0)
+        - groups[sap_vm_provision_group_anydb_secondary] is defined and (groups[sap_vm_provision_group_anydb_secondary]|length>0)
       loop:
         - "{{ sap_vm_provision_ha_vip_anydb_primary }}"
       loop_control:
@@ -109,7 +109,7 @@
           zones: ["1", "2", "3"] # Zone-redundant
       when:
         - vip_item | length > 0
-        - groups["nwas_ers"] is defined and (groups["nwas_ers"]|length>0)
+        - groups[sap_vm_provision_group_nwas_ers] is defined and (groups[sap_vm_provision_group_nwas_ers]|length>0)
       loop:
         - "{{ sap_vm_provision_ha_vip_nwas_abap_ascs }}"
         - "{{ sap_vm_provision_ha_vip_nwas_abap_ers }}"
@@ -130,7 +130,7 @@
           fail_count: 2
       when:
         - healthcheck_item | length > 0
-        - groups["hana_secondary"] is defined and (groups["hana_secondary"]|length>0)
+        - groups[sap_vm_provision_group_hana_secondary] is defined and (groups[sap_vm_provision_group_hana_secondary]|length>0)
       loop:
         - "{{ lb_frontend_virtual_ip_healthcheck_hana | default() }}"
       loop_control:
@@ -148,7 +148,7 @@
           interval: 5
           fail_count: 2
       when:
-        - groups["anydb_secondary"] is defined and (groups["anydb_secondary"]|length>0)
+        - groups[sap_vm_provision_group_anydb_secondary] is defined and (groups[sap_vm_provision_group_anydb_secondary]|length>0)
 
     - name: Define Ansible Variables for Azure Load Balancer - VIP Health Check for SAP NetWeaver ASCS/ERS
       ansible.builtin.set_fact:
@@ -162,7 +162,7 @@
           fail_count: 2
       when:
         - healthcheck_item | length > 0
-        - groups["nwas_ers"] is defined and (groups["nwas_ers"]|length>0)
+        - groups[sap_vm_provision_group_nwas_ers] is defined and (groups[sap_vm_provision_group_nwas_ers]|length>0)
       loop:
         - "{{ lb_frontend_virtual_ip_healthcheck_nwas_ascs | default() }}"
         - "{{ lb_frontend_virtual_ip_healthcheck_nwas_ers | default() }}"
@@ -188,7 +188,7 @@
           enable_floating_ip: true # enable Frontend IP as a Floating IP (aka. Direct Server Return), if disabled then only 1 LB Rule allowed
       when:
         - rule_item | length > 0
-        - groups["hana_secondary"] is defined and (groups["hana_secondary"]|length>0)
+        - groups[sap_vm_provision_group_hana_secondary] is defined and (groups[sap_vm_provision_group_hana_secondary]|length>0)
       loop:
         - "{{ sap_vm_provision_ha_vip_hana_primary }}"
       loop_control:
@@ -212,7 +212,7 @@
           enable_floating_ip: true # enable Frontend IP as a Floating IP (aka. Direct Server Return), if disabled then only 1 LB Rule allowed
       when:
         - rule_item | length > 0
-        - groups["anydb_secondary"] is defined and (groups["anydb_secondary"]|length>0)
+        - groups[sap_vm_provision_group_anydb_secondary] is defined and (groups[sap_vm_provision_group_anydb_secondary]|length>0)
       loop:
         - "{{ sap_vm_provision_ha_vip_anydb_primary }}"
       loop_control:
@@ -236,7 +236,7 @@
           enable_floating_ip: true # enable Frontend IP as a Floating IP (aka. Direct Server Return), if disabled then only 1 LB Rule allowed
       when:
         - rule_item | length > 0
-        - groups["nwas_ers"] is defined and (groups["nwas_ers"]|length>0)
+        - groups[sap_vm_provision_group_nwas_ers] is defined and (groups[sap_vm_provision_group_nwas_ers]|length>0)
       loop:
         - "{{ sap_vm_provision_ha_vip_nwas_abap_ascs }}"
         - "{{ sap_vm_provision_ha_vip_nwas_abap_ers }}"
@@ -262,7 +262,7 @@
         tenant: "{{ sap_vm_provision_msazure_tenant_id }}"
         client_id: "{{ sap_vm_provision_msazure_app_client_id }}"
         secret: "{{ sap_vm_provision_msazure_app_client_secret }}"
-      when: (groups["hana_secondary"] is defined and (groups["hana_secondary"]|length>0))
+      when: (groups[sap_vm_provision_group_hana_secondary] is defined and (groups[sap_vm_provision_group_hana_secondary]|length>0))
 
     - name: MS Azure Load Balancer (network L4) - Update NLB for SAP AnyDB with Virtual IP and Health Probe configuration
       no_log: "{{ __sap_vm_provision_no_log }}"
@@ -281,7 +281,7 @@
         tenant: "{{ sap_vm_provision_msazure_tenant_id }}"
         client_id: "{{ sap_vm_provision_msazure_app_client_id }}"
         secret: "{{ sap_vm_provision_msazure_app_client_secret }}"
-      when: (groups["anydb_secondary"] is defined and (groups["anydb_secondary"]|length>0))
+      when: (groups[sap_vm_provision_group_anydb_secondary] is defined and (groups[sap_vm_provision_group_anydb_secondary]|length>0))
 
     - name: MS Azure Load Balancer (network L4) - Update NLB for SAP NetWeaver with Virtual IP and Health Probe configuration
       no_log: "{{ __sap_vm_provision_no_log }}"
@@ -300,4 +300,4 @@
         tenant: "{{ sap_vm_provision_msazure_tenant_id }}"
         client_id: "{{ sap_vm_provision_msazure_app_client_id }}"
         secret: "{{ sap_vm_provision_msazure_app_client_secret }}"
-      when: (groups["nwas_ers"] is defined and (groups["nwas_ers"]|length>0))
+      when: (groups[sap_vm_provision_group_nwas_ers] is defined and (groups[sap_vm_provision_group_nwas_ers]|length>0))
