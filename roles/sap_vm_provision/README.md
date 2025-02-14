@@ -112,7 +112,8 @@ Prior to execution of this Ansible Role, there are no Ansible Roles suggested to
     - Variables specific to each Infrastructure Platform (e.g. `sap_vm_provision_aws_access_key`)
     - Include files from subdirectory based upon chosen method and target (e.g. `/tasks/platform_ansible_to_terraform/aws_ec2_vs/`)
 - Provision host/s
-- Add hosts to Ansible Inventory Groups defined by the Host Specification Dictionary _(e.g. hana_primary, hana_secondary, nwas_ascs, nwas_ers, nwas_pas, nwas_aas, anydb_primary, anydb_secondary)_
+- Add hosts to Ansible Inventory Groups defined by the Host Specification Dictionary `sap_host_type` variable _(e.g. hana_primary, hana_secondary, nwas_ascs, nwas_ers, nwas_pas, nwas_aas, anydb_primary, anydb_secondary)_</br>
+  **NOTE:** Group names can be customized using `sap_vm_provision_group_*` variables in `vars/default.yml` (e.g. `sap_vm_provision_group_hana_primary`, `sap_vm_provision_group_nwas_ascs`, etc.).
 - Perform additional tasks for host/s (e.g. DNS Records, /etc/hosts, register OS for Packages, register Web Forward Proxy)
 - Set variables if other Ansible Roles are to be executed (e.g. variables for Ansible Roles in the `sap_install` Ansible Collection)
 - Perform any tasks for High Availability (execution dependent on hosts in Ansible Inventory Groups)

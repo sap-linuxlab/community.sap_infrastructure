@@ -18,7 +18,7 @@
     IC_REGION: "{{ sap_vm_provision_ibmcloud_region }}"
   when:
     - sap_ha_pacemaker_cluster_ibmcloud_region is defined
-    - (groups["hana_secondary"] is defined and (groups["hana_secondary"] | length>0)) or (groups["nwas_ers"] is defined and (groups["nwas_ers"] | length>0)) or (groups["anydb_secondary"] is defined and (groups["anydb_secondary"] | length>0))
+    - (groups[sap_vm_provision_group_hana_secondary] is defined and (groups[sap_vm_provision_group_hana_secondary] | length>0)) or (groups[sap_vm_provision_group_nwas_ers] is defined and (groups[sap_vm_provision_group_nwas_ers] | length>0)) or (groups[sap_vm_provision_group_anydb_secondary] is defined and (groups[sap_vm_provision_group_anydb_secondary] | length>0))
   block:
 
     - name: Inherit variable - set fact for IBM Cloud Load Balancer Pool Health Check - SAP HANA
@@ -104,7 +104,7 @@
         health_type: tcp
         health_monitor_port: "{{ ibmcloud_lb_pool_healthcheck_hana }}"
         ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
-      when: (groups['hana_secondary'] is defined and (groups['hana_secondary'] | length>0))
+      when: (groups[sap_vm_provision_group_hana_secondary] is defined and (groups[sap_vm_provision_group_hana_secondary] | length>0))
 
     - name: Update IBM Cloud Load Balancer Back-end Pool Health Check Port to Linux Pacemaker controlled listening port for SAP HANA - MDC Tenant 1 SQL
       no_log: "{{ __sap_vm_provision_no_log }}"
@@ -121,7 +121,7 @@
         health_type: tcp
         health_monitor_port: "{{ ibmcloud_lb_pool_healthcheck_hana }}"
         ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
-      when: (groups['hana_secondary'] is defined and (groups['hana_secondary'] | length>0))
+      when: (groups[sap_vm_provision_group_hana_secondary] is defined and (groups[sap_vm_provision_group_hana_secondary] | length>0))
 
     - name: Update IBM Cloud Load Balancer Back-end Pool Health Check Port to Linux Pacemaker controlled listening port for SAP HANA - startsrv HTTP
       no_log: "{{ __sap_vm_provision_no_log }}"
@@ -138,7 +138,7 @@
         health_type: tcp
         health_monitor_port: "{{ ibmcloud_lb_pool_healthcheck_hana }}"
         ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
-      when: (groups['hana_secondary'] is defined and (groups['hana_secondary'] | length>0))
+      when: (groups[sap_vm_provision_group_hana_secondary] is defined and (groups[sap_vm_provision_group_hana_secondary] | length>0))
 
     - name: Update IBM Cloud Load Balancer Back-end Pool Health Check Port to Linux Pacemaker controlled listening port for SAP HANA - startsrv HTTPS
       no_log: "{{ __sap_vm_provision_no_log }}"
@@ -155,7 +155,7 @@
         health_type: tcp
         health_monitor_port: "{{ ibmcloud_lb_pool_healthcheck_hana }}"
         ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
-      when: (groups['hana_secondary'] is defined and (groups['hana_secondary'] | length>0))
+      when: (groups[sap_vm_provision_group_hana_secondary] is defined and (groups[sap_vm_provision_group_hana_secondary] | length>0))
 
     - name: Update IBM Cloud Load Balancer Back-end Pool Health Check Port to Linux Pacemaker controlled listening port for SAP AnyDB - IBM Db2 Communication Port
       no_log: "{{ __sap_vm_provision_no_log }}"
@@ -171,7 +171,7 @@
         health_type: tcp
         health_monitor_port: 62700
         ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
-      when: (groups['anydb_secondary'] is defined and (groups['anydb_secondary'] | length>0))
+      when: (groups[sap_vm_provision_group_anydb_secondary] is defined and (groups[sap_vm_provision_group_anydb_secondary] | length>0))
 
     - name: Update IBM Cloud Load Balancer Back-end Pool Health Check Port to Linux Pacemaker controlled listening port for SAP NetWeaver ASCS - Dispatcher sapdp<ASCS_NN> process
       no_log: "{{ __sap_vm_provision_no_log }}"
@@ -188,7 +188,7 @@
         health_type: tcp
         health_monitor_port: "{{ ibmcloud_lb_pool_healthcheck_nwas_ascs }}"
         ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
-      when: (groups['nwas_ers'] is defined and (groups['nwas_ers'] | length>0))
+      when: (groups[sap_vm_provision_group_nwas_ers] is defined and (groups[sap_vm_provision_group_nwas_ers] | length>0))
 
     - name: Update IBM Cloud Load Balancer Back-end Pool Health Check Port to Linux Pacemaker controlled listening port for SAP NetWeaver ASCS - Message Server sapms<SAPSID> process
       no_log: "{{ __sap_vm_provision_no_log }}"
@@ -205,7 +205,7 @@
         health_type: tcp
         health_monitor_port: "{{ ibmcloud_lb_pool_healthcheck_nwas_ascs }}"
         ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
-      when: (groups['nwas_ers'] is defined and (groups['nwas_ers'] | length>0))
+      when: (groups[sap_vm_provision_group_nwas_ers] is defined and (groups[sap_vm_provision_group_nwas_ers] | length>0))
 
     - name: Update IBM Cloud Load Balancer Back-end Pool Health Check Port to Linux Pacemaker controlled listening port for SAP NetWeaver ASCS - Message Server HTTP sapms<SAPSID> process
       no_log: "{{ __sap_vm_provision_no_log }}"
@@ -222,7 +222,7 @@
         health_type: tcp
         health_monitor_port: "{{ ibmcloud_lb_pool_healthcheck_nwas_ascs }}"
         ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
-      when: (groups['nwas_ers'] is defined and (groups['nwas_ers'] | length>0))
+      when: (groups[sap_vm_provision_group_nwas_ers] is defined and (groups[sap_vm_provision_group_nwas_ers] | length>0))
 
     - name: Update IBM Cloud Load Balancer Back-end Pool Health Check Port to Linux Pacemaker controlled listening port for SAP NetWeaver ASCS - Enqueue Server sapenq<SAPSID> process
       no_log: "{{ __sap_vm_provision_no_log }}"
@@ -239,7 +239,7 @@
         health_type: tcp
         health_monitor_port: "{{ ibmcloud_lb_pool_healthcheck_nwas_ascs }}"
         ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
-      when: (groups['nwas_ers'] is defined and (groups['nwas_ers'] | length>0))
+      when: (groups[sap_vm_provision_group_nwas_ers] is defined and (groups[sap_vm_provision_group_nwas_ers] | length>0))
 
     - name: Update IBM Cloud Load Balancer Back-end Pool Health Check Port to Linux Pacemaker controlled listening port for SAP NetWeaver ASCS - Enqueue Replicator Server sapenqrepl<SAPSID> process
       no_log: "{{ __sap_vm_provision_no_log }}"
@@ -256,7 +256,7 @@
         health_type: tcp
         health_monitor_port: "{{ ibmcloud_lb_pool_healthcheck_nwas_ascs }}"
         ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
-      when: (groups['nwas_ers'] is defined and (groups['nwas_ers'] | length>0))
+      when: (groups[sap_vm_provision_group_nwas_ers] is defined and (groups[sap_vm_provision_group_nwas_ers] | length>0))
 
     - name: Update IBM Cloud Load Balancer Back-end Pool Health Check Port to Linux Pacemaker controlled listening port for SAP NetWeaver ASCS - SAP Start Service (SAPControl SOAP) HTTP sapctrl<ASCS_NN> process
       no_log: "{{ __sap_vm_provision_no_log }}"
@@ -273,7 +273,7 @@
         health_type: tcp
         health_monitor_port: "{{ ibmcloud_lb_pool_healthcheck_nwas_ascs }}"
         ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
-      when: (groups['nwas_ers'] is defined and (groups['nwas_ers'] | length>0))
+      when: (groups[sap_vm_provision_group_nwas_ers] is defined and (groups[sap_vm_provision_group_nwas_ers] | length>0))
 
     - name: Update IBM Cloud Load Balancer Back-end Pool Health Check Port to Linux Pacemaker controlled listening port for SAP NetWeaver ASCS - SAP Start Service (SAPControl SOAP) HTTPS (Secure) sapctrls<ASCS_NN>
       no_log: "{{ __sap_vm_provision_no_log }}"
@@ -290,7 +290,7 @@
         health_type: tcp
         health_monitor_port: "{{ ibmcloud_lb_pool_healthcheck_nwas_ascs }}"
         ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
-      when: (groups['nwas_ers'] is defined and (groups['nwas_ers'] | length>0))
+      when: (groups[sap_vm_provision_group_nwas_ers] is defined and (groups[sap_vm_provision_group_nwas_ers] | length>0))
 
     # - name: Update IBM Cloud Load Balancer Back-end Pool Health Check Port to Linux Pacemaker controlled listening port for SAP NetWeaver ERS - Dispatcher sapdp<ERS_NN> process
     #   no_log: "{{ __sap_vm_provision_no_log }}"
@@ -307,7 +307,7 @@
     #     health_type: tcp
     #     health_monitor_port: "{{ ibmcloud_lb_pool_healthcheck_nwas_ers }}"
     #     ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
-    #   when: (groups['nwas_ers'] is defined and (groups['nwas_ers'] | length>0))
+    #   when: (groups[sap_vm_provision_group_nwas_ers] is defined and (groups[sap_vm_provision_group_nwas_ers] | length>0))
 
     # - name: Update IBM Cloud Load Balancer Back-end Pool Health Check Port to Linux Pacemaker controlled listening port for SAP NetWeaver ERS - Message Server sapms<SAPSID> process
     #   no_log: "{{ __sap_vm_provision_no_log }}"
@@ -324,7 +324,7 @@
     #     health_type: tcp
     #     health_monitor_port: "{{ ibmcloud_lb_pool_healthcheck_nwas_ers }}"
     #     ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
-    #   when: (groups['nwas_ers'] is defined and (groups['nwas_ers'] | length>0))
+    #   when: (groups[sap_vm_provision_group_nwas_ers] is defined and (groups[sap_vm_provision_group_nwas_ers] | length>0))
 
     - name: Update IBM Cloud Load Balancer Back-end Pool Health Check Port to Linux Pacemaker controlled listening port for SAP NetWeaver ERS - Enqueue Replication Server sapenqr<SAPSID> process
       no_log: "{{ __sap_vm_provision_no_log }}"
@@ -341,7 +341,7 @@
         health_type: tcp
         health_monitor_port: "{{ ibmcloud_lb_pool_healthcheck_nwas_ers }}"
         ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
-      when: (groups['nwas_ers'] is defined and (groups['nwas_ers'] | length>0))
+      when: (groups[sap_vm_provision_group_nwas_ers] is defined and (groups[sap_vm_provision_group_nwas_ers] | length>0))
 
     - name: Update IBM Cloud Load Balancer Back-end Pool Health Check Port to Linux Pacemaker controlled listening port for SAP NetWeaver ERS - SAP Start Service (SAPControl SOAP) HTTP sapctrl<ERS_NN> process
       no_log: "{{ __sap_vm_provision_no_log }}"
@@ -358,7 +358,7 @@
         health_type: tcp
         health_monitor_port: "{{ ibmcloud_lb_pool_healthcheck_nwas_ers }}"
         ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
-      when: (groups['nwas_ers'] is defined and (groups['nwas_ers'] | length>0))
+      when: (groups[sap_vm_provision_group_nwas_ers] is defined and (groups[sap_vm_provision_group_nwas_ers] | length>0))
 
     - name: Update IBM Cloud Load Balancer Back-end Pool Health Check Port to Linux Pacemaker controlled listening port for SAP NetWeaver ERS - SAP Start Service (SAPControl SOAP) HTTPS (Secure) sapctrls<ERS_NN>
       no_log: "{{ __sap_vm_provision_no_log }}"
@@ -375,4 +375,4 @@
         health_type: tcp
         health_monitor_port: "{{ ibmcloud_lb_pool_healthcheck_nwas_ers }}"
         ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
-      when: (groups['nwas_ers'] is defined and (groups['nwas_ers'] | length>0))
+      when: (groups[sap_vm_provision_group_nwas_ers] is defined and (groups[sap_vm_provision_group_nwas_ers] | length>0))

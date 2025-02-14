@@ -18,20 +18,21 @@
 # In all cases, use noprefixroute parameter to avoid automatic creation of OS route table entries (i.e. 'ip route'), which occurs if the IP Address is outside of the existing Subnet Range
 
 # TODO: Add rare scenario for PAS/AAS VIP if needed.
-# (groups["nwas_pas"] is defined and inventory_hostname in groups["nwas_pas"]) and (groups["nwas_pas"] is defined and (groups["nwas_pas"]|length>0))
+# (groups[sap_vm_temp_vip_group_nwas_pas] is defined and inventory_hostname in groups[sap_vm_temp_vip_group_nwas_pas])
+# and (groups[sap_vm_temp_vip_group_nwas_pas] is defined and (groups[sap_vm_temp_vip_group_nwas_pas]|length>0))
 
 
 # Define VIP address based on target host group which is filtered in main.yml
 - name: Set fact for VIP address depending on target host group
   ansible.builtin.set_fact:
     __sap_vm_temp_vip_address: >-
-      {% if groups['hana_secondary'] | d([]) | length > 0 and inventory_hostname in groups["hana_primary"] -%}
+      {% if groups[sap_vm_temp_vip_group_hana_secondary] | d([]) | length > 0 and inventory_hostname in groups[sap_vm_temp_vip_group_hana_primary] -%}
         {{ sap_vm_temp_vip_hana_primary | regex_replace('/.*', '') }}
-      {%- elif groups['anydb_secondary'] | d([]) | length > 0 and inventory_hostname in groups["anydb_primary"] -%}
+      {%- elif groups[sap_vm_temp_vip_group_anydb_secondary] | d([]) | length > 0 and inventory_hostname in groups[sap_vm_temp_vip_group_anydb_primary] -%}
         {{ sap_vm_temp_vip_anydb_primary | regex_replace('/.*', '') }}
-      {%- elif groups["nwas_ers"] | d([]) | length > 0 and inventory_hostname in groups["nwas_ascs"] -%}
+      {%- elif groups[sap_vm_temp_vip_group_nwas_ers] | d([]) | length > 0 and inventory_hostname in groups[sap_vm_temp_vip_group_nwas_ascs] -%}
         {{ sap_vm_temp_vip_nwas_abap_ascs | regex_replace('/.*', '') }}
-      {%- elif groups["nwas_ers"] | d([]) | length > 0 and inventory_hostname in groups["nwas_ers"] -%}
+      {%- elif groups[sap_vm_temp_vip_group_nwas_ers] | d([]) | length > 0 and inventory_hostname in groups[sap_vm_temp_vip_group_nwas_ers] -%}
         {{ sap_vm_temp_vip_nwas_abap_ers | regex_replace('/.*', '') }}
       {%- endif %}
 

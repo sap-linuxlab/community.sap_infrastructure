@@ -16,7 +16,9 @@
 
 
 - name: Block to ensure that only supported groups are allowed
-  when: group_names | intersect(['hana_primary', 'hana_secondary', 'anydb_primary', 'anydb_secondary', 'nwas_ascs', 'nwas_ers'])
+  when:
+    - group_names | intersect([sap_vm_temp_vip_group_hana_primary, sap_vm_temp_vip_group_hana_secondary, sap_vm_temp_vip_group_anydb_primary,
+      sap_vm_temp_vip_group_anydb_secondary, sap_vm_temp_vip_group_nwas_ascs, sap_vm_temp_vip_group_nwas_ers])
   block:
 
     # - name: Identify OS Primary Network Interface

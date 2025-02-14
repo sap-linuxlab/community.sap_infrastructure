@@ -48,13 +48,13 @@
     enable_ip_forwarding: "{{ target_provision_host_spec.disable_ip_anti_spoofing }}" # When disable the Anti IP Spoofing = true, then Enable IP Forwarding = true
     availability_set: "{{ (
       (__sap_vm_provision_task_msazure_availability_set.results | selectattr('item','==','hana'))[0].state.name
-      if ('hana_primary' in target_provision_host_spec.sap_host_type or 'hana_secondary' in target_provision_host_spec.sap_host_type)
+      if (sap_vm_provision_group_hana_primary in target_provision_host_spec.sap_host_type or sap_vm_provision_group_hana_secondary in target_provision_host_spec.sap_host_type)
       else
       (__sap_vm_provision_task_msazure_availability_set.results | selectattr('item','==','anydb'))[0].state.name
-      if ('anydb_primary' in target_provision_host_spec.sap_host_type or 'anydb_secondary' in target_provision_host_spec.sap_host_type)
+      if (sap_vm_provision_group_anydb_primary in target_provision_host_spec.sap_host_type or sap_vm_provision_group_anydb_secondary in target_provision_host_spec.sap_host_type)
       else
       (__sap_vm_provision_task_msazure_availability_set.results | selectattr('item','==','nwas'))[0].state.name
-      if ('nwas_ascs' in target_provision_host_spec.sap_host_type or 'nwas_ers' in target_provision_host_spec.sap_host_type)
+      if (sap_vm_provision_group_nwas_ascs in target_provision_host_spec.sap_host_type or sap_vm_provision_group_nwas_ers in target_provision_host_spec.sap_host_type)
       ) | default(omit) }}"
     # Azure credentials
     subscription_id: "{{ sap_vm_provision_msazure_subscription_id }}"

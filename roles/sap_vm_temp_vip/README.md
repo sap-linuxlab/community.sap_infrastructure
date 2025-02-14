@@ -31,7 +31,8 @@ Role can be execute separately or as part of [ansible.playbooks_for_sap](https:/
 <!-- BEGIN Execution Flow -->
 1. Assert that required inputs were provided.
 2. Collect missing inputs using provided inputs (example: Calculate prefix from netmask, if VIP prefix was not defined)
-3. Append VIP to network interface
+3. Append VIP to network interface</br>
+  **NOTE:** Group names can be customized using `sap_vm_temp_vip_group_*` variables in `vars/default.yml` (e.g. `sap_vm_temp_vip_group_hana_primary`, `sap_vm_temp_vip_group_nwas_ascs`, etc.).
     - SAP HANA Primary host if both groups are present: `hana_primary, hana_secondary`
     - SAP AnyDB Primary host if both groups are present: `anydb_primary, anydb_secondary`
     - SAP ASCS host if both groups are present: `nwas_ascs, nwas_ers`

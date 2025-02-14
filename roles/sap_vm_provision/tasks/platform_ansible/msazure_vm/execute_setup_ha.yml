@@ -27,11 +27,11 @@
 #     tenant: "{{ sap_vm_provision_msazure_tenant_id }}"
 #     client_id: "{{ sap_vm_provision_msazure_app_client_id }}"
 #     secret: "{{ sap_vm_provision_msazure_app_client_secret }}"
-#   loop: "{{ (groups['hana_primary'] | default([])) }}"
+#   loop: "{{ (groups[sap_vm_provision_group_hana_primary] | default([])) }}"
 #   loop_control:
 #     loop_var: host_node
 #   when:
-#     - groups["hana_secondary"] is defined and (groups["hana_secondary"] | length>0)
+#     - groups[sap_vm_provision_group_hana_secondary] is defined and (groups[sap_vm_provision_group_hana_secondary] | length>0)
 
 - name: Ansible MS Azure Private DNS Records for SAP HANA HA Virtual Hostname
   no_log: "{{ __sap_vm_provision_no_log }}"
@@ -48,11 +48,11 @@
     tenant: "{{ sap_vm_provision_msazure_tenant_id }}"
     client_id: "{{ sap_vm_provision_msazure_app_client_id }}"
     secret: "{{ sap_vm_provision_msazure_app_client_secret }}"
-  loop: "{{ (groups['hana_primary'] | default([])) }}"
+  loop: "{{ (groups[sap_vm_provision_group_hana_primary] | default([])) }}"
   loop_control:
     loop_var: host_node
   when:
-    - groups["hana_secondary"] is defined and (groups["hana_secondary"]|length>0)
+    - groups[sap_vm_provision_group_hana_secondary] is defined and (groups[sap_vm_provision_group_hana_secondary]|length>0)
 
 
 # - name: Ansible MS Azure Route Table append route for SAP AnyDB HA
@@ -70,11 +70,11 @@
 #     tenant: "{{ sap_vm_provision_msazure_tenant_id }}"
 #     client_id: "{{ sap_vm_provision_msazure_app_client_id }}"
 #     secret: "{{ sap_vm_provision_msazure_app_client_secret }}"
-#   loop: "{{ (groups['anydb_primary'] | default([])) }}"
+#   loop: "{{ (groups[sap_vm_provision_group_anydb_primary] | default([])) }}"
 #   loop_control:
 #     loop_var: host_node
 #   when:
-#     - groups["anydb_secondary"] is defined and (groups["anydb_secondary"] | length>0)
+#     - groups[sap_vm_provision_group_anydb_secondary] is defined and (groups[sap_vm_provision_group_anydb_secondary] | length>0)
 
 - name: Ansible MS Azure Private DNS Records for SAP AnyDB HA Virtual Hostname
   no_log: "{{ __sap_vm_provision_no_log }}"
@@ -91,11 +91,11 @@
     tenant: "{{ sap_vm_provision_msazure_tenant_id }}"
     client_id: "{{ sap_vm_provision_msazure_app_client_id }}"
     secret: "{{ sap_vm_provision_msazure_app_client_secret }}"
-  loop: "{{ (groups['anydb_primary'] | default([])) }}"
+  loop: "{{ (groups[sap_vm_provision_group_anydb_primary] | default([])) }}"
   loop_control:
     loop_var: host_node
   when:
-    - groups["anydb_secondary"] is defined and (groups["anydb_secondary"]|length>0)
+    - groups[sap_vm_provision_group_anydb_secondary] is defined and (groups[sap_vm_provision_group_anydb_secondary]|length>0)
 
 
 # - name: Ansible MS Azure Route Table append route for SAP NetWeaver ASCS HA
@@ -113,11 +113,11 @@
 #     tenant: "{{ sap_vm_provision_msazure_tenant_id }}"
 #     client_id: "{{ sap_vm_provision_msazure_app_client_id }}"
 #     secret: "{{ sap_vm_provision_msazure_app_client_secret }}"
-#   loop: "{{ (groups['nwas_ascs'] | default([])) }}"
+#   loop: "{{ (groups[sap_vm_provision_group_nwas_ascs] | default([])) }}"
 #   loop_control:
 #     loop_var: host_node
 #   when:
-#     - groups["nwas_ers"] is defined and (groups["nwas_ers"] | length>0)
+#     - groups[sap_vm_provision_group_nwas_ers] is defined and (groups[sap_vm_provision_group_nwas_ers] | length>0)
 
 - name: Ansible MS Azure Private DNS Records for SAP NetWeaver ASCS HA Virtual Hostname
   no_log: "{{ __sap_vm_provision_no_log }}"
@@ -134,11 +134,11 @@
     tenant: "{{ sap_vm_provision_msazure_tenant_id }}"
     client_id: "{{ sap_vm_provision_msazure_app_client_id }}"
     secret: "{{ sap_vm_provision_msazure_app_client_secret }}"
-  loop: "{{ (groups['nwas_ascs'] | default([])) }}"
+  loop: "{{ (groups[sap_vm_provision_group_nwas_ascs] | default([])) }}"
   loop_control:
     loop_var: host_node
   when:
-    - groups["nwas_ers"] is defined and (groups["nwas_ers"]|length>0)
+    - groups[sap_vm_provision_group_nwas_ers] is defined and (groups[sap_vm_provision_group_nwas_ers]|length>0)
 
 
 # - name: Ansible MS Azure Route Table append route for SAP NetWeaver ERS HA
@@ -156,11 +156,11 @@
 #     tenant: "{{ sap_vm_provision_msazure_tenant_id }}"
 #     client_id: "{{ sap_vm_provision_msazure_app_client_id }}"
 #     secret: "{{ sap_vm_provision_msazure_app_client_secret }}"
-#   loop: "{{ (groups['nwas_ers'] | default([])) }}"
+#   loop: "{{ (groups[sap_vm_provision_group_nwas_ers] | default([])) }}"
 #   loop_control:
 #     loop_var: host_node
 #   when:
-#     - groups["nwas_ers"] is defined and (groups["nwas_ers"] | length>0)
+#     - groups[sap_vm_provision_group_nwas_ers] is defined and (groups[sap_vm_provision_group_nwas_ers] | length>0)
 
 - name: Ansible MS Azure Private DNS Records for SAP NetWeaver ERS HA Virtual Hostname
   no_log: "{{ __sap_vm_provision_no_log }}"
@@ -177,11 +177,11 @@
     tenant: "{{ sap_vm_provision_msazure_tenant_id }}"
     client_id: "{{ sap_vm_provision_msazure_app_client_id }}"
     secret: "{{ sap_vm_provision_msazure_app_client_secret }}"
-  loop: "{{ (groups['nwas_ers'] | default([])) }}"
+  loop: "{{ (groups[sap_vm_provision_group_nwas_ers] | default([])) }}"
   loop_control:
     loop_var: host_node
   when:
-    - groups["nwas_ers"] is defined and (groups["nwas_ers"]|length>0)
+    - groups[sap_vm_provision_group_nwas_ers] is defined and (groups[sap_vm_provision_group_nwas_ers]|length>0)
 
 
 ## For HA of PAS and AAS, if required
@@ -201,11 +201,11 @@
 #     tenant: "{{ sap_vm_provision_msazure_tenant_id }}"
 #     client_id: "{{ sap_vm_provision_msazure_app_client_id }}"
 #     secret: "{{ sap_vm_provision_msazure_app_client_secret }}"
-#   loop: "{{ (groups['nwas_pas'] | default([])) }}"
+#   loop: "{{ (groups[sap_vm_provision_group_nwas_pas] | default([])) }}"
 #   loop_control:
 #     loop_var: host_node
 #   when:
-#     - groups["nwas_ers"] is defined and (groups["nwas_ers"] | length>0)
+#     - groups[sap_vm_provision_group_nwas_ers] is defined and (groups[sap_vm_provision_group_nwas_ers] | length>0)
 
 # - name: Ansible MS Azure Private DNS Records for SAP NetWeaver PAS HA Virtual Hostname
 #   no_log: "{{ __sap_vm_provision_no_log }}"
@@ -222,11 +222,11 @@
 #     tenant: "{{ sap_vm_provision_msazure_tenant_id }}"
 #     client_id: "{{ sap_vm_provision_msazure_app_client_id }}"
 #     secret: "{{ sap_vm_provision_msazure_app_client_secret }}"
-#   loop: "{{ (groups['nwas_pas'] | default([])) }}"
+#   loop: "{{ (groups[sap_vm_provision_group_nwas_pas] | default([])) }}"
 #   loop_control:
 #     loop_var: host_node
 #   when:
-#     - groups["nwas_ers"] is defined and (groups["nwas_ers"]|length>0)
+#     - groups[sap_vm_provision_group_nwas_ers] is defined and (groups[sap_vm_provision_group_nwas_ers]|length>0)
 
 
 # - name: Ansible MS Azure Route Table append route for SAP NetWeaver AAS HA
@@ -244,11 +244,11 @@
 #     tenant: "{{ sap_vm_provision_msazure_tenant_id }}"
 #     client_id: "{{ sap_vm_provision_msazure_app_client_id }}"
 #     secret: "{{ sap_vm_provision_msazure_app_client_secret }}"
-#   loop: "{{ (groups['nwas_aas'] | default([])) }}"
+#   loop: "{{ (groups[sap_vm_provision_group_nwas_aas] | default([])) }}"
 #   loop_control:
 #     loop_var: host_node
 #   when:
-#     - groups["nwas_ers"] is defined and (groups["nwas_ers"] | length>0)
+#     - groups[sap_vm_provision_group_nwas_ers] is defined and (groups[sap_vm_provision_group_nwas_ers] | length>0)
 
 # - name: Ansible MS Azure Private DNS Records for SAP NetWeaver AAS HA Virtual Hostname
 #   no_log: "{{ __sap_vm_provision_no_log }}"
@@ -265,11 +265,11 @@
 #     tenant: "{{ sap_vm_provision_msazure_tenant_id }}"
 #     client_id: "{{ sap_vm_provision_msazure_app_client_id }}"
 #     secret: "{{ sap_vm_provision_msazure_app_client_secret }}"
-#   loop: "{{ (groups['nwas_aas'] | default([])) }}"
+#   loop: "{{ (groups[sap_vm_provision_group_nwas_aas] | default([])) }}"
 #   loop_control:
 #     loop_var: host_node
 #   when:
-#     - groups["nwas_ers"] is defined and (groups["nwas_ers"]|length>0)
+#     - groups[sap_vm_provision_group_nwas_ers] is defined and (groups[sap_vm_provision_group_nwas_ers]|length>0)
 
 
 - name: MS Azure IAM Role - Prepare IAM Role name
@@ -409,7 +409,7 @@
     # AZURE_SECRET: "{{ sap_vm_provision_msazure_app_client_secret }}"
   when:
     - sap_ha_pacemaker_cluster_msazure_resource_group is defined
-    - (groups["hana_secondary"] is defined and (groups["hana_secondary"] | length>0)) or (groups["nwas_ers"] is defined and (groups["nwas_ers"] | length>0)) or (groups["anydb_secondary"] is defined and (groups["anydb_secondary"] | length>0))
+    - (groups[sap_vm_provision_group_hana_secondary] is defined and (groups[sap_vm_provision_group_hana_secondary] | length>0)) or (groups[sap_vm_provision_group_nwas_ers] is defined and (groups[sap_vm_provision_group_nwas_ers] | length>0)) or (groups[sap_vm_provision_group_anydb_secondary] is defined and (groups[sap_vm_provision_group_anydb_secondary] | length>0))
   block:
 
     - name: Gather MS Azure Subnet ID
@@ -437,7 +437,7 @@
           zones: ["1", "2", "3"] # Zone-redundant
       when:
         - vip_item | length > 0
-        - groups["hana_secondary"] is defined and (groups["hana_secondary"]|length>0)
+        - groups[sap_vm_provision_group_hana_secondary] is defined and (groups[sap_vm_provision_group_hana_secondary]|length>0)
       loop:
         - "{{ sap_vm_provision_ha_vip_hana_primary }}"
       loop_control:
@@ -456,7 +456,7 @@
           zones: ["1", "2", "3"] # Zone-redundant
       when:
         - vip_item | length > 0
-        - groups["anydb_secondary"] is defined and (groups["anydb_secondary"]|length>0)
+        - groups[sap_vm_provision_group_anydb_secondary] is defined and (groups[sap_vm_provision_group_anydb_secondary]|length>0)
       loop:
         - "{{ sap_vm_provision_ha_vip_anydb_primary }}"
       loop_control:
@@ -475,7 +475,7 @@
           zones: ["1", "2", "3"] # Zone-redundant
       when:
         - vip_item | length > 0
-        - groups["nwas_ers"] is defined and (groups["nwas_ers"]|length>0)
+        - groups[sap_vm_provision_group_nwas_ers] is defined and (groups[sap_vm_provision_group_nwas_ers]|length>0)
       loop:
         - "{{ sap_vm_provision_ha_vip_nwas_abap_ascs }}"
         - "{{ sap_vm_provision_ha_vip_nwas_abap_ers }}"
@@ -496,7 +496,7 @@
           fail_count: 2
       when:
         - sapinstance_item | length > 0
-        - groups["hana_secondary"] is defined and (groups["hana_secondary"]|length>0)
+        - groups[sap_vm_provision_group_hana_secondary] is defined and (groups[sap_vm_provision_group_hana_secondary]|length>0)
       loop:
         - "{{ sap_system_hana_db_instance_nr | default() }}"
       loop_control:
@@ -514,7 +514,7 @@
           interval: 5
           fail_count: 2
       when:
-        - groups["anydb_secondary"] is defined and (groups["anydb_secondary"]|length>0)
+        - groups[sap_vm_provision_group_anydb_secondary] is defined and (groups[sap_vm_provision_group_anydb_secondary]|length>0)
 
     - name: Define Ansible Variables for Azure Load Balancer - VIP Health Check for SAP NetWeaver ASCS/ERS
       ansible.builtin.set_fact:
@@ -528,7 +528,7 @@
           fail_count: 2
       when:
         - sapinstance_item | length > 0
-        - groups["nwas_ers"] is defined and (groups["nwas_ers"]|length>0)
+        - groups[sap_vm_provision_group_nwas_ers] is defined and (groups[sap_vm_provision_group_nwas_ers]|length>0)
       loop:
         - "{{ sap_system_nwas_abap_ascs_instance_nr | default() }}"
         - "{{ sap_system_nwas_abap_ers_instance_nr | default() }}"
@@ -554,7 +554,7 @@
           enable_floating_ip: true # enable Frontend IP as a Floating IP (aka. Direct Server Return), if disabled then only 1 LB Rule allowed
       when:
         - rule_item | length > 0
-        - groups["hana_secondary"] is defined and (groups["hana_secondary"]|length>0)
+        - groups[sap_vm_provision_group_hana_secondary] is defined and (groups[sap_vm_provision_group_hana_secondary]|length>0)
       loop:
         - "{{ sap_vm_provision_ha_vip_hana_primary }}"
       loop_control:
@@ -578,7 +578,7 @@
           enable_floating_ip: true # enable Frontend IP as a Floating IP (aka. Direct Server Return), if disabled then only 1 LB Rule allowed
       when:
         - rule_item | length > 0
-        - groups["anydb_secondary"] is defined and (groups["anydb_secondary"]|length>0)
+        - groups[sap_vm_provision_group_anydb_secondary] is defined and (groups[sap_vm_provision_group_anydb_secondary]|length>0)
       loop:
         - "{{ sap_vm_provision_ha_vip_anydb_primary }}"
       loop_control:
@@ -602,7 +602,7 @@
           enable_floating_ip: true # enable Frontend IP as a Floating IP (aka. Direct Server Return), if disabled then only 1 LB Rule allowed
       when:
         - rule_item | length > 0
-        - groups["nwas_ers"] is defined and (groups["nwas_ers"]|length>0)
+        - groups[sap_vm_provision_group_nwas_ers] is defined and (groups[sap_vm_provision_group_nwas_ers]|length>0)
       loop:
         - "{{ sap_vm_provision_ha_vip_nwas_abap_ascs }}"
         - "{{ sap_vm_provision_ha_vip_nwas_abap_ers }}"
@@ -627,7 +627,7 @@
         tenant: "{{ sap_vm_provision_msazure_tenant_id }}"
         client_id: "{{ sap_vm_provision_msazure_app_client_id }}"
         secret: "{{ sap_vm_provision_msazure_app_client_secret }}"
-      when: (groups["hana_secondary"] is defined and (groups["hana_secondary"]|length>0))
+      when: (groups[sap_vm_provision_group_hana_secondary] is defined and (groups[sap_vm_provision_group_hana_secondary]|length>0))
 
     - name: MS Azure Load Balancer (network L4) - Create NLB for SAP AnyDB with Virtual IP and Health Probe configuration
       no_log: "{{ __sap_vm_provision_no_log }}"
@@ -646,7 +646,7 @@
         tenant: "{{ sap_vm_provision_msazure_tenant_id }}"
         client_id: "{{ sap_vm_provision_msazure_app_client_id }}"
         secret: "{{ sap_vm_provision_msazure_app_client_secret }}"
-      when: (groups["anydb_secondary"] is defined and (groups["anydb_secondary"]|length>0))
+      when: (groups[sap_vm_provision_group_anydb_secondary] is defined and (groups[sap_vm_provision_group_anydb_secondary]|length>0))
 
     - name: MS Azure Load Balancer (network L4) - Create NLB for SAP NetWeaver with Virtual IP and Health Probe configuration
       no_log: "{{ __sap_vm_provision_no_log }}"
@@ -665,27 +665,27 @@
         tenant: "{{ sap_vm_provision_msazure_tenant_id }}"
         client_id: "{{ sap_vm_provision_msazure_app_client_id }}"
         secret: "{{ sap_vm_provision_msazure_app_client_secret }}"
-      when: (groups["nwas_ers"] is defined and (groups["nwas_ers"]|length>0))
+      when: (groups[sap_vm_provision_group_nwas_ers] is defined and (groups[sap_vm_provision_group_nwas_ers]|length>0))
 
     - name: MS Azure Load Balancer (network L4) - Define Ansible Variable of Load Balancer for Database Server
       ansible.builtin.set_fact:
-        __sap_vm_provision_task_msazure_lb1_info: "{{ __sap_vm_provision_task_msazure_lb1a_info if (groups['hana_secondary'] is defined and (groups['hana_secondary']|length>0)) else __sap_vm_provision_task_msazure_lb1b_info if (groups['anydb_secondary'] is defined and (groups['anydb_secondary']|length>0)) }}"
-      when: (groups["hana_secondary"] is defined and (groups["hana_secondary"]|length>0)) or (groups["anydb_secondary"] is defined and (groups["anydb_secondary"]|length>0))
+        __sap_vm_provision_task_msazure_lb1_info: "{{ __sap_vm_provision_task_msazure_lb1a_info if (groups[sap_vm_provision_group_hana_secondary] is defined and (groups[sap_vm_provision_group_hana_secondary]|length>0)) else __sap_vm_provision_task_msazure_lb1b_info if (groups[sap_vm_provision_group_anydb_secondary] is defined and (groups[sap_vm_provision_group_anydb_secondary]|length>0)) }}"
+      when: (groups[sap_vm_provision_group_hana_secondary] is defined and (groups[sap_vm_provision_group_hana_secondary]|length>0)) or (groups[sap_vm_provision_group_anydb_secondary] is defined and (groups[sap_vm_provision_group_anydb_secondary]|length>0))
 
     - name: Set fact to hold loop variables from include_tasks when SAP HANA HA
       ansible.builtin.set_fact:
         lb_ha_sap_hana: "{{ __sap_vm_provision_task_msazure_lb1_info.state.backend_address_pools | selectattr('name', '==', sap_vm_provision_ha_load_balancer_name_hana + '-backend-pool') | map(attribute='id') | first }}"
-      when: (groups["hana_secondary"] is defined and (groups["hana_secondary"]|length>0))
+      when: (groups[sap_vm_provision_group_hana_secondary] is defined and (groups[sap_vm_provision_group_hana_secondary]|length>0))
 
     - name: Set fact to hold loop variables from include_tasks when SAP AnyDB HA
       ansible.builtin.set_fact:
         lb_ha_sap_anydb: "{{ __sap_vm_provision_task_msazure_lb1_info.state.backend_address_pools | selectattr('name', '==', sap_vm_provision_ha_load_balancer_name_anydb + '-backend-pool') | map(attribute='id') | first }}"
-      when: (groups["anydb_secondary"] is defined and (groups["anydb_secondary"]|length>0))
+      when: (groups[sap_vm_provision_group_anydb_secondary] is defined and (groups[sap_vm_provision_group_anydb_secondary]|length>0))
 
     - name: Set fact to hold loop variables from include_tasks when SAP NetWeaver HA
       ansible.builtin.set_fact:
         lb_ha_sap_nwas: "{{ __sap_vm_provision_task_msazure_lb2_info.state.backend_address_pools | selectattr('name', '==', sap_vm_provision_ha_load_balancer_name_nwas + '-ascs-backend-pool') | map(attribute='id') | first }}"
-      when: (groups["nwas_ers"] is defined and (groups["nwas_ers"]|length>0))
+      when: (groups[sap_vm_provision_group_nwas_ers] is defined and (groups[sap_vm_provision_group_nwas_ers]|length>0))
 
     - name: Update network interfaces for MS Azure VM - for SAP HANA HA with load balancing
       no_log: "{{ __sap_vm_provision_no_log }}"
@@ -715,7 +715,7 @@
         loop_var: host_node
       when:
         - "'hana_' in lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan][host_node].sap_host_type" # REPLACE with substring in any of the strings contained in the list
-        - groups["hana_secondary"] is defined and (groups["hana_secondary"]|length>0)
+        - groups[sap_vm_provision_group_hana_secondary] is defined and (groups[sap_vm_provision_group_hana_secondary]|length>0)
 
     - name: Update network interfaces for MS Azure VM - for SAP AnyDB HA with load balancing
       no_log: "{{ __sap_vm_provision_no_log }}"
@@ -745,7 +745,7 @@
         loop_var: host_node
       when:
         - "'anydb_' in lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan][host_node].sap_host_type" # REPLACE with substring in any of the strings contained in the list
-        - groups["anydb_secondary"] is defined and (groups["anydb_secondary"]|length>0)
+        - groups[sap_vm_provision_group_anydb_secondary] is defined and (groups[sap_vm_provision_group_anydb_secondary]|length>0)
 
     - name: Update network interfaces for MS Azure VM - for SAP NetWeaver HA ASCS/ERS with load balancing
       no_log: "{{ __sap_vm_provision_no_log }}"
@@ -774,5 +774,5 @@
       loop_control:
         loop_var: host_node
       when:
-        - "'nwas_ascs' in lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan][host_node].sap_host_type or 'nwas_ers' in lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan][host_node].sap_host_type"  # REPLACE with substring in any of the strings contained in the list
-        - groups["nwas_ers"] is defined and (groups["nwas_ers"]|length>0)
+        - "sap_vm_provision_group_nwas_ascs in lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan][host_node].sap_host_type or sap_vm_provision_group_nwas_ers in lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan][host_node].sap_host_type"  # REPLACE with substring in any of the strings contained in the list
+        - groups[sap_vm_provision_group_nwas_ers] is defined and (groups[sap_vm_provision_group_nwas_ers]|length>0)
