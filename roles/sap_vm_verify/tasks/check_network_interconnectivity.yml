@@ -13,11 +13,11 @@
     sleep: 10
     timeout: 600
   loop:
-    - 5{{ sap_vm_verify_instance_nr_db }}13
-    - 5{{ sap_vm_verify_instance_nr_db }}14
     - 3{{ sap_vm_verify_instance_nr_db }}06
-    - 3{{ sap_vm_verify_instance_nr_db }}13
-    - 3{{ sap_vm_verify_instance_nr_db }}15
+    - 3{{ sap_vm_verify_instance_nr_db }}13 # SAP HANA - System DB SQL
+    - 3{{ sap_vm_verify_instance_nr_db }}15 # SAP HANA - MDC Tenant 1 SQL
+    - 5{{ sap_vm_verify_instance_nr_db }}13 # SAP HANA - startsrv HTTP
+    - 5{{ sap_vm_verify_instance_nr_db }}14 # SAP HANA - startsrv HTTPS
     - 80{{ sap_vm_verify_instance_nr_db }}
     - 43{{ sap_vm_verify_instance_nr_db }}
 
@@ -29,11 +29,11 @@
     sleep: 10
     timeout: 600
   loop:
-    - 5{{ sap_vm_verify_instance_nr_db }}13
-    - 5{{ sap_vm_verify_instance_nr_db }}14
     - 3{{ sap_vm_verify_instance_nr_db }}06
-    - 3{{ sap_vm_verify_instance_nr_db }}13
-    - 3{{ sap_vm_verify_instance_nr_db }}15
+    - 3{{ sap_vm_verify_instance_nr_db }}13 # SAP HANA - System DB SQL
+    - 3{{ sap_vm_verify_instance_nr_db }}15 # SAP HANA - MDC Tenant 1 SQL
+    - 5{{ sap_vm_verify_instance_nr_db }}13 # SAP HANA - startsrv HTTP
+    - 5{{ sap_vm_verify_instance_nr_db }}14 # SAP HANA - startsrv HTTPS
     - 80{{ sap_vm_verify_instance_nr_db }}
     - 43{{ sap_vm_verify_instance_nr_db }}
 
@@ -81,11 +81,13 @@
     sleep: 10
     timeout: 600
   loop:
-    - 32{{ sap_vm_verify_instance_nr_nwas_abap_ascs }}
-    - 36{{ sap_vm_verify_instance_nr_nwas_abap_ascs }}
-    - 39{{ sap_vm_verify_instance_nr_nwas_abap_ascs }}
-    - 5{{ sap_vm_verify_instance_nr_nwas_abap_ascs }}13
-    - 5{{ sap_vm_verify_instance_nr_nwas_abap_ascs }}14
+    - 32{{ sap_vm_verify_instance_nr_nwas_abap_ascs }} # SAP NetWeaver ASCS - Dispatcher sapdp<ASCS_NN> process
+    - 36{{ sap_vm_verify_instance_nr_nwas_abap_ascs }} # SAP NetWeaver ASCS - Message Server sapms<SAPSID> process
+    - 81{{ sap_vm_verify_instance_nr_nwas_abap_ascs }} # SAP NetWeaver ASCS - Message Server HTTP sapms<SAPSID> process
+    - 39{{ sap_vm_verify_instance_nr_nwas_abap_ascs }} # SAP NetWeaver ASCS - Enqueue Server sapenq<SAPSID> process
+    - 5{{ sap_vm_verify_instance_nr_nwas_abap_ascs }}16 # SAP NetWeaver ASCS - Enqueue Replicator Server sapenqrepl<SAPSID> process
+    - 5{{ sap_vm_verify_instance_nr_nwas_abap_ascs }}13 # SAP NetWeaver ASCS - SAP Start Service (SAPControl SOAP) HTTP sapctrl<ASCS_NN> process
+    - 5{{ sap_vm_verify_instance_nr_nwas_abap_ascs }}14 # SAP NetWeaver ASCS - SAP Start Service (SAPControl SOAP) HTTPS (Secure) sapctrls<ASCS_NN>
 
 - name: Check interconnectivity between hosts - SAP NetWeaver ABAP ERS
   ansible.builtin.wait_for:
@@ -97,9 +99,9 @@
   loop:
     - 32{{ sap_vm_verify_instance_nr_nwas_abap_ers }}
     - 36{{ sap_vm_verify_instance_nr_nwas_abap_ers }}
-    - 39{{ sap_vm_verify_instance_nr_nwas_abap_ers }}
-    - 5{{ sap_vm_verify_instance_nr_nwas_abap_ers }}13
-    - 5{{ sap_vm_verify_instance_nr_nwas_abap_ers }}14
+    - 39{{ sap_vm_verify_instance_nr_nwas_abap_ers }} # SAP NetWeaver ERS - Enqueue Replication Server sapenqr<SAPSID> process
+    - 5{{ sap_vm_verify_instance_nr_nwas_abap_ers }}13 # SAP NetWeaver ERS - SAP Start Service (SAPControl SOAP) HTTP sapctrl<ERS_NN> process
+    - 5{{ sap_vm_verify_instance_nr_nwas_abap_ers }}14 # SAP NetWeaver ERS - SAP Start Service (SAPControl SOAP) HTTPS (Secure) sapctrls<ERS_NN>
 
 - name: Check interconnectivity between hosts - SAP NetWeaver ABAP PAS
   ansible.builtin.wait_for:
@@ -250,3 +252,23 @@
   loop:
     - 1128
     - 1129
+
+- name: Check interconnectivity between hosts - SAP AnyDB - Primary - IBM Db2 Communication Port
+  ansible.builtin.wait_for:
+    host: "{{ sap_vm_verify_host_anydb_ibmdb2_primary }}"
+    port: "{{ item }}"
+    delay: 10
+    sleep: 10
+    timeout: 600
+  loop:
+    - 5912
+
+- name: Check interconnectivity between hosts - SAP AnyDB - Secondary - IBM Db2 Communication Port
+  ansible.builtin.wait_for:
+    host: "{{ sap_vm_verify_host_anydb_ibmdb2_secondary }}"
+    port: "{{ item }}"
+    delay: 10
+    sleep: 10
+    timeout: 600
+  loop:
+    - 5912
