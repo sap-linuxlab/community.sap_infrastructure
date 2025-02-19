@@ -4,6 +4,22 @@ community.sap\_infrastructure Release Notes
 
 .. contents:: Topics
 
+v1.1.2
+======
+
+Release Summary
+---------------
+
+A few minor changes
+
+Bugfixes
+--------
+
+- collection - implement changelogs/changelog.yaml (https://github.com/sap-linuxlab/community.sap_infrastructure/pull/84)
+- sap_vm_provision - update azure.azcollection minimum version requirement (https://github.com/sap-linuxlab/community.sap_infrastructure/pull/81)
+- sap_vm_provision/sap_vm_temp_vip - Add dynamic group handling for provisioning (https://github.com/sap-linuxlab/community.sap_infrastructure/pull/78)
+- sap_vm_verify - stub code comments and reorder (https://github.com/sap-linuxlab/community.sap_infrastructure/pull/80)
+
 v1.1.1
 ======
 
