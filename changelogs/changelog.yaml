@@ -72,3 +72,12 @@ releases:
       bugfixes:
         - sap_hypervisor_node_preconfigure - Bug fix for HPP wait
         - sap_hypervisor_node_preconfigure - Bug fix for HCO wait and validate
+  1.1.2:
+    release_date: '2025-02-19'
+    changes:
+      release_summary: A few minor changes
+      bugfixes:
+        - collection - implement changelogs/changelog.yaml (https://github.com/sap-linuxlab/community.sap_infrastructure/pull/84)
+        - sap_vm_provision - update azure.azcollection minimum version requirement (https://github.com/sap-linuxlab/community.sap_infrastructure/pull/81)
+        - sap_vm_verify - stub code comments and reorder (https://github.com/sap-linuxlab/community.sap_infrastructure/pull/80)
+        - sap_vm_provision/sap_vm_temp_vip - Add dynamic group handling for provisioning (https://github.com/sap-linuxlab/community.sap_infrastructure/pull/78)
