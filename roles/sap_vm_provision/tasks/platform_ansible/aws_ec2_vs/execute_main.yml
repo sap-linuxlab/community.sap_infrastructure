@@ -24,7 +24,7 @@
       no_log: "{{ __sap_vm_provision_no_log }}"
       register: __sap_vm_provision_task_aws_placement_group
       run_once: true
-      community.aws.ec2_placement_group:
+      amazon.aws.ec2_placement_group:
         name: "{{ sap_vm_provision_aws_placement_resource_name }}-{{ item }}"
         state: present
         strategy: spread
