@@ -25,7 +25,7 @@ collections:
     version: 2.1.0
   - name: vmware.vmware_rest
     type: galaxy
-    version: 3.0.0
+    version: 4.5.0
   - name: cloud.common
     type: galaxy
     version: 4.0.0
