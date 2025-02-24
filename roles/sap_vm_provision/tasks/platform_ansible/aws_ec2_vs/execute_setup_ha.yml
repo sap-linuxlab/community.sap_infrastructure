@@ -1,5 +1,30 @@
 ---
 
+# Requirement for fence agent: stonith:external/ec2
+# All instances in cluster need to be tagged with tag configured in agent
+# sap_ha_pacemaker_cluster role configures default tag name 'pacemaker' with value of 'inventory_hostname_short'
+- name: AWS EC2 Instances - Ensure pacemaker tag is present
+  no_log: "{{ __sap_vm_provision_no_log }}"
+  amazon.aws.ec2_tag:
+    access_key: "{{ sap_vm_provision_aws_access_key }}"
+    secret_key: "{{ sap_vm_provision_aws_secret_access_key }}"
+    resource: "{{ hostvars[host_node].ansible_board_asset_tag }}"
+    state: present
+    tags:
+      pacemaker: "{{ inventory_hostname_short }}"
+  loop:
+    "{{
+      (groups[sap_vm_provision_group_hana_primary] + groups[sap_vm_provision_group_hana_secondary]
+      if groups[sap_vm_provision_group_hana_secondary] is defined and groups[sap_vm_provision_group_hana_secondary] else [])
+      + (groups[sap_vm_provision_group_anydb_primary] + groups[sap_vm_provision_group_anydb_secondary]
+      if groups[sap_vm_provision_group_anydb_secondary] is defined and groups[sap_vm_provision_group_anydb_secondary] else [])
+      + (groups[sap_vm_provision_group_nwas_ascs] + groups[sap_vm_provision_group_nwas_ers]
+      if groups[sap_vm_provision_group_nwas_ers] is defined and groups[sap_vm_provision_group_nwas_ers] else [])
+    }}"
+  loop_control:
+    loop_var: host_node
+
+
 - name: Gather information about AWS account
   register: __sap_vm_provision_task_aws_account_info
   no_log: "{{ __sap_vm_provision_no_log }}"
