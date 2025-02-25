@@ -1,8 +1,10 @@
 ---
 
-# Requirement for fence agent: stonith:external/ec2
+# (SUSE specific) Requirement for fence agent: stonith:external/ec2
 # All instances in cluster need to be tagged with tag configured in agent
 # sap_ha_pacemaker_cluster role configures default tag name 'pacemaker' with value of 'inventory_hostname_short'
+# https://documentation.suse.com/sbp/sap-15/html/SLES4SAP-hana-sr-guide-perfopt-15-aws/index.html#id-tagging-the-ec2-instances
+# https://docs.aws.amazon.com/sap/latest/sap-hana/sap-hana-on-aws-stonith-device.html
 - name: AWS EC2 Instances - Ensure pacemaker tag is present
   no_log: "{{ __sap_vm_provision_no_log }}"
   amazon.aws.ec2_tag:
@@ -23,6 +25,7 @@
     }}"
   loop_control:
     loop_var: host_node
+  when: ansible_os_family == 'Suse'
 
 
 - name: Gather information about AWS account
