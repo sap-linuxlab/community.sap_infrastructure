@@ -178,13 +178,13 @@
           #   "drivers:multipath": "0"
           group: "{{ (
             (__sap_vm_provision_task_ibmpowervm_collocation_rule.results | selectattr('item','==','hana'))[0].name
-            if ('hana_primary' in target_provision_host_spec.sap_host_type or 'hana_secondary' in target_provision_host_spec.sap_host_type)
+            if (sap_vm_provision_group_hana_primary in target_provision_host_spec.sap_host_type or sap_vm_provision_group_hana_secondary in target_provision_host_spec.sap_host_type)
             else
             (__sap_vm_provision_task_ibmpowervm_collocation_rule.results | selectattr('item','==','anydb'))[0].name
-            if ('anydb_primary' in target_provision_host_spec.sap_host_type or 'anydb_secondary' in target_provision_host_spec.sap_host_type)
+            if (sap_vm_provision_group_anydb_primary in target_provision_host_spec.sap_host_type or sap_vm_provision_group_anydb_secondary in target_provision_host_spec.sap_host_type)
             else
             (__sap_vm_provision_task_ibmpowervm_collocation_rule.results | selectattr('item','==','nwas'))[0].name
-            if ('nwas_ascs' in target_provision_host_spec.sap_host_type or 'nwas_ers' in target_provision_host_spec.sap_host_type)
+            if (sap_vm_provision_group_nwas_ascs in target_provision_host_spec.sap_host_type or sap_vm_provision_group_nwas_ers in target_provision_host_spec.sap_host_type)
             ) | default(omit) }}"
 
         validate_certs: false # Allow Self-Signed Certificate
@@ -330,13 +330,13 @@
       #   "drivers:multipath": "0"
       group: "{{ (
         (__sap_vm_provision_task_ibmpowervm_collocation_rule.results | selectattr('item','==','hana'))[0].name
-        if ('hana_primary' in target_provision_host_spec.sap_host_type or 'hana_secondary' in target_provision_host_spec.sap_host_type)
+        if (sap_vm_provision_group_hana_primary in target_provision_host_spec.sap_host_type or sap_vm_provision_group_hana_secondary in target_provision_host_spec.sap_host_type)
         else
         (__sap_vm_provision_task_ibmpowervm_collocation_rule.results | selectattr('item','==','anydb'))[0].name
-        if ('anydb_primary' in target_provision_host_spec.sap_host_type or 'anydb_secondary' in target_provision_host_spec.sap_host_type)
+        if (sap_vm_provision_group_anydb_primary in target_provision_host_spec.sap_host_type or sap_vm_provision_group_anydb_secondary in target_provision_host_spec.sap_host_type)
         else
         (__sap_vm_provision_task_ibmpowervm_collocation_rule.results | selectattr('item','==','nwas'))[0].name
-        if ('nwas_ascs' in target_provision_host_spec.sap_host_type or 'nwas_ers' in target_provision_host_spec.sap_host_type)
+        if (sap_vm_provision_group_nwas_ascs in target_provision_host_spec.sap_host_type or sap_vm_provision_group_nwas_ers in target_provision_host_spec.sap_host_type)
         ) | default(omit) }}"
 
     validate_certs: false # Allow Self-Signed Certificate

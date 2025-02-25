@@ -6,13 +6,13 @@
 - name: Set fact for temporary listening port
   ansible.builtin.set_fact:
     __sap_vm_temp_vip_port: >-
-      {% if groups['hana_secondary'] | d([]) | length > 0 and inventory_hostname in groups["hana_primary"] -%}
+      {% if groups[sap_vm_temp_vip_group_hana_secondary] | d([]) | length > 0 and inventory_hostname in groups[sap_vm_temp_vip_group_hana_primary] -%}
         55550
-      {%- elif groups['anydb_secondary'] | d([]) | length > 0 and inventory_hostname in groups["anydb_primary"] -%}
+      {%- elif groups[sap_vm_temp_vip_group_anydb_secondary] | d([]) | length > 0 and inventory_hostname in groups[sap_vm_temp_vip_group_anydb_primary] -%}
         55550
-      {%- elif groups["nwas_ers"] | d([]) | length > 0 and inventory_hostname in groups["nwas_ascs"] -%}
+      {%- elif groups[sap_vm_temp_vip_group_nwas_ers] | d([]) | length > 0 and inventory_hostname in groups[sap_vm_temp_vip_group_nwas_ascs] -%}
         55551
-      {%- elif groups["nwas_ers"] | d([]) | length > 0 and inventory_hostname in groups["nwas_ers"] -%}
+      {%- elif groups[sap_vm_temp_vip_group_nwas_ers] | d([]) | length > 0 and inventory_hostname in groups[sap_vm_temp_vip_group_nwas_ers] -%}
         55552
       {%- endif %}
 

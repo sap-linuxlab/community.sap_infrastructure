@@ -1,5 +1,33 @@
 ---
 
+# (SUSE specific) Requirement for fence agent: stonith:external/ec2
+# All instances in cluster need to be tagged with tag configured in agent
+# sap_ha_pacemaker_cluster role configures default tag name 'pacemaker' with value of 'inventory_hostname_short'
+# https://documentation.suse.com/sbp/sap-15/html/SLES4SAP-hana-sr-guide-perfopt-15-aws/index.html#id-tagging-the-ec2-instances
+# https://docs.aws.amazon.com/sap/latest/sap-hana/sap-hana-on-aws-stonith-device.html
+- name: AWS EC2 Instances - Ensure pacemaker tag is present
+  no_log: "{{ __sap_vm_provision_no_log }}"
+  amazon.aws.ec2_tag:
+    access_key: "{{ sap_vm_provision_aws_access_key }}"
+    secret_key: "{{ sap_vm_provision_aws_secret_access_key }}"
+    resource: "{{ hostvars[host_node].ansible_board_asset_tag }}"
+    state: present
+    tags:
+      pacemaker: "{{ inventory_hostname_short }}"
+  loop:
+    "{{
+      (groups[sap_vm_provision_group_hana_primary] + groups[sap_vm_provision_group_hana_secondary]
+      if groups[sap_vm_provision_group_hana_secondary] is defined and groups[sap_vm_provision_group_hana_secondary] else [])
+      + (groups[sap_vm_provision_group_anydb_primary] + groups[sap_vm_provision_group_anydb_secondary]
+      if groups[sap_vm_provision_group_anydb_secondary] is defined and groups[sap_vm_provision_group_anydb_secondary] else [])
+      + (groups[sap_vm_provision_group_nwas_ascs] + groups[sap_vm_provision_group_nwas_ers]
+      if groups[sap_vm_provision_group_nwas_ers] is defined and groups[sap_vm_provision_group_nwas_ers] else [])
+    }}"
+  loop_control:
+    loop_var: host_node
+  when: ansible_os_family == 'Suse'
+
+
 - name: Gather information about AWS account
   register: __sap_vm_provision_task_aws_account_info
   no_log: "{{ __sap_vm_provision_no_log }}"
@@ -31,11 +59,11 @@
         instance_id: "{{ hostvars[host_node].ansible_board_asset_tag }}"
     access_key: "{{ sap_vm_provision_aws_access_key }}"
     secret_key: "{{ sap_vm_provision_aws_secret_access_key }}"
-  loop: "{{ (groups['hana_primary'] | default([])) }}"
+  loop: "{{ (groups[sap_vm_provision_group_hana_primary] | default([])) }}"
   loop_control:
     loop_var: host_node
   when:
-    - groups["hana_secondary"] is defined and (groups["hana_secondary"] | length>0)
+    - groups[sap_vm_provision_group_hana_secondary] is defined and (groups[sap_vm_provision_group_hana_secondary] | length>0)
 
 - name: Ansible AWS Route53 DNS Records for SAP HANA HA Virtual Hostname
   register: __sap_vm_provision_task_aws_route53_sap_hana
@@ -52,11 +80,11 @@
     access_key: "{{ sap_vm_provision_aws_access_key }}"
     secret_key: "{{ sap_vm_provision_aws_secret_access_key }}"
     overwrite: "{{ sap_vm_provision_aws_dns_overwrite if sap_vm_provision_aws_dns_overwrite | bool else false }}"
-  loop: "{{ (groups['hana_primary'] | default([])) }}"
+  loop: "{{ (groups[sap_vm_provision_group_hana_primary] | default([])) }}"
   loop_control:
     loop_var: host_node
   when:
-    - groups["hana_secondary"] is defined and (groups["hana_secondary"]|length>0)
+    - groups[sap_vm_provision_group_hana_secondary] is defined and (groups[sap_vm_provision_group_hana_secondary]|length>0)
 
 - name: Ansible AWS VPC Route Table append route for SAP AnyDB HA
   register: __sap_vm_provision_task_aws_vpc_subnet_rt_route_sap_anydb
@@ -73,11 +101,11 @@
         instance_id: "{{ hostvars[host_node].ansible_board_asset_tag }}"
     access_key: "{{ sap_vm_provision_aws_access_key }}"
     secret_key: "{{ sap_vm_provision_aws_secret_access_key }}"
-  loop: "{{ (groups['anydb_primary'] | default([])) }}"
+  loop: "{{ (groups[sap_vm_provision_group_anydb_primary] | default([])) }}"
   loop_control:
     loop_var: host_node
   when:
-    - groups["anydb_secondary"] is defined and (groups["anydb_secondary"] | length>0)
+    - groups[sap_vm_provision_group_anydb_secondary] is defined and (groups[sap_vm_provision_group_anydb_secondary] | length>0)
 
 - name: Ansible AWS Route53 DNS Records for SAP AnyDB HA Virtual Hostname
   register: __sap_vm_provision_task_aws_route53_sap_anydb
@@ -94,11 +122,11 @@
     access_key: "{{ sap_vm_provision_aws_access_key }}"
     secret_key: "{{ sap_vm_provision_aws_secret_access_key }}"
     overwrite: "{{ sap_vm_provision_aws_dns_overwrite if sap_vm_provision_aws_dns_overwrite | bool else false }}"
-  loop: "{{ (groups['anydb_primary'] | default([])) }}"
+  loop: "{{ (groups[sap_vm_provision_group_anydb_primary] | default([])) }}"
   loop_control:
     loop_var: host_node
   when:
-    - groups["anydb_secondary"] is defined and (groups["anydb_secondary"]|length>0)
+    - groups[sap_vm_provision_group_anydb_secondary] is defined and (groups[sap_vm_provision_group_anydb_secondary]|length>0)
 
 - name: Ansible AWS VPC Route Table append route for SAP NetWeaver ASCS HA
   register: __sap_vm_provision_task_aws_vpc_subnet_rt_route_sap_netweaver_ascs
@@ -115,11 +143,11 @@
         instance_id: "{{ hostvars[host_node].ansible_board_asset_tag }}"
     access_key: "{{ sap_vm_provision_aws_access_key }}"
     secret_key: "{{ sap_vm_provision_aws_secret_access_key }}"
-  loop: "{{ (groups['nwas_ascs'] | default([])) }}"
+  loop: "{{ (groups[sap_vm_provision_group_nwas_ascs] | default([])) }}"
   loop_control:
     loop_var: host_node
   when:
-    - groups["nwas_ers"] is defined and (groups["nwas_ers"] | length>0)
+    - groups[sap_vm_provision_group_nwas_ers] is defined and (groups[sap_vm_provision_group_nwas_ers] | length>0)
 
 - name: Ansible AWS Route53 DNS Records for SAP NetWeaver ASCS HA Virtual Hostname
   register: __sap_vm_provision_task_aws_route53_sap_netweaver_ascs
@@ -136,11 +164,11 @@
     access_key: "{{ sap_vm_provision_aws_access_key }}"
     secret_key: "{{ sap_vm_provision_aws_secret_access_key }}"
     overwrite: "{{ sap_vm_provision_aws_dns_overwrite if sap_vm_provision_aws_dns_overwrite | bool else false }}"
-  loop: "{{ (groups['nwas_ascs'] | default([])) }}"
+  loop: "{{ (groups[sap_vm_provision_group_nwas_ascs] | default([])) }}"
   loop_control:
     loop_var: host_node
   when:
-    - groups["nwas_ers"] is defined and (groups["nwas_ers"]|length>0)
+    - groups[sap_vm_provision_group_nwas_ers] is defined and (groups[sap_vm_provision_group_nwas_ers]|length>0)
 
 - name: Ansible AWS VPC Route Table append route for SAP NetWeaver ERS HA
   register: __sap_vm_provision_task_aws_vpc_subnet_rt_route_sap_netweaver_ers
@@ -157,11 +185,11 @@
         instance_id: "{{ hostvars[host_node].ansible_board_asset_tag }}"
     access_key: "{{ sap_vm_provision_aws_access_key }}"
     secret_key: "{{ sap_vm_provision_aws_secret_access_key }}"
-  loop: "{{ (groups['nwas_ers'] | default([])) }}"
+  loop: "{{ (groups[sap_vm_provision_group_nwas_ers] | default([])) }}"
   loop_control:
     loop_var: host_node
   when:
-    - groups["nwas_ers"] is defined and (groups["nwas_ers"] | length>0)
+    - groups[sap_vm_provision_group_nwas_ers] is defined and (groups[sap_vm_provision_group_nwas_ers] | length>0)
 
 - name: Ansible AWS Route53 DNS Records for SAP NetWeaver ERS HA Virtual Hostname
   register: __sap_vm_provision_task_aws_route53_sap_netweaver_ers
@@ -178,11 +206,11 @@
     access_key: "{{ sap_vm_provision_aws_access_key }}"
     secret_key: "{{ sap_vm_provision_aws_secret_access_key }}"
     overwrite: "{{ sap_vm_provision_aws_dns_overwrite if sap_vm_provision_aws_dns_overwrite | bool else false }}"
-  loop: "{{ (groups['nwas_ers'] | default([])) }}"
+  loop: "{{ (groups[sap_vm_provision_group_nwas_ers] | default([])) }}"
   loop_control:
     loop_var: host_node
   when:
-    - groups["nwas_ers"] is defined and (groups["nwas_ers"]|length>0)
+    - groups[sap_vm_provision_group_nwas_ers] is defined and (groups[sap_vm_provision_group_nwas_ers]|length>0)
 
 ## For HA of PAS and AAS, if required
 
@@ -199,11 +227,11 @@
 #     routes:
 #       - dest: "{{ sap_vm_provision_ha_vip_nwas_abap_pas }}"
 #         instance_id: "{{ hostvars[host_node].ansible_board_asset_tag }}"
-#   loop: "{{ (groups['nwas_pas'] | default([])) }}"
+#   loop: "{{ (groups[sap_vm_provision_group_nwas_pas] | default([])) }}"
 #   loop_control:
 #     loop_var: host_node
 #   when:
-#     - groups["nwas_ers"] is defined and (groups["nwas_ers"] | length>0)
+#     - groups[sap_vm_provision_group_nwas_ers] is defined and (groups[sap_vm_provision_group_nwas_ers] | length>0)
 
 # - name: Ansible AWS Route53 DNS Records for SAP NetWeaver PAS HA Virtual Hostname
 #   amazon.aws.route53:
@@ -215,11 +243,11 @@
 #     ttl: 7200
 #     value: "{{ sap_vm_provision_ha_vip_nwas_abap_pas | regex_replace('/.*', '') }}"
 #     wait: true
-#   loop: "{{ (groups['nwas_pas'] | default([])) }}"
+#   loop: "{{ (groups[sap_vm_provision_group_nwas_pas] | default([])) }}"
 #   loop_control:
 #     loop_var: host_node
 #   when:
-#     - groups["nwas_ers"] is defined and (groups["nwas_ers"]|length>0)
+#     - groups[sap_vm_provision_group_nwas_ers] is defined and (groups[sap_vm_provision_group_nwas_ers]|length>0)
 
 
 # - name: Ansible AWS VPC Route Table append route for SAP NetWeaver AAS HA
@@ -235,11 +263,11 @@
 #     routes:
 #       - dest: "{{ sap_vm_provision_ha_vip_nwas_abap_aas }}"
 #         instance_id: "{{ hostvars[host_node].ansible_board_asset_tag }}"
-#   loop: "{{ (groups['nwas_aas'] | default([])) }}"
+#   loop: "{{ (groups[sap_vm_provision_group_nwas_aas] | default([])) }}"
 #   loop_control:
 #     loop_var: host_node
 #   when:
-#     - groups["nwas_ers"] is defined and (groups["nwas_ers"] | length>0)
+#     - groups[sap_vm_provision_group_nwas_ers] is defined and (groups[sap_vm_provision_group_nwas_ers] | length>0)
 
 # - name: Ansible AWS Route53 DNS Records for SAP NetWeaver AAS HA Virtual Hostname
 #   amazon.aws.route53:
@@ -251,11 +279,11 @@
 #     ttl: 7200
 #     value: "{{ sap_vm_provision_ha_vip_nwas_abap_aas | regex_replace('/.*', '') }}"
 #     wait: true
-#   loop: "{{ (groups['nwas_aas'] | default([])) }}"
+#   loop: "{{ (groups[sap_vm_provision_group_nwas_aas] | default([])) }}"
 #   loop_control:
 #     loop_var: host_node
 #   when:
-#     - groups["nwas_ers"] is defined and (groups["nwas_ers"]|length>0)
+#     - groups[sap_vm_provision_group_nwas_ers] is defined and (groups[sap_vm_provision_group_nwas_ers]|length>0)
 
 
 # Setup custom IAM Role name using sap_vm_provision_aws_ha_iam_role
@@ -398,16 +426,16 @@
                   ],
                   "Resource": [
                       "arn:aws:ec2:{{ sap_vm_provision_aws_region }}:{{ __sap_vm_provision_task_aws_account_info.account }}:instance/{{
-                       hostvars[groups['hana_primary'][0]].__sap_vm_provision_task_provision_host_single_info.instances[0].instance_id }}",
+                       hostvars[groups[sap_vm_provision_group_hana_primary][0]].__sap_vm_provision_task_provision_host_single_info.instances[0].instance_id }}",
                       "arn:aws:ec2:{{ sap_vm_provision_aws_region }}:{{ __sap_vm_provision_task_aws_account_info.account }}:instance/{{
-                       hostvars[groups['hana_secondary'][0]].__sap_vm_provision_task_provision_host_single_info.instances[0].instance_id }}"
+                       hostvars[groups[sap_vm_provision_group_hana_secondary][0]].__sap_vm_provision_task_provision_host_single_info.instances[0].instance_id }}"
                   ]
               }
           ]
       }
     access_key: "{{ sap_vm_provision_aws_access_key }}"
     secret_key: "{{ sap_vm_provision_aws_secret_access_key }}"
-  when: groups["hana_secondary"] is defined and (groups["hana_secondary"]|length>0)
+  when: groups[sap_vm_provision_group_hana_secondary] is defined and (groups[sap_vm_provision_group_hana_secondary]|length>0)
 
 # AWS HA for SAP - STONITH of SAP ANYDB
 - name: AWS IAM Policy - HA-Policy-STONITH-SAPANYDB
@@ -443,16 +471,16 @@
                   ],
                   "Resource": [
                       "arn:aws:ec2:{{ sap_vm_provision_aws_region }}:{{ __sap_vm_provision_task_aws_account_info.account }}:instance/{{
-                       hostvars[groups['anydb_primary'][0]].__sap_vm_provision_task_provision_host_single_info.instances[0].instance_id }}",
+                       hostvars[groups[sap_vm_provision_group_anydb_primary][0]].__sap_vm_provision_task_provision_host_single_info.instances[0].instance_id }}",
                       "arn:aws:ec2:{{ sap_vm_provision_aws_region }}:{{ __sap_vm_provision_task_aws_account_info.account }}:instance/{{
-                       hostvars[groups['anydb_secondary'][0]].__sap_vm_provision_task_provision_host_single_info.instances[0].instance_id }}"
+                       hostvars[groups[sap_vm_provision_group_anydb_secondary][0]].__sap_vm_provision_task_provision_host_single_info.instances[0].instance_id }}"
                   ]
               }
           ]
       }
     access_key: "{{ sap_vm_provision_aws_access_key }}"
     secret_key: "{{ sap_vm_provision_aws_secret_access_key }}"
-  when: groups["anydb_secondary"] is defined and (groups["anydb_secondary"]|length>0)
+  when: groups[sap_vm_provision_group_anydb_secondary] is defined and (groups[sap_vm_provision_group_anydb_secondary]|length>0)
 
 # AWS HA for SAP - STONITH of SAP NWAS
 - name: AWS IAM Policy - HA-Policy-STONITH-SAPNWAS
@@ -487,16 +515,16 @@
                   ],
                   "Resource": [
                       "arn:aws:ec2:{{ sap_vm_provision_aws_region }}:{{ __sap_vm_provision_task_aws_account_info.account }}:instance/{{
-                       hostvars[groups['nwas_ascs'][0]].__sap_vm_provision_task_provision_host_single_info.instances[0].instance_id }}",
+                       hostvars[groups[sap_vm_provision_group_nwas_ascs][0]].__sap_vm_provision_task_provision_host_single_info.instances[0].instance_id }}",
                       "arn:aws:ec2:{{ sap_vm_provision_aws_region }}:{{ __sap_vm_provision_task_aws_account_info.account }}:instance/{{
-                       hostvars[groups['nwas_ers'][0]].__sap_vm_provision_task_provision_host_single_info.instances[0].instance_id }}"
+                       hostvars[groups[sap_vm_provision_group_nwas_ers][0]].__sap_vm_provision_task_provision_host_single_info.instances[0].instance_id }}"
                   ]
               }
           ]
       }
     access_key: "{{ sap_vm_provision_aws_access_key }}"
     secret_key: "{{ sap_vm_provision_aws_secret_access_key }}"
-  when: groups["nwas_ers"] is defined and (groups["nwas_ers"]|length>0)
+  when: groups[sap_vm_provision_group_nwas_ers] is defined and (groups[sap_vm_provision_group_nwas_ers]|length>0)
 
 
 - name: AWS IAM Role - Prepare IAM Instance Profile name
@@ -529,10 +557,10 @@
     iam_instance_profile: "{{ __sap_vm_provision_aws_ha_iam_instance_profile }}"
     access_key: "{{ sap_vm_provision_aws_access_key }}"
     secret_key: "{{ sap_vm_provision_aws_secret_access_key }}"
-  loop: "{{ [ [ groups['hana_primary'] | default([]) ] , [ groups['hana_secondary'] | default([]) ] ] | flatten | select() }}"
+  loop: "{{ [ [ groups[sap_vm_provision_group_hana_primary] | default([]) ] , [ groups[sap_vm_provision_group_hana_secondary] | default([]) ] ] | flatten | select() }}"
   loop_control:
     loop_var: host_node
-  when: groups["hana_secondary"] is defined and (groups["hana_secondary"]|length>0)
+  when: groups[sap_vm_provision_group_hana_secondary] is defined and (groups[sap_vm_provision_group_hana_secondary]|length>0)
   ignore_errors: true
 
 # Equivalent to aws ec2 associate-iam-instance-profile --iam-instance-profile "Name=HA-Instance-Profile-Pacemaker-Cluster" --instance-id {{ hostvars[host_node].ansible_board_asset_tag }}
@@ -544,10 +572,10 @@
     iam_instance_profile: "{{ __sap_vm_provision_aws_ha_iam_instance_profile }}"
     access_key: "{{ sap_vm_provision_aws_access_key }}"
     secret_key: "{{ sap_vm_provision_aws_secret_access_key }}"
-  loop: "{{ [ [ groups['anydb_primary'] | default([]) ] , [ groups['anydb_secondary'] | default([]) ] ] | flatten | select() }}"
+  loop: "{{ [ [ groups[sap_vm_provision_group_anydb_primary] | default([]) ] , [ groups[sap_vm_provision_group_anydb_secondary] | default([]) ] ] | flatten | select() }}"
   loop_control:
     loop_var: host_node
-  when: groups["anydb_secondary"] is defined and (groups["anydb_secondary"]|length>0)
+  when: groups[sap_vm_provision_group_anydb_secondary] is defined and (groups[sap_vm_provision_group_anydb_secondary]|length>0)
   ignore_errors: true
 
 # Equivalent to aws ec2 associate-iam-instance-profile --iam-instance-profile "Name=HA-Instance-Profile-Pacemaker-Cluster" --instance-id {{ hostvars[host_node].ansible_board_asset_tag }}
@@ -559,8 +587,8 @@
     iam_instance_profile: "{{ __sap_vm_provision_aws_ha_iam_instance_profile }}"
     access_key: "{{ sap_vm_provision_aws_access_key }}"
     secret_key: "{{ sap_vm_provision_aws_secret_access_key }}"
-  loop: "{{ [ [ groups['nwas_ascs'] | default([]) ] , [ groups['nwas_ers'] | default([]) ] , [ groups['nwas_pas'] | default([]) ] , [ groups['nwas_aas'] | default([]) ] ] | flatten | select() }}"
+  loop: "{{ [ [ groups[sap_vm_provision_group_nwas_ascs] | default([]) ] , [ groups[sap_vm_provision_group_nwas_ers] | default([]) ] , [ groups[sap_vm_provision_group_nwas_pas] | default([]) ] , [ groups[sap_vm_provision_group_nwas_aas] | default([]) ] ] | flatten | select() }}"
   loop_control:
     loop_var: host_node
-  when: groups["nwas_ers"] is defined and (groups["nwas_ers"]|length>0)
+  when: groups[sap_vm_provision_group_nwas_ers] is defined and (groups[sap_vm_provision_group_nwas_ers]|length>0)
   ignore_errors: true

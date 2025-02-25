@@ -17,11 +17,11 @@
 #       selfLink: "{{ __sap_vm_provision_task_gcp_vpc_info.resources[0].selfLink }}"
 #     auth_kind: "serviceaccount"
 #     service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
-#   loop: "{{ (groups['hana_primary'] | default([])) }}"
+#   loop: "{{ (groups[sap_vm_provision_group_hana_primary] | default([])) }}"
 #   loop_control:
 #     loop_var: host_node
 #   when:
-#     - groups["hana_secondary"] is defined and (groups["hana_secondary"] | length>0)
+#     - groups[sap_vm_provision_group_hana_secondary] is defined and (groups[sap_vm_provision_group_hana_secondary] | length>0)
 
 - name: GCP Private DNS Record for SAP HANA HA Virtual Hostname
   no_log: "{{ __sap_vm_provision_no_log }}"
@@ -38,11 +38,11 @@
     ttl: 7200
     auth_kind: "serviceaccount"
     service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
-  loop: "{{ (groups['hana_primary'] | default([])) }}"
+  loop: "{{ (groups[sap_vm_provision_group_hana_primary] | default([])) }}"
   loop_control:
     loop_var: host_node
   when:
-    - groups["hana_secondary"] is defined and (groups["hana_secondary"]|length>0)
+    - groups[sap_vm_provision_group_hana_secondary] is defined and (groups[sap_vm_provision_group_hana_secondary]|length>0)
 
 
 # - name: GCP append route for SAP AnyDB HA (route must be outside of existing VPC Subnet Range/s)
@@ -59,11 +59,11 @@
 #       selfLink: "{{ __sap_vm_provision_task_gcp_vpc_info.resources[0].selfLink }}"
 #     auth_kind: "serviceaccount"
 #     service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
-#   loop: "{{ (groups['anydb_primary'] | default([])) }}"
+#   loop: "{{ (groups[sap_vm_provision_group_anydb_primary] | default([])) }}"
 #   loop_control:
 #     loop_var: host_node
 #   when:
-#     - groups["hana_secondary"] is defined and (groups["hana_secondary"] | length>0)
+#     - groups[sap_vm_provision_group_hana_secondary] is defined and (groups[sap_vm_provision_group_hana_secondary] | length>0)
 
 - name: GCP Private DNS Record for SAP AnyDB HA Virtual Hostname
   no_log: "{{ __sap_vm_provision_no_log }}"
@@ -80,11 +80,11 @@
     ttl: 7200
     auth_kind: "serviceaccount"
     service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
-  loop: "{{ (groups['anydb_primary'] | default([])) }}"
+  loop: "{{ (groups[sap_vm_provision_group_anydb_primary] | default([])) }}"
   loop_control:
     loop_var: host_node
   when:
-    - groups["hana_secondary"] is defined and (groups["hana_secondary"]|length>0)
+    - groups[sap_vm_provision_group_hana_secondary] is defined and (groups[sap_vm_provision_group_hana_secondary]|length>0)
 
 
 # - name: GCP append route for SAP NetWeaver ASCS HA (route must be outside of existing VPC Subnet Range/s)
@@ -101,11 +101,11 @@
 #       selfLink: "{{ __sap_vm_provision_task_gcp_vpc_info.resources[0].selfLink }}"
 #     auth_kind: "serviceaccount"
 #     service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
-#   loop: "{{ (groups['nwas_ascs'] | default([])) }}"
+#   loop: "{{ (groups[sap_vm_provision_group_nwas_ascs] | default([])) }}"
 #   loop_control:
 #     loop_var: host_node
 #   when:
-#     - groups["nwas_ers"] is defined and (groups["nwas_ers"] | length>0)
+#     - groups[sap_vm_provision_group_nwas_ers] is defined and (groups[sap_vm_provision_group_nwas_ers] | length>0)
 
 - name: GCP Private DNS Record for SAP NetWeaver ASCS HA Virtual Hostname
   no_log: "{{ __sap_vm_provision_no_log }}"
@@ -122,11 +122,11 @@
     ttl: 7200
     auth_kind: "serviceaccount"
     service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
-  loop: "{{ (groups['nwas_ascs'] | default([])) }}"
+  loop: "{{ (groups[sap_vm_provision_group_nwas_ascs] | default([])) }}"
   loop_control:
     loop_var: host_node
   when:
-    - groups["nwas_ers"] is defined and (groups["nwas_ers"]|length>0)
+    - groups[sap_vm_provision_group_nwas_ers] is defined and (groups[sap_vm_provision_group_nwas_ers]|length>0)
 
 
 # - name: GCP append route for SAP NetWeaver ERS HA
@@ -143,11 +143,11 @@
 #       selfLink: "{{ __sap_vm_provision_task_gcp_vpc_info.resources[0].selfLink }}"
 #     auth_kind: "serviceaccount"
 #     service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
-#   loop: "{{ (groups['nwas_ers'] | default([])) }}"
+#   loop: "{{ (groups[sap_vm_provision_group_nwas_ers] | default([])) }}"
 #   loop_control:
 #     loop_var: host_node
 #   when:
-#     - groups["nwas_ers"] is defined and (groups["nwas_ers"] | length>0)
+#     - groups[sap_vm_provision_group_nwas_ers] is defined and (groups[sap_vm_provision_group_nwas_ers] | length>0)
 
 - name: GCP Private DNS Record for SAP NetWeaver ERS HA Virtual Hostname
   no_log: "{{ __sap_vm_provision_no_log }}"
@@ -164,11 +164,11 @@
     ttl: 7200
     auth_kind: "serviceaccount"
     service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
-  loop: "{{ (groups['nwas_ers'] | default([])) }}"
+  loop: "{{ (groups[sap_vm_provision_group_nwas_ers] | default([])) }}"
   loop_control:
     loop_var: host_node
   when:
-    - groups["nwas_ers"] is defined and (groups["nwas_ers"]|length>0)
+    - groups[sap_vm_provision_group_nwas_ers] is defined and (groups[sap_vm_provision_group_nwas_ers]|length>0)
 
 
 ## For HA of PAS and AAS, if required
@@ -187,11 +187,11 @@
 #       selfLink: "{{ __sap_vm_provision_task_gcp_vpc_info.resources[0].selfLink }}"
 #     auth_kind: "serviceaccount"
 #     service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
-#   loop: "{{ (groups['nwas_pas'] | default([])) }}"
+#   loop: "{{ (groups[sap_vm_provision_group_nwas_pas] | default([])) }}"
 #   loop_control:
 #     loop_var: host_node
 #   when:
-#     - groups["nwas_ers"] is defined and (groups["nwas_ers"] | length>0)
+#     - groups[sap_vm_provision_group_nwas_ers] is defined and (groups[sap_vm_provision_group_nwas_ers] | length>0)
 
 # - name: GCP Private DNS Record for SAP NetWeaver PAS HA Virtual Hostname
 #   no_log: "{{ __sap_vm_provision_no_log }}"
@@ -208,11 +208,11 @@
 #     ttl: 7200
 #     auth_kind: "serviceaccount"
 #     service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
-#   loop: "{{ (groups['nwas_pas'] | default([])) }}"
+#   loop: "{{ (groups[sap_vm_provision_group_nwas_pas] | default([])) }}"
 #   loop_control:
 #     loop_var: host_node
 #   when:
-#     - groups["nwas_ers"] is defined and (groups["nwas_ers"]|length>0)
+#     - groups[sap_vm_provision_group_nwas_ers] is defined and (groups[sap_vm_provision_group_nwas_ers]|length>0)
 
 
 # - name: GCP append route for SAP NetWeaver AAS HA
@@ -229,11 +229,11 @@
 #       selfLink: "{{ __sap_vm_provision_task_gcp_vpc_info.resources[0].selfLink }}"
 #     auth_kind: "serviceaccount"
 #     service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
-#   loop: "{{ (groups['nwas_aas'] | default([])) }}"
+#   loop: "{{ (groups[sap_vm_provision_group_nwas_aas] | default([])) }}"
 #   loop_control:
 #     loop_var: host_node
 #   when:
-#     - groups["nwas_ers"] is defined and (groups["nwas_ers"] | length>0)
+#     - groups[sap_vm_provision_group_nwas_ers] is defined and (groups[sap_vm_provision_group_nwas_ers] | length>0)
 
 # - name: GCP Private DNS Record for SAP NetWeaver AAS HA Virtual Hostname
 #   no_log: "{{ __sap_vm_provision_no_log }}"
@@ -250,11 +250,11 @@
 #     ttl: 7200
 #     auth_kind: "serviceaccount"
 #     service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
-#   loop: "{{ (groups['nwas_aas'] | default([])) }}"
+#   loop: "{{ (groups[sap_vm_provision_group_nwas_aas] | default([])) }}"
 #   loop_control:
 #     loop_var: host_node
 #   when:
-#     - groups["nwas_ers"] is defined and (groups["nwas_ers"]|length>0)
+#     - groups[sap_vm_provision_group_nwas_ers] is defined and (groups[sap_vm_provision_group_nwas_ers]|length>0)
 
 
 # Google Cloud Load Balancing - Internal passthrough Network Load Balancer (NLB for TCP/UDP) and Reserved Static Internal IP Address
@@ -289,7 +289,7 @@
     service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
   when:
     - vip_item | length > 0
-    - groups["hana_secondary"] is defined and (groups["hana_secondary"]|length>0)
+    - groups[sap_vm_provision_group_hana_secondary] is defined and (groups[sap_vm_provision_group_hana_secondary]|length>0)
   loop:
     - "{{ sap_vm_provision_ha_vip_hana_primary }}"
   loop_control:
@@ -314,7 +314,7 @@
     auth_kind: "serviceaccount"
     service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
   when:
-    - groups["hana_secondary"] is defined and (groups["hana_secondary"]|length>0)
+    - groups[sap_vm_provision_group_hana_secondary] is defined and (groups[sap_vm_provision_group_hana_secondary]|length>0)
 
 - name: Gather GCP VM information
   no_log: "{{ __sap_vm_provision_no_log }}"
@@ -330,7 +330,7 @@
   loop_control:
     loop_var: host_node
   when:
-    - groups["hana_secondary"] is defined and (groups["hana_secondary"]|length>0)
+    - groups[sap_vm_provision_group_hana_secondary] is defined and (groups[sap_vm_provision_group_hana_secondary]|length>0)
 
 - name: Create Google Cloud Compute Engine Instance Group (Self-Managed/Unmanaged) Primary - for SAP HANA
   no_log: "{{ __sap_vm_provision_no_log }}"
@@ -347,11 +347,11 @@
     #    port: 80 # default
     auth_kind: "serviceaccount"
     service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
-  loop: "{{ (groups['hana_primary'] | default([])) }}"
+  loop: "{{ (groups[sap_vm_provision_group_hana_primary] | default([])) }}"
   loop_control:
     loop_var: host_node
   when:
-    - groups["hana_secondary"] is defined and (groups["hana_secondary"]|length>0)
+    - groups[sap_vm_provision_group_hana_secondary] is defined and (groups[sap_vm_provision_group_hana_secondary]|length>0)
 
 - name: Create Google Cloud Compute Engine Instance Group (Self-Managed/Unmanaged) Secondary (Failover) - for SAP HANA
   no_log: "{{ __sap_vm_provision_no_log }}"
@@ -368,11 +368,11 @@
     #    port: 80 # default
     auth_kind: "serviceaccount"
     service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
-  loop: "{{ (groups['hana_secondary'] | default([])) }}"
+  loop: "{{ (groups[sap_vm_provision_group_hana_secondary] | default([])) }}"
   loop_control:
     loop_var: host_node
   when:
-    - groups["hana_secondary"] is defined and (groups["hana_secondary"]|length>0)
+    - groups[sap_vm_provision_group_hana_secondary] is defined and (groups[sap_vm_provision_group_hana_secondary]|length>0)
 
 # Note: Failover Ratio must be 1.0, which enforces failover to Secondary/Failover Instance Group if any VM the Backend Service's Primary Instance Group
 # No option for --global-health-checks ?
@@ -403,7 +403,7 @@
     auth_kind: "serviceaccount"
     service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
   when:
-    - groups["hana_secondary"] is defined and (groups["hana_secondary"]|length>0)
+    - groups[sap_vm_provision_group_hana_secondary] is defined and (groups[sap_vm_provision_group_hana_secondary]|length>0)
 
 - name: Create Google Cloud Compute Engine Forwarding Rule (aka. Frontend IP and Port) for SAP HANA
   no_log: "{{ __sap_vm_provision_no_log }}"
@@ -426,7 +426,7 @@
     service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
   when:
     - vip_item | length > 0
-    - groups["hana_secondary"] is defined and (groups["hana_secondary"]|length>0)
+    - groups[sap_vm_provision_group_hana_secondary] is defined and (groups[sap_vm_provision_group_hana_secondary]|length>0)
   loop:
     - "{{ sap_vm_provision_ha_vip_hana_primary }}"
   loop_control:
@@ -444,7 +444,7 @@
     auth_kind: "serviceaccount"
     service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
   when:
-    - groups["hana_secondary"] is defined and (groups["hana_secondary"]|length>0)
+    - groups[sap_vm_provision_group_hana_secondary] is defined and (groups[sap_vm_provision_group_hana_secondary]|length>0)
 
 
 - name: Create Google Cloud Compute Engine Reserved Static Internal IP Address for the Virtual IP (VIP) of SAP AnyDB
@@ -464,7 +464,7 @@
     service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
   when:
     - vip_item | length > 0
-    - groups["anydb_secondary"] is defined and (groups["anydb_secondary"]|length>0)
+    - groups[sap_vm_provision_group_anydb_secondary] is defined and (groups[sap_vm_provision_group_anydb_secondary]|length>0)
   loop:
     - "{{ sap_vm_provision_ha_vip_anydb_primary }}"
   loop_control:
@@ -489,7 +489,7 @@
     auth_kind: "serviceaccount"
     service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
   when:
-    - groups["anydb_secondary"] is defined and (groups["anydb_secondary"]|length>0)
+    - groups[sap_vm_provision_group_anydb_secondary] is defined and (groups[sap_vm_provision_group_anydb_secondary]|length>0)
 
 - name: Gather GCP VM information
   no_log: "{{ __sap_vm_provision_no_log }}"
@@ -505,7 +505,7 @@
   loop_control:
     loop_var: host_node
   when:
-    - groups["anydb_secondary"] is defined and (groups["anydb_secondary"]|length>0)
+    - groups[sap_vm_provision_group_anydb_secondary] is defined and (groups[sap_vm_provision_group_anydb_secondary]|length>0)
 
 - name: Create Google Cloud Compute Engine Instance Group (Self-Managed/Unmanaged) Primary - for SAP AnyDB
   no_log: "{{ __sap_vm_provision_no_log }}"
@@ -522,11 +522,11 @@
     #    port: 80 # default
     auth_kind: "serviceaccount"
     service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
-  loop: "{{ (groups['anydb_primary'] | default([])) }}"
+  loop: "{{ (groups[sap_vm_provision_group_anydb_primary] | default([])) }}"
   loop_control:
     loop_var: host_node
   when:
-    - groups["anydb_secondary"] is defined and (groups["anydb_secondary"]|length>0)
+    - groups[sap_vm_provision_group_anydb_secondary] is defined and (groups[sap_vm_provision_group_anydb_secondary]|length>0)
 
 - name: Create Google Cloud Compute Engine Instance Group (Self-Managed/Unmanaged) Secondary (Failover) - for SAP AnyDB
   no_log: "{{ __sap_vm_provision_no_log }}"
@@ -543,11 +543,11 @@
     #    port: 80 # default
     auth_kind: "serviceaccount"
     service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
-  loop: "{{ (groups['anydb_secondary'] | default([])) }}"
+  loop: "{{ (groups[sap_vm_provision_group_anydb_secondary] | default([])) }}"
   loop_control:
     loop_var: host_node
   when:
-    - groups["anydb_secondary"] is defined and (groups["anydb_secondary"]|length>0)
+    - groups[sap_vm_provision_group_anydb_secondary] is defined and (groups[sap_vm_provision_group_anydb_secondary]|length>0)
 
 # Note: Failover Ratio must be 1.0, which enforces failover to Secondary/Failover Instance Group if any VM the Backend Service's Primary Instance Group
 # No option for --global-health-checks ?
@@ -578,7 +578,7 @@
     auth_kind: "serviceaccount"
     service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
   when:
-    - groups["anydb_secondary"] is defined and (groups["anydb_secondary"]|length>0)
+    - groups[sap_vm_provision_group_anydb_secondary] is defined and (groups[sap_vm_provision_group_anydb_secondary]|length>0)
 
 - name: Create Google Cloud Compute Engine Forwarding Rule (aka. Frontend IP and Port) for SAP AnyDB
   no_log: "{{ __sap_vm_provision_no_log }}"
@@ -601,7 +601,7 @@
     service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
   when:
     - vip_item | length > 0
-    - groups["anydb_secondary"] is defined and (groups["anydb_secondary"]|length>0)
+    - groups[sap_vm_provision_group_anydb_secondary] is defined and (groups[sap_vm_provision_group_anydb_secondary]|length>0)
   loop:
     - "{{ sap_vm_provision_ha_vip_anydb_primary }}"
   loop_control:
@@ -619,7 +619,7 @@
     auth_kind: "serviceaccount"
     service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
   when:
-    - groups["anydb_secondary"] is defined and (groups["anydb_secondary"]|length>0)
+    - groups[sap_vm_provision_group_anydb_secondary] is defined and (groups[sap_vm_provision_group_anydb_secondary]|length>0)
 
 
 - name: Create Google Cloud Compute Engine Reserved Static Internal IP Address for the Virtual IP (VIP) of SAP NetWeaver ASCS
@@ -638,7 +638,7 @@
     auth_kind: "serviceaccount"
     service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
   when:
-    - groups["nwas_ers"] is defined and (groups["nwas_ers"]|length>0)
+    - groups[sap_vm_provision_group_nwas_ers] is defined and (groups[sap_vm_provision_group_nwas_ers]|length>0)
 
 - name: Create Google Cloud Compute Engine Reserved Static Internal IP Address for the Virtual IP (VIP) of SAP NetWeaver ERS
   no_log: "{{ __sap_vm_provision_no_log }}"
@@ -656,7 +656,7 @@
     auth_kind: "serviceaccount"
     service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
   when:
-    - groups["nwas_ers"] is defined and (groups["nwas_ers"]|length>0)
+    - groups[sap_vm_provision_group_nwas_ers] is defined and (groups[sap_vm_provision_group_nwas_ers]|length>0)
 
 - name: Create Google Cloud Compute Engine Health Check (Global) service instance for SAP NetWeaver ASCS
   no_log: "{{ __sap_vm_provision_no_log }}"
@@ -676,7 +676,7 @@
     auth_kind: "serviceaccount"
     service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
   when:
-    - groups["nwas_ers"] is defined and (groups["nwas_ers"]|length>0)
+    - groups[sap_vm_provision_group_nwas_ers] is defined and (groups[sap_vm_provision_group_nwas_ers]|length>0)
 
 - name: Create Google Cloud Compute Engine Health Check (Global) service instance for SAP NetWeaver ERS
   no_log: "{{ __sap_vm_provision_no_log }}"
@@ -696,7 +696,7 @@
     auth_kind: "serviceaccount"
     service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
   when:
-    - groups["nwas_ers"] is defined and (groups["nwas_ers"]|length>0)
+    - groups[sap_vm_provision_group_nwas_ers] is defined and (groups[sap_vm_provision_group_nwas_ers]|length>0)
 
 - name: Gather GCP VM information
   no_log: "{{ __sap_vm_provision_no_log }}"
@@ -712,7 +712,7 @@
   loop_control:
     loop_var: host_node
   when:
-    - groups["nwas_ers"] is defined and (groups["nwas_ers"]|length>0)
+    - groups[sap_vm_provision_group_nwas_ers] is defined and (groups[sap_vm_provision_group_nwas_ers]|length>0)
 
 - name: Create Google Cloud Compute Engine Instance Group (Self-Managed/Unmanaged) Primary - for SAP NetWeaver ASCS
   no_log: "{{ __sap_vm_provision_no_log }}"
@@ -729,11 +729,11 @@
     #    port: 80 # default
     auth_kind: "serviceaccount"
     service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
-  loop: "{{ (groups['nwas_ascs'] | default([])) }}"
+  loop: "{{ (groups[sap_vm_provision_group_nwas_ascs] | default([])) }}"
   loop_control:
     loop_var: host_node
   when:
-    - groups["nwas_ers"] is defined and (groups["nwas_ers"]|length>0)
+    - groups[sap_vm_provision_group_nwas_ers] is defined and (groups[sap_vm_provision_group_nwas_ers]|length>0)
 
 - name: Create Google Cloud Compute Engine Instance Group (Self-Managed/Unmanaged) Secondary (Failover) - for SAP NetWeaver ERS
   no_log: "{{ __sap_vm_provision_no_log }}"
@@ -750,11 +750,11 @@
     #    port: 80 # default
     auth_kind: "serviceaccount"
     service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
-  loop: "{{ (groups['nwas_ers'] | default([])) }}"
+  loop: "{{ (groups[sap_vm_provision_group_nwas_ers] | default([])) }}"
   loop_control:
     loop_var: host_node
   when:
-    - groups["nwas_ers"] is defined and (groups["nwas_ers"]|length>0)
+    - groups[sap_vm_provision_group_nwas_ers] is defined and (groups[sap_vm_provision_group_nwas_ers]|length>0)
 
 # Note: Failover Ratio must be 1.0, which enforces failover to Secondary/Failover Instance Group if any VM the Backend Service's Primary Instance Group
 # No option for --global-health-checks ?
@@ -785,7 +785,7 @@
     auth_kind: "serviceaccount"
     service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
   when:
-    - groups["nwas_ers"] is defined and (groups["nwas_ers"]|length>0)
+    - groups[sap_vm_provision_group_nwas_ers] is defined and (groups[sap_vm_provision_group_nwas_ers]|length>0)
 
 # Note: Failover Ratio must be 1.0, which enforces failover to Secondary/Failover Instance Group if any VM the Backend Service's Primary Instance Group
 # No option for --global-health-checks ?
@@ -816,7 +816,7 @@
     auth_kind: "serviceaccount"
     service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
   when:
-    - groups["nwas_ers"] is defined and (groups["nwas_ers"]|length>0)
+    - groups[sap_vm_provision_group_nwas_ers] is defined and (groups[sap_vm_provision_group_nwas_ers]|length>0)
 
 - name: Create Google Cloud Compute Engine Forwarding Rule (aka. Frontend IP and Port) for SAP NetWeaver ASCS
   no_log: "{{ __sap_vm_provision_no_log }}"
@@ -838,7 +838,7 @@
     auth_kind: "serviceaccount"
     service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
   when:
-    - groups["nwas_ers"] is defined and (groups["nwas_ers"]|length>0)
+    - groups[sap_vm_provision_group_nwas_ers] is defined and (groups[sap_vm_provision_group_nwas_ers]|length>0)
 
 - name: Create Google Cloud Compute Engine Forwarding Rule (aka. Frontend IP and Port) for SAP NetWeaver ERS
   no_log: "{{ __sap_vm_provision_no_log }}"
@@ -860,7 +860,7 @@
     auth_kind: "serviceaccount"
     service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
   when:
-    - groups["nwas_ers"] is defined and (groups["nwas_ers"]|length>0)
+    - groups[sap_vm_provision_group_nwas_ers] is defined and (groups[sap_vm_provision_group_nwas_ers]|length>0)
 
 
 - name: Get information on Google Cloud Compute Engine (Regional) Backend Service for SAP NetWeaver ASCS
@@ -874,7 +874,7 @@
     auth_kind: "serviceaccount"
     service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
   when:
-    - groups["nwas_ers"] is defined and (groups["nwas_ers"]|length>0)
+    - groups[sap_vm_provision_group_nwas_ers] is defined and (groups[sap_vm_provision_group_nwas_ers]|length>0)
 
 - name: Get information on Google Cloud Compute Engine (Regional) Backend Service for SAP NetWeaver ERS
   no_log: "{{ __sap_vm_provision_no_log }}"
@@ -887,4 +887,4 @@
     auth_kind: "serviceaccount"
     service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
   when:
-    - groups["nwas_ers"] is defined and (groups["nwas_ers"]|length>0)
+    - groups[sap_vm_provision_group_nwas_ers] is defined and (groups[sap_vm_provision_group_nwas_ers]|length>0)

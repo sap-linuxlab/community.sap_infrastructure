@@ -44,10 +44,10 @@
         zone_id: "{{ (__sap_vm_provision_task_ibmcloud_pdns.resource.dns_zones | selectattr('name', '==', sap_vm_provision_dns_root_domain) | first).zone_id }}"
     ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
   loop:
-    - "{{ sap_vm_provision_ha_load_balancer_name_hana if (groups['hana_secondary'] is defined and (groups['hana_secondary'] | length>0)) else '' }}"
-    - "{{ sap_vm_provision_ha_load_balancer_name_anydb if (groups['anydb_secondary'] is defined and (groups['anydb_secondary'] | length>0)) else '' }}"
-    - "{{ sap_vm_provision_ha_load_balancer_name_nwas + '-ascs' if (groups['nwas_ers'] is defined and (groups['nwas_ers'] | length>0)) else '' }}"
-    - "{{ sap_vm_provision_ha_load_balancer_name_nwas + '-ers' if (groups['nwas_ers'] is defined and (groups['nwas_ers'] | length>0)) else '' }}"
+    - "{{ sap_vm_provision_ha_load_balancer_name_hana if (groups[sap_vm_provision_group_hana_secondary] is defined and (groups[sap_vm_provision_group_hana_secondary] | length>0)) else '' }}"
+    - "{{ sap_vm_provision_ha_load_balancer_name_anydb if (groups[sap_vm_provision_group_anydb_secondary] is defined and (groups[sap_vm_provision_group_anydb_secondary] | length>0)) else '' }}"
+    - "{{ sap_vm_provision_ha_load_balancer_name_nwas + '-ascs' if (groups[sap_vm_provision_group_nwas_ers] is defined and (groups[sap_vm_provision_group_nwas_ers] | length>0)) else '' }}"
+    - "{{ sap_vm_provision_ha_load_balancer_name_nwas + '-ers' if (groups[sap_vm_provision_group_nwas_ers] is defined and (groups[sap_vm_provision_group_nwas_ers] | length>0)) else '' }}"
   loop_control:
     label: "Waiting for {{ item }}"
   when: not item == ''
@@ -73,10 +73,10 @@
 #     ibmcloud plugin install infrastructure-service -f --quiet
 #     ibmcloud is load-balancer-update "{{ item }}" --dns-instance-crn "{{ __sap_vm_provision_task_ibmcloud_pdns_service_instance.resource.resource_crn }}" --dns-zone-id "{{ (__sap_vm_provision_task_ibmcloud_pdns.resource.dns_zones | selectattr('name', '==', sap_vm_provision_dns_root_domain) | first).zone_id }}"
 #   loop:
-#     - "{{ sap_vm_provision_ha_load_balancer_name_hana if (groups['hana_secondary'] is defined and (groups['hana_secondary'] | length>0)) else '' }}"
-#     - "{{ sap_vm_provision_ha_load_balancer_name_anydb if (groups['anydb_secondary'] is defined and (groups['anydb_secondary'] | length>0)) else '' }}"
-#     - "{{ sap_vm_provision_ha_load_balancer_name_nwas + '-ascs' if (groups['nwas_ers'] is defined and (groups['nwas_ers'] | length>0)) else '' }}"
-#     - "{{ sap_vm_provision_ha_load_balancer_name_nwas + '-ers' if (groups['nwas_ers'] is defined and (groups['nwas_ers'] | length>0)) else '' }}"
+#     - "{{ sap_vm_provision_ha_load_balancer_name_hana if (groups[sap_vm_provision_group_hana_secondary] is defined and (groups[sap_vm_provision_group_hana_secondary] | length>0)) else '' }}"
+#     - "{{ sap_vm_provision_ha_load_balancer_name_anydb if (groups[sap_vm_provision_group_anydb_secondary] is defined and (groups[sap_vm_provision_group_anydb_secondary] | length>0)) else '' }}"
+#     - "{{ sap_vm_provision_ha_load_balancer_name_nwas + '-ascs' if (groups[sap_vm_provision_group_nwas_ers] is defined and (groups[sap_vm_provision_group_nwas_ers] | length>0)) else '' }}"
+#     - "{{ sap_vm_provision_ha_load_balancer_name_nwas + '-ers' if (groups[sap_vm_provision_group_nwas_ers] is defined and (groups[sap_vm_provision_group_nwas_ers] | length>0)) else '' }}"
 #   when: not item == ''
 #   failed_when: not __sap_vm_provision_task_ibmcloud_lb_update_dns.rc == 0 and not 'nothing to update the load balancer with' in __sap_vm_provision_task_ibmcloud_lb_update_dns.stderr
 
@@ -119,7 +119,7 @@
       - "{{ ('3' + sap_system_hana_db_instance_nr + '15') if sap_system_hana_db_instance_nr is defined else 'IGNORE' }} - SAP HANA - MDC Tenant 1 SQL"
       - "{{ ('5' + sap_system_hana_db_instance_nr + '13') if sap_system_hana_db_instance_nr is defined else 'IGNORE' }} - SAP HANA - startsrv HTTP"
       - "{{ ('5' + sap_system_hana_db_instance_nr + '14') if sap_system_hana_db_instance_nr is defined else 'IGNORE' }} - SAP HANA - startsrv HTTPS"
-      - "{{ '5912' if groups['anydb_secondary'] is defined else 'IGNORE' }} - SAP AnyDB - IBM Db2 Communication Port"
+      - "{{ '5912' if groups[sap_vm_provision_group_anydb_secondary] is defined else 'IGNORE' }} - SAP AnyDB - IBM Db2 Communication Port"
       - "{{ ('32' + sap_system_nwas_abap_ascs_instance_nr) if sap_system_nwas_abap_ascs_instance_nr is defined else 'IGNORE' }} - SAP NetWeaver ASCS - Dispatcher sapdp<ASCS_NN> process"
       - "{{ ('36' + sap_system_nwas_abap_ascs_instance_nr) if sap_system_nwas_abap_ascs_instance_nr is defined else 'IGNORE' }} - SAP NetWeaver ASCS - Message Server sapms<SAPSID> process"
       - "{{ ('81' + sap_system_nwas_abap_ascs_instance_nr) if sap_system_nwas_abap_ascs_instance_nr is defined else 'IGNORE' }} - SAP NetWeaver ASCS - Message Server HTTP sapms<SAPSID> process"
@@ -148,7 +148,7 @@
     health_type: tcp
     health_monitor_port: 55550
     ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
-  when: (groups['hana_secondary'] is defined and (groups['hana_secondary'] | length>0))
+  when: (groups[sap_vm_provision_group_hana_secondary] is defined and (groups[sap_vm_provision_group_hana_secondary] | length>0))
 
 - name: Create IBM Cloud Load Balancer Back-end Pool for SAP HANA - MDC Tenant 1 SQL
   no_log: "{{ __sap_vm_provision_no_log }}"
@@ -164,7 +164,7 @@
     health_type: tcp
     health_monitor_port: 55550
     ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
-  when: (groups['hana_secondary'] is defined and (groups['hana_secondary'] | length>0))
+  when: (groups[sap_vm_provision_group_hana_secondary] is defined and (groups[sap_vm_provision_group_hana_secondary] | length>0))
 
 - name: Create IBM Cloud Load Balancer Back-end Pool for SAP HANA - startsrv HTTP
   no_log: "{{ __sap_vm_provision_no_log }}"
@@ -180,7 +180,7 @@
     health_type: tcp
     health_monitor_port: 55550
     ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
-  when: (groups['hana_secondary'] is defined and (groups['hana_secondary'] | length>0))
+  when: (groups[sap_vm_provision_group_hana_secondary] is defined and (groups[sap_vm_provision_group_hana_secondary] | length>0))
 
 - name: Create IBM Cloud Load Balancer Back-end Pool for SAP HANA - startsrv HTTPS
   no_log: "{{ __sap_vm_provision_no_log }}"
@@ -196,7 +196,7 @@
     health_type: tcp
     health_monitor_port: 55550
     ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
-  when: (groups['hana_secondary'] is defined and (groups['hana_secondary'] | length>0))
+  when: (groups[sap_vm_provision_group_hana_secondary] is defined and (groups[sap_vm_provision_group_hana_secondary] | length>0))
 
 - name: Create IBM Cloud Load Balancer Back-end Pool for SAP AnyDB - IBM Db2 Communication Port
   no_log: "{{ __sap_vm_provision_no_log }}"
@@ -211,7 +211,7 @@
     health_type: tcp
     health_monitor_port: 55550
     ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
-  when: (groups['anydb_secondary'] is defined and (groups['anydb_secondary'] | length>0))
+  when: (groups[sap_vm_provision_group_anydb_secondary] is defined and (groups[sap_vm_provision_group_anydb_secondary] | length>0))
 
 - name: Create IBM Cloud Load Balancer Back-end Pool for SAP NetWeaver ASCS - Dispatcher sapdp<ASCS_NN> process
   no_log: "{{ __sap_vm_provision_no_log }}"
@@ -227,7 +227,7 @@
     health_type: tcp
     health_monitor_port: 55551
     ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
-  when: (groups['nwas_ers'] is defined and (groups['nwas_ers'] | length>0))
+  when: (groups[sap_vm_provision_group_nwas_ers] is defined and (groups[sap_vm_provision_group_nwas_ers] | length>0))
 
 - name: Create IBM Cloud Load Balancer Back-end Pool for SAP NetWeaver ASCS - Message Server sapms<SAPSID> process
   no_log: "{{ __sap_vm_provision_no_log }}"
@@ -243,7 +243,7 @@
     health_type: tcp
     health_monitor_port: 55551
     ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
-  when: (groups['nwas_ers'] is defined and (groups['nwas_ers'] | length>0))
+  when: (groups[sap_vm_provision_group_nwas_ers] is defined and (groups[sap_vm_provision_group_nwas_ers] | length>0))
 
 - name: Create IBM Cloud Load Balancer Back-end Pool for SAP NetWeaver ASCS - Message Server HTTP sapms<SAPSID> process
   no_log: "{{ __sap_vm_provision_no_log }}"
@@ -259,7 +259,7 @@
     health_type: tcp
     health_monitor_port: 55551
     ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
-  when: (groups['nwas_ers'] is defined and (groups['nwas_ers'] | length>0))
+  when: (groups[sap_vm_provision_group_nwas_ers] is defined and (groups[sap_vm_provision_group_nwas_ers] | length>0))
 
 - name: Create IBM Cloud Load Balancer Back-end Pool for SAP NetWeaver ASCS - Enqueue Server sapenq<SAPSID> process
   no_log: "{{ __sap_vm_provision_no_log }}"
@@ -275,7 +275,7 @@
     health_type: tcp
     health_monitor_port: 55551
     ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
-  when: (groups['nwas_ers'] is defined and (groups['nwas_ers'] | length>0))
+  when: (groups[sap_vm_provision_group_nwas_ers] is defined and (groups[sap_vm_provision_group_nwas_ers] | length>0))
 
 - name: Create IBM Cloud Load Balancer Back-end Pool for SAP NetWeaver ASCS - Enqueue Replicator Server sapenqrepl<SAPSID> process
   no_log: "{{ __sap_vm_provision_no_log }}"
@@ -291,7 +291,7 @@
     health_type: tcp
     health_monitor_port: 55551
     ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
-  when: (groups['nwas_ers'] is defined and (groups['nwas_ers'] | length>0))
+  when: (groups[sap_vm_provision_group_nwas_ers] is defined and (groups[sap_vm_provision_group_nwas_ers] | length>0))
 
 - name: Create IBM Cloud Load Balancer Back-end Pool for SAP NetWeaver ASCS - SAP Start Service (SAPControl SOAP) HTTP sapctrl<ASCS_NN> process
   no_log: "{{ __sap_vm_provision_no_log }}"
@@ -307,7 +307,7 @@
     health_type: tcp
     health_monitor_port: 55551
     ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
-  when: (groups['nwas_ers'] is defined and (groups['nwas_ers'] | length>0))
+  when: (groups[sap_vm_provision_group_nwas_ers] is defined and (groups[sap_vm_provision_group_nwas_ers] | length>0))
 
 - name: Create IBM Cloud Load Balancer Back-end Pool for SAP NetWeaver ASCS - SAP Start Service (SAPControl SOAP) HTTPS (Secure) sapctrls<ASCS_NN>
   no_log: "{{ __sap_vm_provision_no_log }}"
@@ -323,7 +323,7 @@
     health_type: tcp
     health_monitor_port: 55551
     ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
-  when: (groups['nwas_ers'] is defined and (groups['nwas_ers'] | length>0))
+  when: (groups[sap_vm_provision_group_nwas_ers] is defined and (groups[sap_vm_provision_group_nwas_ers] | length>0))
 
 # - name: Create IBM Cloud Load Balancer Back-end Pool for SAP NetWeaver ERS - Dispatcher sapdp<ERS_NN> process
 #   no_log: "{{ __sap_vm_provision_no_log }}"
@@ -339,7 +339,7 @@
 #     health_type: tcp
 #     health_monitor_port: 55552
 #     ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
-#   when: (groups['nwas_ers'] is defined and (groups['nwas_ers'] | length>0))
+#   when: (groups[sap_vm_provision_group_nwas_ers] is defined and (groups[sap_vm_provision_group_nwas_ers] | length>0))
 
 # - name: Create IBM Cloud Load Balancer Back-end Pool for SAP NetWeaver ERS - Message Server sapms<SAPSID> process
 #   no_log: "{{ __sap_vm_provision_no_log }}"
@@ -355,7 +355,7 @@
 #     health_type: tcp
 #     health_monitor_port: 55552
 #     ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
-#   when: (groups['nwas_ers'] is defined and (groups['nwas_ers'] | length>0))
+#   when: (groups[sap_vm_provision_group_nwas_ers] is defined and (groups[sap_vm_provision_group_nwas_ers] | length>0))
 
 - name: Create IBM Cloud Load Balancer Back-end Pool for SAP NetWeaver ERS - Enqueue Replication Server sapenqr<SAPSID> process
   no_log: "{{ __sap_vm_provision_no_log }}"
@@ -371,7 +371,7 @@
     health_type: tcp
     health_monitor_port: 55552
     ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
-  when: (groups['nwas_ers'] is defined and (groups['nwas_ers'] | length>0))
+  when: (groups[sap_vm_provision_group_nwas_ers] is defined and (groups[sap_vm_provision_group_nwas_ers] | length>0))
 
 - name: Create IBM Cloud Load Balancer Back-end Pool for SAP NetWeaver ERS - SAP Start Service (SAPControl SOAP) HTTP sapctrl<ERS_NN> process
   no_log: "{{ __sap_vm_provision_no_log }}"
@@ -387,7 +387,7 @@
     health_type: tcp
     health_monitor_port: 55552
     ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
-  when: (groups['nwas_ers'] is defined and (groups['nwas_ers'] | length>0))
+  when: (groups[sap_vm_provision_group_nwas_ers] is defined and (groups[sap_vm_provision_group_nwas_ers] | length>0))
 
 - name: Create IBM Cloud Load Balancer Back-end Pool for SAP NetWeaver ERS - SAP Start Service (SAPControl SOAP) HTTPS (Secure) sapctrls<ERS_NN>
   no_log: "{{ __sap_vm_provision_no_log }}"
@@ -403,7 +403,7 @@
     health_type: tcp
     health_monitor_port: 55552
     ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
-  when: (groups['nwas_ers'] is defined and (groups['nwas_ers'] | length>0))
+  when: (groups[sap_vm_provision_group_nwas_ers] is defined and (groups[sap_vm_provision_group_nwas_ers] | length>0))
 
 
 # Identify the provisioned IBM Cloud Load Balancer Back-end Pools
@@ -437,7 +437,7 @@
     port: "{{ ('3' + sap_system_hana_db_instance_nr + '13') | int }}"
     idle_connection_timeout: 600 # 10 minutes
     ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
-  when: (groups['hana_secondary'] is defined and (groups['hana_secondary'] | length>0))
+  when: (groups[sap_vm_provision_group_hana_secondary] is defined and (groups[sap_vm_provision_group_hana_secondary] | length>0))
   failed_when: not __sap_vm_provision_task_ibmcloud_lb_frontend_listener_hana1.rc == 0 and not 'listener_duplicate_port' in __sap_vm_provision_task_ibmcloud_lb_frontend_listener_hana1.stderr
 
 - name: Create IBM Cloud Load Balancer Front-end Listener for SAP HANA - MDC Tenant 1 SQL
@@ -450,7 +450,7 @@
     port: "{{ ('3' + sap_system_hana_db_instance_nr + '15') | int }}"
     idle_connection_timeout: 600 # 10 minutes
     ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
-  when: (groups['hana_secondary'] is defined and (groups['hana_secondary'] | length>0))
+  when: (groups[sap_vm_provision_group_hana_secondary] is defined and (groups[sap_vm_provision_group_hana_secondary] | length>0))
   failed_when: not __sap_vm_provision_task_ibmcloud_lb_frontend_listener_hana2.rc == 0 and not 'listener_duplicate_port' in __sap_vm_provision_task_ibmcloud_lb_frontend_listener_hana2.stderr
 
 - name: Create IBM Cloud Load Balancer Front-end Listener for SAP HANA - startsrv HTTP
@@ -463,7 +463,7 @@
     port: "{{ ('5' + sap_system_hana_db_instance_nr + '13') | int }}"
     idle_connection_timeout: 600 # 10 minutes
     ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
-  when: (groups['hana_secondary'] is defined and (groups['hana_secondary'] | length>0))
+  when: (groups[sap_vm_provision_group_hana_secondary] is defined and (groups[sap_vm_provision_group_hana_secondary] | length>0))
   failed_when: not __sap_vm_provision_task_ibmcloud_lb_frontend_listener_hana3.rc == 0 and not 'listener_duplicate_port' in __sap_vm_provision_task_ibmcloud_lb_frontend_listener_hana3.stderr
 
 - name: Create IBM Cloud Load Balancer Front-end Listener for SAP HANA - startsrv HTTPS
@@ -476,7 +476,7 @@
     port: "{{ ('5' + sap_system_hana_db_instance_nr + '14') | int }}"
     idle_connection_timeout: 600 # 10 minutes
     ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
-  when: (groups['hana_secondary'] is defined and (groups['hana_secondary'] | length>0))
+  when: (groups[sap_vm_provision_group_hana_secondary] is defined and (groups[sap_vm_provision_group_hana_secondary] | length>0))
   failed_when: not __sap_vm_provision_task_ibmcloud_lb_frontend_listener_hana4.rc == 0 and not 'listener_duplicate_port' in __sap_vm_provision_task_ibmcloud_lb_frontend_listener_hana4.stderr
 
 - name: Create IBM Cloud Load Balancer Front-end Listener for SAP AnyDB - IBM Db2 Communication Port
@@ -489,7 +489,7 @@
     port: 5912
     idle_connection_timeout: 600 # 10 minutes
     ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
-  when: (groups['anydb_secondary'] is defined and (groups['anydb_secondary'] | length>0))
+  when: (groups[sap_vm_provision_group_anydb_secondary] is defined and (groups[sap_vm_provision_group_anydb_secondary] | length>0))
   failed_when: not __sap_vm_provision_task_ibmcloud_lb_frontend_listener_anydb1.rc == 0 and not 'listener_duplicate_port' in __sap_vm_provision_task_ibmcloud_lb_frontend_listener_anydb1.stderr
 
 - name: Create IBM Cloud Load Balancer Front-end Listener for SAP NetWeaver ASCS - Dispatcher sapdp<ASCS_NN> process
@@ -502,7 +502,7 @@
     port: "{{ ('32' + sap_system_nwas_abap_ascs_instance_nr) | int }}"
     idle_connection_timeout: 600 # 10 minutes
     ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
-  when: (groups['nwas_ers'] is defined and (groups['nwas_ers'] | length>0))
+  when: (groups[sap_vm_provision_group_nwas_ers] is defined and (groups[sap_vm_provision_group_nwas_ers] | length>0))
   failed_when: not __sap_vm_provision_task_ibmcloud_lb_frontend_listener_ascs1.rc == 0 and not 'listener_duplicate_port' in __sap_vm_provision_task_ibmcloud_lb_frontend_listener_ascs1.stderr
 
 - name: Create IBM Cloud Load Balancer Front-end Listener for SAP NetWeaver ASCS - Message Server sapms<SAPSID> process
@@ -515,7 +515,7 @@
     port: "{{ ('36' + sap_system_nwas_abap_ascs_instance_nr) | int }}"
     idle_connection_timeout: 600 # 10 minutes
     ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
-  when: (groups['nwas_ers'] is defined and (groups['nwas_ers'] | length>0))
+  when: (groups[sap_vm_provision_group_nwas_ers] is defined and (groups[sap_vm_provision_group_nwas_ers] | length>0))
   failed_when: not __sap_vm_provision_task_ibmcloud_lb_frontend_listener_ascs2.rc == 0 and not 'listener_duplicate_port' in __sap_vm_provision_task_ibmcloud_lb_frontend_listener_ascs2.stderr
 
 - name: Create IBM Cloud Load Balancer Front-end Listener for SAP NetWeaver ASCS - Message Server HTTP sapms<SAPSID> process
@@ -528,7 +528,7 @@
     port: "{{ ('81' + sap_system_nwas_abap_ascs_instance_nr) | int }}"
     idle_connection_timeout: 600 # 10 minutes
     ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
-  when: (groups['nwas_ers'] is defined and (groups['nwas_ers'] | length>0))
+  when: (groups[sap_vm_provision_group_nwas_ers] is defined and (groups[sap_vm_provision_group_nwas_ers] | length>0))
   failed_when: not __sap_vm_provision_task_ibmcloud_lb_frontend_listener_ascs3.rc == 0 and not 'listener_duplicate_port' in __sap_vm_provision_task_ibmcloud_lb_frontend_listener_ascs3.stderr
 
 - name: Create IBM Cloud Load Balancer Front-end Listener for SAP NetWeaver ASCS - Enqueue Server sapenq<SAPSID> process
@@ -541,7 +541,7 @@
     port: "{{ ('39' + sap_system_nwas_abap_ascs_instance_nr) | int }}"
     idle_connection_timeout: 600 # 10 minutes
     ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
-  when: (groups['nwas_ers'] is defined and (groups['nwas_ers'] | length>0))
+  when: (groups[sap_vm_provision_group_nwas_ers] is defined and (groups[sap_vm_provision_group_nwas_ers] | length>0))
   failed_when: not __sap_vm_provision_task_ibmcloud_lb_frontend_listener_ascs4.rc == 0 and not 'listener_duplicate_port' in __sap_vm_provision_task_ibmcloud_lb_frontend_listener_ascs4.stderr
 
 - name: Create IBM Cloud Load Balancer Front-end Listener for SAP NetWeaver ASCS - Enqueue Replicator Server sapenqrepl<SAPSID> process
@@ -554,7 +554,7 @@
     port: "{{ ('5' + sap_system_nwas_abap_ascs_instance_nr + '16') | int }}"
     idle_connection_timeout: 600 # 10 minutes
     ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
-  when: (groups['nwas_ers'] is defined and (groups['nwas_ers'] | length>0))
+  when: (groups[sap_vm_provision_group_nwas_ers] is defined and (groups[sap_vm_provision_group_nwas_ers] | length>0))
   failed_when: not __sap_vm_provision_task_ibmcloud_lb_frontend_listener_ascs5.rc == 0 and not 'listener_duplicate_port' in __sap_vm_provision_task_ibmcloud_lb_frontend_listener_ascs5.stderr
 
 - name: Create IBM Cloud Load Balancer Front-end Listener for SAP NetWeaver ASCS - SAP Start Service (SAPControl SOAP) HTTP sapctrl<ASCS_NN> process
@@ -567,7 +567,7 @@
     port: "{{ ('5' + sap_system_nwas_abap_ascs_instance_nr + '13') | int }}"
     idle_connection_timeout: 600 # 10 minutes
     ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
-  when: (groups['nwas_ers'] is defined and (groups['nwas_ers'] | length>0))
+  when: (groups[sap_vm_provision_group_nwas_ers] is defined and (groups[sap_vm_provision_group_nwas_ers] | length>0))
   failed_when: not __sap_vm_provision_task_ibmcloud_lb_frontend_listener_ascs6.rc == 0 and not 'listener_duplicate_port' in __sap_vm_provision_task_ibmcloud_lb_frontend_listener_ascs6.stderr
 
 - name: Create IBM Cloud Load Balancer Front-end Listener for SAP NetWeaver ASCS - SAP Start Service (SAPControl SOAP) HTTPS (Secure) sapctrls<ASCS_NN>
@@ -580,7 +580,7 @@
     port: "{{ ('5' + sap_system_nwas_abap_ascs_instance_nr + '14') | int }}"
     idle_connection_timeout: 600 # 10 minutes
     ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
-  when: (groups['nwas_ers'] is defined and (groups['nwas_ers'] | length>0))
+  when: (groups[sap_vm_provision_group_nwas_ers] is defined and (groups[sap_vm_provision_group_nwas_ers] | length>0))
   failed_when: not __sap_vm_provision_task_ibmcloud_lb_frontend_listener_ascs7.rc == 0 and not 'listener_duplicate_port' in __sap_vm_provision_task_ibmcloud_lb_frontend_listener_ascs7.stderr
 
 # - name: Create IBM Cloud Load Balancer Front-end Listener for SAP NetWeaver ERS - Dispatcher sapdp<ERS_NN> process
@@ -593,7 +593,7 @@
 #     port: "{{ ('32' + sap_system_nwas_abap_ers_instance_nr) | int }}"
 #     idle_connection_timeout: 600 # 10 minutes
 #     ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
-#   when: (groups['nwas_ers'] is defined and (groups['nwas_ers'] | length>0))
+#   when: (groups[sap_vm_provision_group_nwas_ers] is defined and (groups[sap_vm_provision_group_nwas_ers] | length>0))
 #   failed_when: not __sap_vm_provision_task_ibmcloud_lb_frontend_listener_ers1.rc == 0 and not 'listener_duplicate_port' in __sap_vm_provision_task_ibmcloud_lb_frontend_listener_ers1.stderr
 
 # - name: Create IBM Cloud Load Balancer Front-end Listener for SAP NetWeaver ERS - Message Server sapms<SAPSID> process
@@ -606,7 +606,7 @@
 #     port: "{{ ('36' + sap_system_nwas_abap_ers_instance_nr) | int }}"
 #     idle_connection_timeout: 600 # 10 minutes
 #     ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
-#   when: (groups['nwas_ers'] is defined and (groups['nwas_ers'] | length>0))
+#   when: (groups[sap_vm_provision_group_nwas_ers] is defined and (groups[sap_vm_provision_group_nwas_ers] | length>0))
 #   failed_when: not __sap_vm_provision_task_ibmcloud_lb_frontend_listener_ers2.rc == 0 and not 'listener_duplicate_port' in __sap_vm_provision_task_ibmcloud_lb_frontend_listener_ers2.stderr
 
 - name: Create IBM Cloud Load Balancer Front-end Listener for SAP NetWeaver ERS - Enqueue Replication Server sapenqr<SAPSID> process
@@ -619,7 +619,7 @@
     port: "{{ ('39' + sap_system_nwas_abap_ers_instance_nr) | int }}"
     idle_connection_timeout: 600 # 10 minutes
     ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
-  when: (groups['nwas_ers'] is defined and (groups['nwas_ers'] | length>0))
+  when: (groups[sap_vm_provision_group_nwas_ers] is defined and (groups[sap_vm_provision_group_nwas_ers] | length>0))
   failed_when: not __sap_vm_provision_task_ibmcloud_lb_frontend_listener_ers3.rc == 0 and not 'listener_duplicate_port' in __sap_vm_provision_task_ibmcloud_lb_frontend_listener_ers3.stderr
 
 - name: Create IBM Cloud Load Balancer Front-end Listener for SAP NetWeaver ERS - SAP Start Service (SAPControl SOAP) HTTP sapctrl<ERS_NN> process
@@ -632,7 +632,7 @@
     port: "{{ ('5' + sap_system_nwas_abap_ers_instance_nr + '13') | int }}"
     idle_connection_timeout: 600 # 10 minutes
     ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
-  when: (groups['nwas_ers'] is defined and (groups['nwas_ers'] | length>0))
+  when: (groups[sap_vm_provision_group_nwas_ers] is defined and (groups[sap_vm_provision_group_nwas_ers] | length>0))
   failed_when: not __sap_vm_provision_task_ibmcloud_lb_frontend_listener_ers4.rc == 0 and not 'listener_duplicate_port' in __sap_vm_provision_task_ibmcloud_lb_frontend_listener_ers4.stderr
 
 - name: Create IBM Cloud Load Balancer Front-end Listener for SAP NetWeaver ERS - SAP Start Service (SAPControl SOAP) HTTPS (Secure) sapctrls<ERS_NN>
@@ -645,7 +645,7 @@
     port: "{{ ('5' + sap_system_nwas_abap_ers_instance_nr + '14') | int }}"
     idle_connection_timeout: 600 # 10 minutes
     ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
-  when: (groups['nwas_ers'] is defined and (groups['nwas_ers'] | length>0))
+  when: (groups[sap_vm_provision_group_nwas_ers] is defined and (groups[sap_vm_provision_group_nwas_ers] | length>0))
   failed_when: not __sap_vm_provision_task_ibmcloud_lb_frontend_listener_ers5.rc == 0 and not 'listener_duplicate_port' in __sap_vm_provision_task_ibmcloud_lb_frontend_listener_ers5.stderr
 
 
@@ -662,10 +662,10 @@
     port: "{{ ('3' + sap_system_hana_db_instance_nr + '13') | int }}"
     weight: 100
     ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
-  loop: "{{ (groups['hana_primary'] | default([]) ) }}"
+  loop: "{{ (groups[sap_vm_provision_group_hana_primary] | default([]) ) }}"
   loop_control:
     loop_var: host_node
-  when: (groups['hana_secondary'] is defined and (groups['hana_secondary'] | length>0))
+  when: (groups[sap_vm_provision_group_hana_secondary] is defined and (groups[sap_vm_provision_group_hana_secondary] | length>0))
   failed_when: not __sap_vm_provision_task_ibmcloud_lb_pool_members_hana1.rc == 0 and not 'already exists in a pool' in __sap_vm_provision_task_ibmcloud_lb_pool_members_hana1.stderr
 
 # Secondary
@@ -679,10 +679,10 @@
     port: "{{ ('3' + sap_system_hana_db_instance_nr + '13') | int }}"
     weight: 1
     ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
-  loop: "{{ (groups['hana_secondary'] | default([]) ) }}"
+  loop: "{{ (groups[sap_vm_provision_group_hana_secondary] | default([]) ) }}"
   loop_control:
     loop_var: host_node
-  when: (groups['hana_secondary'] is defined and (groups['hana_secondary'] | length>0))
+  when: (groups[sap_vm_provision_group_hana_secondary] is defined and (groups[sap_vm_provision_group_hana_secondary] | length>0))
   failed_when: not __sap_vm_provision_task_ibmcloud_lb_pool_members_hana2.rc == 0 and not 'already exists in a pool' in __sap_vm_provision_task_ibmcloud_lb_pool_members_hana2.stderr
 
 
@@ -697,10 +697,10 @@
     port: "{{ ('3' + sap_system_hana_db_instance_nr + '15') | int }}"
     weight: 100
     ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
-  loop: "{{ (groups['hana_primary'] | default([]) ) }}"
+  loop: "{{ (groups[sap_vm_provision_group_hana_primary] | default([]) ) }}"
   loop_control:
     loop_var: host_node
-  when: (groups['hana_secondary'] is defined and (groups['hana_secondary'] | length>0))
+  when: (groups[sap_vm_provision_group_hana_secondary] is defined and (groups[sap_vm_provision_group_hana_secondary] | length>0))
   failed_when: not __sap_vm_provision_task_ibmcloud_lb_pool_members_hana3.rc == 0 and not 'already exists in a pool' in __sap_vm_provision_task_ibmcloud_lb_pool_members_hana3.stderr
 
 # Secondary
@@ -714,10 +714,10 @@
     port: "{{ ('3' + sap_system_hana_db_instance_nr + '15') | int }}"
     weight: 1
     ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
-  loop: "{{ (groups['hana_secondary'] | default([]) ) }}"
+  loop: "{{ (groups[sap_vm_provision_group_hana_secondary] | default([]) ) }}"
   loop_control:
     loop_var: host_node
-  when: (groups['hana_secondary'] is defined and (groups['hana_secondary'] | length>0))
+  when: (groups[sap_vm_provision_group_hana_secondary] is defined and (groups[sap_vm_provision_group_hana_secondary] | length>0))
   failed_when: not __sap_vm_provision_task_ibmcloud_lb_pool_members_hana4.rc == 0 and not 'already exists in a pool' in __sap_vm_provision_task_ibmcloud_lb_pool_members_hana4.stderr
 
 
@@ -732,10 +732,10 @@
     port: "{{ ('5' + sap_system_hana_db_instance_nr + '13') | int }}"
     weight: 100
     ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
-  loop: "{{ (groups['hana_primary'] | default([]) ) }}"
+  loop: "{{ (groups[sap_vm_provision_group_hana_primary] | default([]) ) }}"
   loop_control:
     loop_var: host_node
-  when: (groups['hana_secondary'] is defined and (groups['hana_secondary'] | length>0))
+  when: (groups[sap_vm_provision_group_hana_secondary] is defined and (groups[sap_vm_provision_group_hana_secondary] | length>0))
   failed_when: not __sap_vm_provision_task_ibmcloud_lb_pool_members_hana5.rc == 0 and not 'already exists in a pool' in __sap_vm_provision_task_ibmcloud_lb_pool_members_hana5.stderr
 
 # Secondary
@@ -749,10 +749,10 @@
     port: "{{ ('5' + sap_system_hana_db_instance_nr + '13') | int }}"
     weight: 1
     ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
-  loop: "{{ (groups['hana_secondary'] | default([]) ) }}"
+  loop: "{{ (groups[sap_vm_provision_group_hana_secondary] | default([]) ) }}"
   loop_control:
     loop_var: host_node
-  when: (groups['hana_secondary'] is defined and (groups['hana_secondary'] | length>0))
+  when: (groups[sap_vm_provision_group_hana_secondary] is defined and (groups[sap_vm_provision_group_hana_secondary] | length>0))
   failed_when: not __sap_vm_provision_task_ibmcloud_lb_pool_members_hana6.rc == 0 and not 'already exists in a pool' in __sap_vm_provision_task_ibmcloud_lb_pool_members_hana6.stderr
 
 
@@ -767,10 +767,10 @@
     port: "{{ ('5' + sap_system_hana_db_instance_nr + '14') | int }}"
     weight: 100
     ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
-  loop: "{{ (groups['hana_primary'] | default([]) ) }}"
+  loop: "{{ (groups[sap_vm_provision_group_hana_primary] | default([]) ) }}"
   loop_control:
     loop_var: host_node
-  when: (groups['hana_secondary'] is defined and (groups['hana_secondary'] | length>0))
+  when: (groups[sap_vm_provision_group_hana_secondary] is defined and (groups[sap_vm_provision_group_hana_secondary] | length>0))
   failed_when: not __sap_vm_provision_task_ibmcloud_lb_pool_members_hana7.rc == 0 and not 'already exists in a pool' in __sap_vm_provision_task_ibmcloud_lb_pool_members_hana7.stderr
 
 # Secondary
@@ -784,10 +784,10 @@
     port: "{{ ('5' + sap_system_hana_db_instance_nr + '14') | int }}"
     weight: 1
     ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
-  loop: "{{ (groups['hana_secondary'] | default([]) ) }}"
+  loop: "{{ (groups[sap_vm_provision_group_hana_secondary] | default([]) ) }}"
   loop_control:
     loop_var: host_node
-  when: (groups['hana_secondary'] is defined and (groups['hana_secondary'] | length>0))
+  when: (groups[sap_vm_provision_group_hana_secondary] is defined and (groups[sap_vm_provision_group_hana_secondary] | length>0))
   failed_when: not __sap_vm_provision_task_ibmcloud_lb_pool_members_hana8.rc == 0 and not 'already exists in a pool' in __sap_vm_provision_task_ibmcloud_lb_pool_members_hana8.stderr
 
 
@@ -802,10 +802,10 @@
     port: 5912
     weight: 100
     ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
-  loop: "{{ (groups['anydb_primary'] | default([]) ) }}"
+  loop: "{{ (groups[sap_vm_provision_group_anydb_primary] | default([]) ) }}"
   loop_control:
     loop_var: host_node
-  when: (groups['anydb_secondary'] is defined and (groups['anydb_secondary'] | length>0))
+  when: (groups[sap_vm_provision_group_anydb_secondary] is defined and (groups[sap_vm_provision_group_anydb_secondary] | length>0))
   failed_when: not __sap_vm_provision_task_ibmcloud_lb_pool_members_anydb1.rc == 0 and not 'already exists in a pool' in __sap_vm_provision_task_ibmcloud_lb_pool_members_anydb1.stderr
 
 # Secondary
@@ -819,10 +819,10 @@
     port: 5912
     weight: 1
     ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
-  loop: "{{ (groups['anydb_secondary'] | default([]) ) }}"
+  loop: "{{ (groups[sap_vm_provision_group_anydb_secondary] | default([]) ) }}"
   loop_control:
     loop_var: host_node
-  when: (groups['anydb_secondary'] is defined and (groups['anydb_secondary'] | length>0))
+  when: (groups[sap_vm_provision_group_anydb_secondary] is defined and (groups[sap_vm_provision_group_anydb_secondary] | length>0))
   failed_when: not __sap_vm_provision_task_ibmcloud_lb_pool_members_anydb2.rc == 0 and not 'already exists in a pool' in __sap_vm_provision_task_ibmcloud_lb_pool_members_anydb2.stderr
 
 
@@ -837,10 +837,10 @@
     port: "{{ ('32' + sap_system_nwas_abap_ascs_instance_nr) | int }}"
     weight: 100
     ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
-  loop: "{{ (groups['nwas_ascs'] | default([]) ) }}"
+  loop: "{{ (groups[sap_vm_provision_group_nwas_ascs] | default([]) ) }}"
   loop_control:
     loop_var: host_node
-  when: (groups['nwas_ers'] is defined and (groups['nwas_ers'] | length>0))
+  when: (groups[sap_vm_provision_group_nwas_ers] is defined and (groups[sap_vm_provision_group_nwas_ers] | length>0))
   failed_when: not __sap_vm_provision_task_ibmcloud_lb_pool_members_nwas_ascs1.rc == 0 and not 'already exists in a pool' in __sap_vm_provision_task_ibmcloud_lb_pool_members_nwas_ascs1.stderr
 
 # Secondary
@@ -854,10 +854,10 @@
     port: "{{ ('32' + sap_system_nwas_abap_ascs_instance_nr) | int }}"
     weight: 1
     ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
-  loop: "{{ (groups['nwas_ers'] | default([]) ) }}"
+  loop: "{{ (groups[sap_vm_provision_group_nwas_ers] | default([]) ) }}"
   loop_control:
     loop_var: host_node
-  when: (groups['nwas_ers'] is defined and (groups['nwas_ers'] | length>0))
+  when: (groups[sap_vm_provision_group_nwas_ers] is defined and (groups[sap_vm_provision_group_nwas_ers] | length>0))
   failed_when: not __sap_vm_provision_task_ibmcloud_lb_pool_members_nwas_ascs2.rc == 0 and not 'already exists in a pool' in __sap_vm_provision_task_ibmcloud_lb_pool_members_nwas_ascs2.stderr
 
 
@@ -872,10 +872,10 @@
     port: "{{ ('36' + sap_system_nwas_abap_ascs_instance_nr) | int }}"
     weight: 100
     ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
-  loop: "{{ (groups['nwas_ascs'] | default([]) ) }}"
+  loop: "{{ (groups[sap_vm_provision_group_nwas_ascs] | default([]) ) }}"
   loop_control:
     loop_var: host_node
-  when: (groups['nwas_ers'] is defined and (groups['nwas_ers'] | length>0))
+  when: (groups[sap_vm_provision_group_nwas_ers] is defined and (groups[sap_vm_provision_group_nwas_ers] | length>0))
   failed_when: not __sap_vm_provision_task_ibmcloud_lb_pool_members_nwas_ascs3.rc == 0 and not 'already exists in a pool' in __sap_vm_provision_task_ibmcloud_lb_pool_members_nwas_ascs3.stderr
 
 # Secondary
@@ -889,10 +889,10 @@
     port: "{{ ('36' + sap_system_nwas_abap_ascs_instance_nr) | int }}"
     weight: 1
     ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
-  loop: "{{ (groups['nwas_ers'] | default([]) ) }}"
+  loop: "{{ (groups[sap_vm_provision_group_nwas_ers] | default([]) ) }}"
   loop_control:
     loop_var: host_node
-  when: (groups['nwas_ers'] is defined and (groups['nwas_ers'] | length>0))
+  when: (groups[sap_vm_provision_group_nwas_ers] is defined and (groups[sap_vm_provision_group_nwas_ers] | length>0))
   failed_when: not __sap_vm_provision_task_ibmcloud_lb_pool_members_nwas_ascs4.rc == 0 and not 'already exists in a pool' in __sap_vm_provision_task_ibmcloud_lb_pool_members_nwas_ascs4.stderr
 
 
@@ -907,10 +907,10 @@
     port: "{{ ('81' + sap_system_nwas_abap_ascs_instance_nr) | int }}"
     weight: 100
     ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
-  loop: "{{ (groups['nwas_ascs'] | default([]) ) }}"
+  loop: "{{ (groups[sap_vm_provision_group_nwas_ascs] | default([]) ) }}"
   loop_control:
     loop_var: host_node
-  when: (groups['nwas_ers'] is defined and (groups['nwas_ers'] | length>0))
+  when: (groups[sap_vm_provision_group_nwas_ers] is defined and (groups[sap_vm_provision_group_nwas_ers] | length>0))
   failed_when: not __sap_vm_provision_task_ibmcloud_lb_pool_members_nwas_ascs5.rc == 0 and not 'already exists in a pool' in __sap_vm_provision_task_ibmcloud_lb_pool_members_nwas_ascs5.stderr
 
 # Secondary
@@ -924,10 +924,10 @@
     port: "{{ ('81' + sap_system_nwas_abap_ascs_instance_nr) | int }}"
     weight: 1
     ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
-  loop: "{{ (groups['nwas_ers'] | default([]) ) }}"
+  loop: "{{ (groups[sap_vm_provision_group_nwas_ers] | default([]) ) }}"
   loop_control:
     loop_var: host_node
-  when: (groups['nwas_ers'] is defined and (groups['nwas_ers'] | length>0))
+  when: (groups[sap_vm_provision_group_nwas_ers] is defined and (groups[sap_vm_provision_group_nwas_ers] | length>0))
   failed_when: not __sap_vm_provision_task_ibmcloud_lb_pool_members_nwas_ascs6.rc == 0 and not 'already exists in a pool' in __sap_vm_provision_task_ibmcloud_lb_pool_members_nwas_ascs6.stderr
 
 
@@ -942,10 +942,10 @@
     port: "{{ ('39' + sap_system_nwas_abap_ascs_instance_nr) | int }}"
     weight: 100
     ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
-  loop: "{{ (groups['nwas_ascs'] | default([]) ) }}"
+  loop: "{{ (groups[sap_vm_provision_group_nwas_ascs] | default([]) ) }}"
   loop_control:
     loop_var: host_node
-  when: (groups['nwas_ers'] is defined and (groups['nwas_ers'] | length>0))
+  when: (groups[sap_vm_provision_group_nwas_ers] is defined and (groups[sap_vm_provision_group_nwas_ers] | length>0))
   failed_when: not __sap_vm_provision_task_ibmcloud_lb_pool_members_nwas_ascs7.rc == 0 and not 'already exists in a pool' in __sap_vm_provision_task_ibmcloud_lb_pool_members_nwas_ascs7.stderr
 
 # Secondary
@@ -959,10 +959,10 @@
     port: "{{ ('39' + sap_system_nwas_abap_ascs_instance_nr) | int }}"
     weight: 1
     ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
-  loop: "{{ (groups['nwas_ers'] | default([]) ) }}"
+  loop: "{{ (groups[sap_vm_provision_group_nwas_ers] | default([]) ) }}"
   loop_control:
     loop_var: host_node
-  when: (groups['nwas_ers'] is defined and (groups['nwas_ers'] | length>0))
+  when: (groups[sap_vm_provision_group_nwas_ers] is defined and (groups[sap_vm_provision_group_nwas_ers] | length>0))
   failed_when: not __sap_vm_provision_task_ibmcloud_lb_pool_members_nwas_ascs8.rc == 0 and not 'already exists in a pool' in __sap_vm_provision_task_ibmcloud_lb_pool_members_nwas_ascs8.stderr
 
 
@@ -977,10 +977,10 @@
     port: "{{ ('5' + sap_system_nwas_abap_ascs_instance_nr + '16') | int }}"
     weight: 100
     ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
-  loop: "{{ (groups['nwas_ascs'] | default([]) ) }}"
+  loop: "{{ (groups[sap_vm_provision_group_nwas_ascs] | default([]) ) }}"
   loop_control:
     loop_var: host_node
-  when: (groups['nwas_ers'] is defined and (groups['nwas_ers'] | length>0))
+  when: (groups[sap_vm_provision_group_nwas_ers] is defined and (groups[sap_vm_provision_group_nwas_ers] | length>0))
   failed_when: not __sap_vm_provision_task_ibmcloud_lb_pool_members_nwas_ascs9.rc == 0 and not 'already exists in a pool' in __sap_vm_provision_task_ibmcloud_lb_pool_members_nwas_ascs9.stderr
 
 # Secondary
@@ -994,10 +994,10 @@
     port: "{{ ('5' + sap_system_nwas_abap_ascs_instance_nr + '16') | int }}"
     weight: 1
     ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
-  loop: "{{ (groups['nwas_ers'] | default([]) ) }}"
+  loop: "{{ (groups[sap_vm_provision_group_nwas_ers] | default([]) ) }}"
   loop_control:
     loop_var: host_node
-  when: (groups['nwas_ers'] is defined and (groups['nwas_ers'] | length>0))
+  when: (groups[sap_vm_provision_group_nwas_ers] is defined and (groups[sap_vm_provision_group_nwas_ers] | length>0))
   failed_when: not __sap_vm_provision_task_ibmcloud_lb_pool_members_nwas_ascs10.rc == 0 and not 'already exists in a pool' in __sap_vm_provision_task_ibmcloud_lb_pool_members_nwas_ascs10.stderr
 
 
@@ -1012,10 +1012,10 @@
     port: "{{ ('5' + sap_system_nwas_abap_ascs_instance_nr + '13') | int }}"
     weight: 100
     ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
-  loop: "{{ (groups['nwas_ascs'] | default([]) ) }}"
+  loop: "{{ (groups[sap_vm_provision_group_nwas_ascs] | default([]) ) }}"
   loop_control:
     loop_var: host_node
-  when: (groups['nwas_ers'] is defined and (groups['nwas_ers'] | length>0))
+  when: (groups[sap_vm_provision_group_nwas_ers] is defined and (groups[sap_vm_provision_group_nwas_ers] | length>0))
   failed_when: not __sap_vm_provision_task_ibmcloud_lb_pool_members_nwas_ascs11.rc == 0 and not 'already exists in a pool' in __sap_vm_provision_task_ibmcloud_lb_pool_members_nwas_ascs11.stderr
 
 # Secondary
@@ -1029,10 +1029,10 @@
     port: "{{ ('5' + sap_system_nwas_abap_ascs_instance_nr + '13') | int }}"
     weight: 1
     ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
-  loop: "{{ (groups['nwas_ers'] | default([]) ) }}"
+  loop: "{{ (groups[sap_vm_provision_group_nwas_ers] | default([]) ) }}"
   loop_control:
     loop_var: host_node
-  when: (groups['nwas_ers'] is defined and (groups['nwas_ers'] | length>0))
+  when: (groups[sap_vm_provision_group_nwas_ers] is defined and (groups[sap_vm_provision_group_nwas_ers] | length>0))
   failed_when: not __sap_vm_provision_task_ibmcloud_lb_pool_members_nwas_ascs12.rc == 0 and not 'already exists in a pool' in __sap_vm_provision_task_ibmcloud_lb_pool_members_nwas_ascs12.stderr
 
 
@@ -1047,10 +1047,10 @@
     port: "{{ ('5' + sap_system_nwas_abap_ascs_instance_nr + '14') | int }}"
     weight: 100
     ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
-  loop: "{{ (groups['nwas_ascs'] | default([]) ) }}"
+  loop: "{{ (groups[sap_vm_provision_group_nwas_ascs] | default([]) ) }}"
   loop_control:
     loop_var: host_node
-  when: (groups['nwas_ers'] is defined and (groups['nwas_ers'] | length>0))
+  when: (groups[sap_vm_provision_group_nwas_ers] is defined and (groups[sap_vm_provision_group_nwas_ers] | length>0))
   failed_when: not __sap_vm_provision_task_ibmcloud_lb_pool_members_nwas_ascs13.rc == 0 and not 'already exists in a pool' in __sap_vm_provision_task_ibmcloud_lb_pool_members_nwas_ascs13.stderr
 
 # Secondary
@@ -1064,10 +1064,10 @@
     port: "{{ ('5' + sap_system_nwas_abap_ascs_instance_nr + '14') | int }}"
     weight: 1
     ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
-  loop: "{{ (groups['nwas_ers'] | default([]) ) }}"
+  loop: "{{ (groups[sap_vm_provision_group_nwas_ers] | default([]) ) }}"
   loop_control:
     loop_var: host_node
-  when: (groups['nwas_ers'] is defined and (groups['nwas_ers'] | length>0))
+  when: (groups[sap_vm_provision_group_nwas_ers] is defined and (groups[sap_vm_provision_group_nwas_ers] | length>0))
   failed_when: not __sap_vm_provision_task_ibmcloud_lb_pool_members_nwas_ascs14.rc == 0 and not 'already exists in a pool' in __sap_vm_provision_task_ibmcloud_lb_pool_members_nwas_ascs14.stderr
 
 
@@ -1082,10 +1082,10 @@
 #     port: "{{ ('32' + sap_system_nwas_abap_ers_instance_nr) | int }}"
 #     weight: 100
 #     ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
-#   loop: "{{ (groups['nwas_ers'] | default([]) ) }}"
+#   loop: "{{ (groups[sap_vm_provision_group_nwas_ers] | default([]) ) }}"
 #   loop_control:
 #     loop_var: host_node
-#   when: (groups['nwas_ers'] is defined and (groups['nwas_ers'] | length>0))
+#   when: (groups[sap_vm_provision_group_nwas_ers] is defined and (groups[sap_vm_provision_group_nwas_ers] | length>0))
 #   failed_when: not __sap_vm_provision_task_ibmcloud_lb_pool_members_nwas_ers1.rc == 0 and not 'already exists in a pool' in __sap_vm_provision_task_ibmcloud_lb_pool_members_nwas_ers1.stderr
 
 # Secondary
@@ -1099,10 +1099,10 @@
 #     port: "{{ ('32' + sap_system_nwas_abap_ers_instance_nr) | int }}"
 #     weight: 1
 #     ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
-#   loop: "{{ (groups['nwas_ascs'] | default([]) ) }}"
+#   loop: "{{ (groups[sap_vm_provision_group_nwas_ascs] | default([]) ) }}"
 #   loop_control:
 #     loop_var: host_node
-#   when: (groups['nwas_ers'] is defined and (groups['nwas_ers'] | length>0))
+#   when: (groups[sap_vm_provision_group_nwas_ers] is defined and (groups[sap_vm_provision_group_nwas_ers] | length>0))
 #   failed_when: not __sap_vm_provision_task_ibmcloud_lb_pool_members_nwas_ers2.rc == 0 and not 'already exists in a pool' in __sap_vm_provision_task_ibmcloud_lb_pool_members_nwas_ers2.stderr
 
 
@@ -1117,10 +1117,10 @@
 #     port: "{{ ('36' + sap_system_nwas_abap_ers_instance_nr) | int }}"
 #     weight: 100
 #     ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
-#   loop: "{{ (groups['nwas_ers'] | default([]) ) }}"
+#   loop: "{{ (groups[sap_vm_provision_group_nwas_ers] | default([]) ) }}"
 #   loop_control:
 #     loop_var: host_node
-#   when: (groups['nwas_ers'] is defined and (groups['nwas_ers'] | length>0))
+#   when: (groups[sap_vm_provision_group_nwas_ers] is defined and (groups[sap_vm_provision_group_nwas_ers] | length>0))
 #   failed_when: not __sap_vm_provision_task_ibmcloud_lb_pool_members_nwas_ers3.rc == 0 and not 'already exists in a pool' in __sap_vm_provision_task_ibmcloud_lb_pool_members_nwas_ers3.stderr
 
 # Secondary
@@ -1134,10 +1134,10 @@
 #     port: "{{ ('36' + sap_system_nwas_abap_ers_instance_nr) | int }}"
 #     weight: 1
 #     ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
-#   loop: "{{ (groups['nwas_ascs'] | default([]) ) }}"
+#   loop: "{{ (groups[sap_vm_provision_group_nwas_ascs] | default([]) ) }}"
 #   loop_control:
 #     loop_var: host_node
-#   when: (groups['nwas_ers'] is defined and (groups['nwas_ers'] | length>0))
+#   when: (groups[sap_vm_provision_group_nwas_ers] is defined and (groups[sap_vm_provision_group_nwas_ers] | length>0))
 #   failed_when: not __sap_vm_provision_task_ibmcloud_lb_pool_members_nwas_ers4.rc == 0 and not 'already exists in a pool' in __sap_vm_provision_task_ibmcloud_lb_pool_members_nwas_ers4.stderr
 
 
@@ -1152,10 +1152,10 @@
     port: "{{ ('39' + sap_system_nwas_abap_ers_instance_nr) | int }}"
     weight: 100
     ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
-  loop: "{{ (groups['nwas_ers'] | default([]) ) }}"
+  loop: "{{ (groups[sap_vm_provision_group_nwas_ers] | default([]) ) }}"
   loop_control:
     loop_var: host_node
-  when: (groups['nwas_ers'] is defined and (groups['nwas_ers'] | length>0))
+  when: (groups[sap_vm_provision_group_nwas_ers] is defined and (groups[sap_vm_provision_group_nwas_ers] | length>0))
   failed_when: not __sap_vm_provision_task_ibmcloud_lb_pool_members_nwas_ers5.rc == 0 and not 'already exists in a pool' in __sap_vm_provision_task_ibmcloud_lb_pool_members_nwas_ers5.stderr
 
 # Secondary
@@ -1169,10 +1169,10 @@
     port: "{{ ('39' + sap_system_nwas_abap_ers_instance_nr) | int }}"
     weight: 1
     ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
-  loop: "{{ (groups['nwas_ascs'] | default([]) ) }}"
+  loop: "{{ (groups[sap_vm_provision_group_nwas_ascs] | default([]) ) }}"
   loop_control:
     loop_var: host_node
-  when: (groups['nwas_ers'] is defined and (groups['nwas_ers'] | length>0))
+  when: (groups[sap_vm_provision_group_nwas_ers] is defined and (groups[sap_vm_provision_group_nwas_ers] | length>0))
   failed_when: not __sap_vm_provision_task_ibmcloud_lb_pool_members_nwas_ers6.rc == 0 and not 'already exists in a pool' in __sap_vm_provision_task_ibmcloud_lb_pool_members_nwas_ers6.stderr
 
 
@@ -1187,10 +1187,10 @@
     port: "{{ ('5' + sap_system_nwas_abap_ers_instance_nr + '13') | int }}"
     weight: 100
     ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
-  loop: "{{ (groups['nwas_ers'] | default([]) ) }}"
+  loop: "{{ (groups[sap_vm_provision_group_nwas_ers] | default([]) ) }}"
   loop_control:
     loop_var: host_node
-  when: (groups['nwas_ers'] is defined and (groups['nwas_ers'] | length>0))
+  when: (groups[sap_vm_provision_group_nwas_ers] is defined and (groups[sap_vm_provision_group_nwas_ers] | length>0))
   failed_when: not __sap_vm_provision_task_ibmcloud_lb_pool_members_nwas_ers7.rc == 0 and not 'already exists in a pool' in __sap_vm_provision_task_ibmcloud_lb_pool_members_nwas_ers7.stderr
 
 # Secondary
@@ -1204,10 +1204,10 @@
     port: "{{ ('5' + sap_system_nwas_abap_ers_instance_nr + '13') | int }}"
     weight: 1
     ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
-  loop: "{{ (groups['nwas_ascs'] | default([]) ) }}"
+  loop: "{{ (groups[sap_vm_provision_group_nwas_ascs] | default([]) ) }}"
   loop_control:
     loop_var: host_node
-  when: (groups['nwas_ers'] is defined and (groups['nwas_ers'] | length>0))
+  when: (groups[sap_vm_provision_group_nwas_ers] is defined and (groups[sap_vm_provision_group_nwas_ers] | length>0))
   failed_when: not __sap_vm_provision_task_ibmcloud_lb_pool_members_nwas_ers8.rc == 0 and not 'already exists in a pool' in __sap_vm_provision_task_ibmcloud_lb_pool_members_nwas_ers8.stderr
 
 
@@ -1222,10 +1222,10 @@
     port: "{{ ('5' + sap_system_nwas_abap_ers_instance_nr + '14') | int }}"
     weight: 100
     ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
-  loop: "{{ (groups['nwas_ers'] | default([]) ) }}"
+  loop: "{{ (groups[sap_vm_provision_group_nwas_ers] | default([]) ) }}"
   loop_control:
     loop_var: host_node
-  when: (groups['nwas_ers'] is defined and (groups['nwas_ers'] | length>0))
+  when: (groups[sap_vm_provision_group_nwas_ers] is defined and (groups[sap_vm_provision_group_nwas_ers] | length>0))
   failed_when: not __sap_vm_provision_task_ibmcloud_lb_pool_members_nwas_ers9.rc == 0 and not 'already exists in a pool' in __sap_vm_provision_task_ibmcloud_lb_pool_members_nwas_ers9.stderr
 
 # Secondary
@@ -1239,10 +1239,10 @@
     port: "{{ ('5' + sap_system_nwas_abap_ers_instance_nr + '14') | int }}"
     weight: 1
     ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
-  loop: "{{ (groups['nwas_ascs'] | default([]) ) }}"
+  loop: "{{ (groups[sap_vm_provision_group_nwas_ascs] | default([]) ) }}"
   loop_control:
     loop_var: host_node
-  when: (groups['nwas_ers'] is defined and (groups['nwas_ers'] | length>0))
+  when: (groups[sap_vm_provision_group_nwas_ers] is defined and (groups[sap_vm_provision_group_nwas_ers] | length>0))
   failed_when: not __sap_vm_provision_task_ibmcloud_lb_pool_members_nwas_ers10.rc == 0 and not 'already exists in a pool' in __sap_vm_provision_task_ibmcloud_lb_pool_members_nwas_ers10.stderr
 
 
@@ -1260,11 +1260,11 @@
     ttl: 7200
     ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
   failed_when: not __sap_vm_provision_task_ibmcloud_pdns_record.rc == 0 and not 'The record already exists' in __sap_vm_provision_task_ibmcloud_pdns_record.stderr
-  loop: "{{ (groups['hana_primary'] | default([])) }}"
+  loop: "{{ (groups[sap_vm_provision_group_hana_primary] | default([])) }}"
   loop_control:
     loop_var: host_node
   when:
-    - groups["hana_secondary"] is defined and (groups["hana_secondary"]|length>0)
+    - groups[sap_vm_provision_group_hana_secondary] is defined and (groups[sap_vm_provision_group_hana_secondary]|length>0)
 
 - name: IBM Cloud Private DNS Record for SAP AnyDB HA Virtual Hostname
   no_log: "{{ __sap_vm_provision_no_log }}"
@@ -1278,11 +1278,11 @@
     ttl: 7200
     ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
   failed_when: not __sap_vm_provision_task_ibmcloud_pdns_record.rc == 0 and not 'The record already exists' in __sap_vm_provision_task_ibmcloud_pdns_record.stderr
-  loop: "{{ (groups['anydb_primary'] | default([])) }}"
+  loop: "{{ (groups[sap_vm_provision_group_anydb_primary] | default([])) }}"
   loop_control:
     loop_var: host_node
   when:
-    - groups["anydb_secondary"] is defined and (groups["anydb_secondary"]|length>0)
+    - groups[sap_vm_provision_group_anydb_secondary] is defined and (groups[sap_vm_provision_group_anydb_secondary]|length>0)
 
 - name: IBM Cloud Private DNS Record for SAP NetWeaver ASCS HA Virtual Hostname
   no_log: "{{ __sap_vm_provision_no_log }}"
@@ -1296,11 +1296,11 @@
     ttl: 7200
     ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
   failed_when: not __sap_vm_provision_task_ibmcloud_pdns_record.rc == 0 and not 'The record already exists' in __sap_vm_provision_task_ibmcloud_pdns_record.stderr
-  loop: "{{ (groups['nwas_ascs'] | default([])) }}"
+  loop: "{{ (groups[sap_vm_provision_group_nwas_ascs] | default([])) }}"
   loop_control:
     loop_var: host_node
   when:
-    - groups["nwas_ers"] is defined and (groups["nwas_ers"]|length>0)
+    - groups[sap_vm_provision_group_nwas_ers] is defined and (groups[sap_vm_provision_group_nwas_ers]|length>0)
 
 - name: IBM Cloud Private DNS Record for SAP NetWeaver ERS HA Virtual Hostname
   no_log: "{{ __sap_vm_provision_no_log }}"
@@ -1314,11 +1314,11 @@
     ttl: 7200
     ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
   failed_when: not __sap_vm_provision_task_ibmcloud_pdns_record.rc == 0 and not 'The record already exists' in __sap_vm_provision_task_ibmcloud_pdns_record.stderr
-  loop: "{{ (groups['nwas_ers'] | default([])) }}"
+  loop: "{{ (groups[sap_vm_provision_group_nwas_ers] | default([])) }}"
   loop_control:
     loop_var: host_node
   when:
-    - groups["nwas_ers"] is defined and (groups["nwas_ers"]|length>0)
+    - groups[sap_vm_provision_group_nwas_ers] is defined and (groups[sap_vm_provision_group_nwas_ers]|length>0)
 
 
 - name: Set facts for all hosts - use facts from localhost - HA/DR - IBM Cloud Load Balancer - SAP HANA Primary node
@@ -1328,7 +1328,7 @@
     sap_ha_pacemaker_cluster_vip_hana_primary_ip_address: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', sap_vm_provision_ha_load_balancer_name_hana))[0].private_ips[0].address }}"
   when:
     - sap_ha_pacemaker_cluster_ibmcloud_region is defined
-    - groups["hana_secondary"] is defined and (groups["hana_secondary"]|length>0)
+    - groups[sap_vm_provision_group_hana_secondary] is defined and (groups[sap_vm_provision_group_hana_secondary]|length>0)
   delegate_to: "{{ item }}"
   delegate_facts: true
   loop: "{{ groups_merged_list }}"
@@ -1340,7 +1340,7 @@
     sap_ha_install_anydb_ibmdb2_vip_primary_ip_address: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', sap_vm_provision_ha_load_balancer_name_anydb))[0].private_ips[0].address }}"
   when:
     - sap_ha_pacemaker_cluster_ibmcloud_region is defined
-    - groups["anydb_secondary"] is defined and (groups["anydb_secondary"]|length>0)
+    - groups[sap_vm_provision_group_anydb_secondary] is defined and (groups[sap_vm_provision_group_anydb_secondary]|length>0)
   delegate_to: "{{ item }}"
   delegate_facts: true
   loop: "{{ groups_merged_list }}"
@@ -1355,7 +1355,7 @@
     sap_ha_pacemaker_cluster_vip_nwas_abap_ers_ip_address: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', sap_vm_provision_ha_load_balancer_name_nwas + '-ers'))[0].private_ips[0].address }}"
   when:
     - sap_ha_pacemaker_cluster_ibmcloud_region is defined
-    - groups["nwas_ers"] is defined and (groups["nwas_ers"]|length>0)
+    - groups[sap_vm_provision_group_nwas_ers] is defined and (groups[sap_vm_provision_group_nwas_ers]|length>0)
   delegate_to: "{{ item }}"
   delegate_facts: true
   loop: "{{ groups_merged_list }}"
@@ -1368,7 +1368,7 @@
 #     sap_ha_pacemaker_cluster_vip_nwas_abap_aas_ip_address: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', sap_vm_provision_ha_load_balancer_name_nwas + '-aas'))[0].private_ips[0].address }}"
 #   when:
 #     - sap_ha_pacemaker_cluster_ibmcloud_region is defined
-#     - groups["nwas_aas"] is defined and (groups["nwas_aas"]|length>0)
+#     - groups[sap_vm_provision_group_nwas_aas] is defined and (groups[sap_vm_provision_group_nwas_aas]|length>0)
 #   delegate_to: "{{ item }}"
 #   delegate_facts: true
 #   loop: "{{ groups_merged_list }}"
