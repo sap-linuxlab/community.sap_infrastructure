@@ -15,7 +15,10 @@ A few minor changes
 Bugfixes
 --------
 
+- collection - Bump vmware.vmware_rest to 4.5.0 (https://github.com/sap-linuxlab/community.sap_infrastructure/pull/88)
+- collection - Use amazon.aws.ec2_placement_group (https://github.com/sap-linuxlab/community.sap_infrastructure/pull/90)
 - collection - implement changelogs/changelog.yaml (https://github.com/sap-linuxlab/community.sap_infrastructure/pull/84)
+- sap_vm_provision - AWS tag pacemaker for fence agent stonith:external/ec2 (https://github.com/sap-linuxlab/community.sap_infrastructure/pull/91)
 - sap_vm_provision - update azure.azcollection minimum version requirement (https://github.com/sap-linuxlab/community.sap_infrastructure/pull/81)
 - sap_vm_provision/sap_vm_temp_vip - Add dynamic group handling for provisioning (https://github.com/sap-linuxlab/community.sap_infrastructure/pull/78)
 - sap_vm_verify - stub code comments and reorder (https://github.com/sap-linuxlab/community.sap_infrastructure/pull/80)
