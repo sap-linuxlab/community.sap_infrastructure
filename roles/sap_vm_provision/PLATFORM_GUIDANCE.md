@@ -5,6 +5,25 @@ Table of Contents:
 - [Recommended Infrastructure Platform authorizations](#recommended-infrastructure-platform-authorizations)
 - [Recommended Infrastructure Platform configuration](#recommended-infrastructure-platform-configuration)
 
+## Key note - Connectivity
+
+The Ansible Control Node AKA Controller (i.e. device where Ansible Playbook is executed), must be able to directly call the platform's API endpoints. For example:
+
+- AWS EC2 API endpoint `ec2.us-east-1.amazonaws.com`
+- VMware vSphere REST API endpoint `<VMware vCenter Server Appliance hostnamee>.:443`
+
+By default, a Cloud account will use Public internet endpoints which should be accessible in most cases. The Cloud account may utilise Private endpoints for security, as would an On-Premise Hypervisor. Examples include:
+
+- running an Ansible Playbook from a personal laptop, then the personal laptop acts as the Ansible Control Node and can access the platform's APIs using a Client-to-Site VPN Client (such as OpenVPN Connect) to provision Virtual Machines for deploying SAP software
+- running an Ansible Playbook from an existing host (e.g. VM) inside the platform's private network, then the existing host acts as the Ansible Control Node and can access the platform's APIs to provision Virtual Machines for deploying SAP software
+
+The subsequent provisioned Virtual Machine, must be accessible too - this can utilise a Bastion for SSH Proxy connection, which is common for Cloud IaaS.
+
+The Ansible Control Node AKA Controller (i.e. device where Ansible Playbook is executed), must be able to SSH to the Ansible Target Node (i.e. Virtual Machine) using:
+
+- Direct SSH connection from Ansible control node to target node (`sap_vm_provision_bastion_execution: false`); with SSH Private Key for the host (`sap_vm_provision_ssh_host_private_key_file_path: "/path"`).
+- SSH Proxy connection from Ansible control node, via Bastion host, to target node (`sap_vm_provision_bastion_execution: true`); with SSH Private Keys for the host and the bastion (`sap_vm_provision_ssh_host_private_key_file_path: "/path"` and `sap_vm_provision_ssh_bastion_private_key_file_path: "/path"`)
+
 
 ## Required resources when Ansible provisioning VMs
 
@@ -118,7 +137,7 @@ See below for the drop-down list of required environment resources on an Infrast
     - `private_key`: Use the private ssh key at the location defined by `sap_vm_provision_ssh_host_private_key_file_path`.
     - `private_key_data`: use the private ssh key provided in `sap_vm_provision_ssh_host_private_key_data` and write it to the location defined in `sap_vm_provision_ssh_host_private_key_file_path`.
 
-- Optional: Execution host with access to OpenShift cluster. 
+- Optional: Ansible Control Node host with access to OpenShift cluster. 
 
 - Native Kubernetes with KubeVirt has not been tested.
 
@@ -473,8 +492,6 @@ The VM Template must be prepared with cloud-init. This process is subjective to 
     - [vSphere Web Services SDK Programming Guide - Guest Customization Using cloud-init](https://developer.vmware.com/docs/18555/GUID-75E27FA9-2E40-4CBF-BF3D-22DCFC8F11F7.html)
     - [cloud-init documentation - Reference - Datasources - VMware](https://cloudinit.readthedocs.io/en/latest/reference/datasources/vmware.html)
 
-
-In addition, the provisioned Virtual Machine must be accessible from the Ansible Controller (i.e. device where Ansible Playbook for SAP is executed must be able to reach the provisioned host).
 
 When VMware vCenter and vSphere clusters with VMware NSX virtualized network overlays using Segments (e.g. 192.168.0.0/16) connected to Tier-0/Tier-1 Gateways (which are bound to the backbone network subnet, e.g. 10.0.0.0/8), it is recommended to:
 - Use DHCP Server and attach to Subnet for the target VM. For example, create DHCP Server (e.g. NSX > Networking > Networking Profiles > DHCP Profile), set DHCP in the Gateway (e.g. NSX > Networking > Gateway > Edit > DHCP Config), then set for the Subnet (e.g. NSX > Networking > Segment > <<selected subnet>> > Set DHCP Config) which the VMware VM Template is attached to; this allows subsequent cloned VMs to obtain an IPv4 Address

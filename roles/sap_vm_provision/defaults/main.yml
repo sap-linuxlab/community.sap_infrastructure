@@ -30,6 +30,8 @@ sap_vm_provision_group_anydb_secondary: anydb_secondary
 # Only for use when 'ansible' is value provided for variable sap_vm_provision_iac_type
 ####
 
+sap_vm_provision_bastion_execution: false # for Cloud IaaS, this is usually true
+
 sap_vm_provision_bastion_public_ip: ""
 
 sap_vm_provision_bastion_ssh_port: 50222
