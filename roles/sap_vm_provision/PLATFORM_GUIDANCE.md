@@ -21,8 +21,8 @@ The subsequent provisioned Virtual Machine, must be accessible too - this can ut
 
 The Ansible Control Node AKA Controller (i.e. device where Ansible Playbook is executed), must be able to SSH to the Ansible Target Node (i.e. Virtual Machine) using:
 
+- DEFAULT: SSH Proxy connection from Ansible control node, via Bastion host, to target node (`sap_vm_provision_bastion_execution: true`); with SSH Private Keys for the host and the bastion (`sap_vm_provision_ssh_host_private_key_file_path: "/path"` and `sap_vm_provision_ssh_bastion_private_key_file_path: "/path"`)
 - Direct SSH connection from Ansible control node to target node (`sap_vm_provision_bastion_execution: false`); with SSH Private Key for the host (`sap_vm_provision_ssh_host_private_key_file_path: "/path"`).
-- SSH Proxy connection from Ansible control node, via Bastion host, to target node (`sap_vm_provision_bastion_execution: true`); with SSH Private Keys for the host and the bastion (`sap_vm_provision_ssh_host_private_key_file_path: "/path"` and `sap_vm_provision_ssh_bastion_private_key_file_path: "/path"`)
 
 
 ## Required resources when Ansible provisioning VMs
