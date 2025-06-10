@@ -1,11 +1,4 @@
 ---
-- name: Include configure worker
-  ansible.builtin.include_tasks: "platform/{{ sap_hypervisor_node_preconfigure_platform }}/configure-worker-node.yml"
-  with_items: "{{ sap_hypervisor_node_preconfigure_cluster_config.workers }}"
-  loop_control:
-    loop_var: __sap_hypervisor_node_preconfigure_register_worker
-    index_var: __sap_hypervisor_node_preconfigure_register_worker_nr
-
 - name: Enable CPU Manager by patching MCP worker
   kubernetes.core.k8s:
     state: patched
@@ -69,13 +62,5 @@
           cpuManagerPolicy: static
           cpuManagerReconcilePeriod: 5s
 
-- name: Render template
-  ansible.builtin.template:
-    src: 99-kargs-worker.yml.j2
-    dest: "{{ __sap_hypervisor_node_preconfigure_register_tmpdir_role.path }}/99-kargs-worker.yml"
-    mode: "0644"
-
-- name: Enable hugepages
-  kubernetes.core.k8s:
-    state: present
-    src: "{{ __sap_hypervisor_node_preconfigure_register_tmpdir_role.path }}/99-kargs-worker.yml"
+- name: Include wait mcp finished updating
+  ansible.builtin.include_tasks: "platform/{{ sap_hypervisor_node_preconfigure_platform }}/cluster/wait-mcp-finished-updating.yml"

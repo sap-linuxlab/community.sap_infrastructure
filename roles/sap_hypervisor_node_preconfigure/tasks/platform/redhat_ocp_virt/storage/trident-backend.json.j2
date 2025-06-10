@@ -1,8 +1,8 @@
 {
-    "nfsMountOptions": "nfsvers=3",
-    "defaults": {
-	    "exportPolicy": "default"
-    },
+  "nfsMountOptions": "{{ sap_hypervisor_node_preconfigure_cluster_config.trident.nfs_mount_options }}",
+  "defaults": {
+    "exportPolicy": "{{ sap_hypervisor_node_preconfigure_cluster_config.trident.export_policy }}"
+  },
   "debug":false,
   "managementLIF":"{{ sap_hypervisor_node_preconfigure_cluster_config.trident.management }}",
   "dataLIF":"{{ sap_hypervisor_node_preconfigure_cluster_config.trident.data }}",
@@ -15,4 +15,3 @@
   "storagePrefix":"{{ sap_hypervisor_node_preconfigure_cluster_config.trident.storage_prefix }}",
   "version":1
 }
-

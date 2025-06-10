@@ -1,0 +1,32 @@
+---
+- name: Create pod that initializes filesystem
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: Pod
+      metadata:
+        name: "make-filesystem-{{ __sap_hypervisor_node_preconfigure_register_worker.name }}"
+        namespace: default
+      spec:
+        nodeName: "{{ __sap_hypervisor_node_preconfigure_register_worker.name }}"
+        containers:
+          - name: "make-filesystem-{{ __sap_hypervisor_node_preconfigure_register_worker.name }}"
+            image: quay.io/fedora/fedora:latest
+            command:
+              - /bin/bash
+              - -c
+              - |
+                dnf install -y xfsprogs && \
+                mkfs.xfs -f "{{ sap_hypervisor_node_preconfigure_cluster_config.worker_localstorage_device }}"
+            securityContext:
+              privileged: true
+            volumeMounts:
+              - mountPath: "{{ sap_hypervisor_node_preconfigure_cluster_config.worker_localstorage_device }}"
+                name: rawdisk
+        volumes:
+          - name: rawdisk
+            hostPath:
+              path: "{{ sap_hypervisor_node_preconfigure_cluster_config.worker_localstorage_device }}"
+              type: BlockDevice
+        restartPolicy: Never

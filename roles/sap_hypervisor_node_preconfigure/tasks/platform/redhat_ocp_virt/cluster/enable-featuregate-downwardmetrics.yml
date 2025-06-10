@@ -1,0 +1,13 @@
+---
+- name: Enable DownwardMetrics Feature Gate on kubevirt-hyperconverged
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: hco.kubevirt.io/v1beta1
+      kind: HyperConverged
+      metadata:
+        name: kubevirt-hyperconverged
+        namespace: "{{ sap_hypervisor_node_preconfigure_ocpv_namespace }}"
+      spec:
+        featureGates:
+          downwardMetrics: true
