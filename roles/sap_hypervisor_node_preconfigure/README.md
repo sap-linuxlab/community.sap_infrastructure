@@ -103,23 +103,14 @@ Let's have a look at the most important variables you need to set.
 # Red Hat OpenShift cluster connection details
 ###########################################################
 
-# Admin username for Red Hat OpenShift cluster connection
-sap_hypervisor_node_preconfigure_ocp_admin_username:
-
-# Admin password for Red Hat OpenShift cluster connection
-sap_hypervisor_node_preconfigure_ocp_admin_password:
-
-# Path to kubeconfig file Red Hat OpenShift cluster connection
-sap_hypervisor_node_preconfigure_ocp_kubeconfig_path:
-
-# If this is set to true, the API endpoint and the
-# CA Certificate are extracted from the kubeconfig file.
-# If set to false, sap_hypervisor_node_preconfigure_ocp_endpoint and
-# sap_hypervisor_node_preconfigure_ocp_ca_cert have to be specified.
-sap_hypervisor_node_preconfigure_ocp_extract_kubeconfig: true
+# kubeconfig file Red Hat OpenShift cluster connection.
+# Needs to contain a valid API token for trident storage operator to work.
+# If not provided, the kubeconfig will be read from the environment variables
+# KUBECONFIG or K8S_AUTH_KUBECONFIG
+sap_hypervisor_node_preconfigure_kubeconfig:
 
 ```
-You need to provide username and password for the Red Hat OpenShift Cluster. The `kubeconfig` file can be specified in `sap_hypervisor_node_preconfigure_ocp_kubeconfig_path` or if omitted, the environment variable `K8S_AUTH_KUBECONFIG` has to point to it. Default is, to use the CA certificate and Red Hat OpenShift cluster API endpoint as specified in the `kubeconfig` file (controlled by variable `sap_hypervisor_node_preconfigure_ocp_extract_kubeconfig`). Make sure to specify the username and password for the cluster: `sap_hypervisor_node_preconfigure_ocp_admin_username` and `sap_hypervisor_node_preconfigure_ocp_admin_password`.
+You need to provide a `kubeconfig` file in `sap_hypervisor_node_kubeconfig` or if omitted, either the environment variables `K8S_AUTH_KUBECONFIG` or `KUBECONFIG` has to point to it. If using the trident storage operator, the `kubeconfig` has also to contain a valid API token.
 
 Next are variables that define what storage configuration should be configured, if the operators should be installed and the configuration of the workers should be done.
 
