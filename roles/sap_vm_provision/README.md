@@ -17,7 +17,7 @@ A series of choices is provided by the Ansible Role:
 - Host Specification Dictionary, containing 1..n Plans
 - Host OS Image Dictionary
 
-Dependent on the choices made by the end user, host/s will be provisioend to the target Infrastructure Platform.
+Dependent on the choices made by the end user, host/s will be provisioned to the target Infrastructure Platform.
 
 ## Scope
 
@@ -86,7 +86,6 @@ For a list of requirements and recommended authorizations on each Infrastructure
         - `openstack.cloud`
         - `ovirt.ovirt`
         - `vmware.vmware_rest` <sup>_(requires `cloud.common`)_</sup>
-        - `community.okd` for Red Hat OpenShift Virtualization
 
 TODO: Split up above dependencies per platform.
 
