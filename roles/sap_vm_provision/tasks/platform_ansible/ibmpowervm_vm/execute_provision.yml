@@ -214,6 +214,28 @@
     provisioned_private_ip: "{{ __sap_vm_provision_task_provision_host_single_vnic.ports[0].fixed_ips[0].ip_address }}"
 
 
+- name: Copy facts to delegate host
+  delegate_to: "{{ provisioned_private_ip }}"
+  delegate_facts: true
+  ansible.builtin.set_fact:
+    delegate_sap_vm_provision_ssh_host_private_key_file_path: "{{ sap_vm_provision_ssh_host_private_key_file_path }}"
+    # delegate_private_ip: "{{ __sap_vm_provision_task_provision_host_single.resource.primary_network_attachment[0].virtual_network_interface[0].primary_ip[0].address | default(__sap_vm_provision_task_provision_host_single.resource.primary_network_attachment[0].primary_ip[0].address) }}" # use default to handle different r/ds data structure
+    # delegate_hostname: "{{ inventory_hostname }}"
+    # delegate_sap_vm_provision_dns_root_domain_name: "{{ sap_vm_provision_dns_root_domain }}"
+
+- name: Copy facts to delegate host - when using Bastion SSH Proxy connection from Ansible control node to target node/s
+  delegate_to: "{{ provisioned_private_ip }}"
+  delegate_facts: true
+  ansible.builtin.set_fact:
+    delegate_ssh_args_bastion: -o ProxyCommand='ssh -W %h:%p {{ sap_vm_provision_bastion_user }}@{{ sap_vm_provision_bastion_public_ip }} -p {{ sap_vm_provision_bastion_ssh_port }} -i {{ sap_vm_provision_ssh_bastion_private_key_file_path }} -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null'
+  when:
+    - sap_vm_provision_bastion_execution
+    - sap_vm_provision_bastion_user is defined or not sap_vm_provision_bastion_user == ''
+    - sap_vm_provision_bastion_public_ip is defined or not sap_vm_provision_bastion_public_ip == ''
+    - sap_vm_provision_bastion_ssh_port is defined or not sap_vm_provision_bastion_ssh_port == ''
+    - sap_vm_provision_ssh_bastion_private_key_file_path is defined or not sap_vm_provision_ssh_bastion_private_key_file_path == ''
+
+
 # OpenStack APIs cannot query the IBM PowerVC APIs directly,
 # therefore cannot check the VM Health status (Warning or OK) which
 # is based on connection status to RMC (Resource Monitoring and Control subsystem).
@@ -226,6 +248,23 @@
     delay: 10
     sleep: 10
     timeout: 600
+  when:
+    - not sap_vm_provision_bastion_execution
+
+- name: Wait for VM connection readiness - use Bastion host to check for response
+  remote_user: "{{ sap_vm_provision_bastion_user }}"
+  delegate_to: "{{ sap_vm_provision_bastion_public_ip }}"
+  ansible.builtin.wait_for:
+    host: "{{ provisioned_private_ip }}"
+    port: 22
+    delay: 10
+    sleep: 10
+    timeout: 600
+  when:
+    - sap_vm_provision_bastion_execution
+  vars:
+    ansible_ssh_private_key_file: "{{ sap_vm_provision_ssh_bastion_private_key_file_path }}"
+    ansible_ssh_common_args: -p {{ sap_vm_provision_bastion_ssh_port }} -o ConnectTimeout=180 -o ControlMaster=auto -o ControlPersist=3600s -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ForwardX11=no
 
 - name: Collect only facts about hardware
   register: __sap_vm_provision_task_ansible_facts_host_disks_info
@@ -238,8 +277,8 @@
   delegate_to: "{{ provisioned_private_ip }}"
   delegate_facts: false
   vars:
-    ansible_ssh_private_key_file: "{{ sap_vm_provision_ssh_host_private_key_file_path }}"
-    ansible_ssh_common_args: -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ForwardX11=no
+    ansible_ssh_private_key_file: "{{ delegate_sap_vm_provision_ssh_host_private_key_file_path }}"
+    ansible_ssh_common_args: -o ConnectTimeout=180 -o ControlMaster=auto -o ControlPersist=3600s -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ForwardX11=no {{ delegate_ssh_args_bastion if delegate_ssh_args_bastion is defined else '' }}
 
 #- name: Output disks
 #  ansible.builtin.debug:
@@ -378,8 +417,8 @@
   delegate_to: "{{ provisioned_private_ip }}"
   delegate_facts: false
   vars:
-    ansible_ssh_private_key_file: "{{ sap_vm_provision_ssh_host_private_key_file_path }}"
-    ansible_ssh_common_args: -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ForwardX11=no
+    ansible_ssh_private_key_file: "{{ delegate_sap_vm_provision_ssh_host_private_key_file_path }}"
+    ansible_ssh_common_args: -o ConnectTimeout=180 -o ControlMaster=auto -o ControlPersist=3600s -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ForwardX11=no {{ delegate_ssh_args_bastion if delegate_ssh_args_bastion is defined else '' }}
 
 - name: Wait 10 seconds for the re-scan of IBM PowerVM VM SCSI Bus
   ansible.builtin.pause:
