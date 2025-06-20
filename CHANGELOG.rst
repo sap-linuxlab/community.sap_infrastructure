@@ -4,6 +4,19 @@ community.sap\_infrastructure Release Notes
 
 .. contents:: Topics
 
+v1.1.3
+======
+
+Release Summary
+---------------
+
+Bastion SSH Proxy boolean
+
+Bugfixes
+--------
+
+- sap_vm_provision - bastion boolean, to allow Bastion SSH Proxy or direct (e.g. VPN) for all Infrastructure Platforms (https://github.com/sap-linuxlab/community.sap_infrastructure/pull/93)
+
 v1.1.2
 ======
 

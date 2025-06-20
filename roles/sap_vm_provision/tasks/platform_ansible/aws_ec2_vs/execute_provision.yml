@@ -167,14 +167,22 @@
   delegate_to: "{{ provisioned_private_ip }}"
   delegate_facts: true
   ansible.builtin.set_fact:
-    delegate_sap_vm_provision_bastion_user: "{{ sap_vm_provision_bastion_user }}"
-    delegate_sap_vm_provision_bastion_public_ip: "{{ sap_vm_provision_bastion_public_ip }}"
-    delegate_sap_vm_provision_bastion_ssh_port: "{{ sap_vm_provision_bastion_ssh_port }}"
-    delegate_sap_vm_provision_ssh_bastion_private_key_file_path: "{{ sap_vm_provision_ssh_bastion_private_key_file_path }}"
     delegate_sap_vm_provision_ssh_host_private_key_file_path: "{{ sap_vm_provision_ssh_host_private_key_file_path }}"
-    delegate_private_ip: "{{ __sap_vm_provision_task_provision_host_single.instances[0].private_ip_address }}"
-    delegate_hostname: "{{ inventory_hostname }}"
-    delegate_sap_vm_provision_dns_root_domain_name: "{{ sap_vm_provision_dns_root_domain }}"
+    # delegate_private_ip: "{{ __sap_vm_provision_task_provision_host_single.instances[0].private_ip_address }}"
+    # delegate_hostname: "{{ inventory_hostname }}"
+    # delegate_sap_vm_provision_dns_root_domain_name: "{{ sap_vm_provision_dns_root_domain }}"
+
+- name: Copy facts to delegate host - when using Bastion SSH Proxy connection from Ansible control node to target node/s
+  delegate_to: "{{ provisioned_private_ip }}"
+  delegate_facts: true
+  ansible.builtin.set_fact:
+    delegate_ssh_args_bastion: -o ProxyCommand='ssh -W %h:%p {{ sap_vm_provision_bastion_user }}@{{ sap_vm_provision_bastion_public_ip }} -p {{ sap_vm_provision_bastion_ssh_port }} -i {{ sap_vm_provision_ssh_bastion_private_key_file_path }} -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null'
+  when:
+    - sap_vm_provision_bastion_execution
+    - sap_vm_provision_bastion_user is defined or not sap_vm_provision_bastion_user == ''
+    - sap_vm_provision_bastion_public_ip is defined or not sap_vm_provision_bastion_public_ip == ''
+    - sap_vm_provision_bastion_ssh_port is defined or not sap_vm_provision_bastion_ssh_port == ''
+    - sap_vm_provision_ssh_bastion_private_key_file_path is defined or not sap_vm_provision_ssh_bastion_private_key_file_path == ''
 
 
 ### begin block, parameters will be applied to each task within the block
@@ -186,7 +194,7 @@
   delegate_facts: true
   vars:
     ansible_ssh_private_key_file: "{{ delegate_sap_vm_provision_ssh_host_private_key_file_path }}"
-    ansible_ssh_common_args: -o ConnectTimeout=180 -o ControlMaster=auto -o ControlPersist=3600s -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ForwardX11=no -o ProxyCommand='ssh -W %h:%p {{ delegate_sap_vm_provision_bastion_user }}@{{ delegate_sap_vm_provision_bastion_public_ip }} -p {{ delegate_sap_vm_provision_bastion_ssh_port }} -i {{ delegate_sap_vm_provision_ssh_bastion_private_key_file_path }} -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null'
+    ansible_ssh_common_args: -o ConnectTimeout=180 -o ControlMaster=auto -o ControlPersist=3600s -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ForwardX11=no {{ delegate_ssh_args_bastion if delegate_ssh_args_bastion is defined else '' }}
   block:
 
     - name: Wait until SSH connection is available

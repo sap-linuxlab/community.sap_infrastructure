@@ -88,6 +88,16 @@
         #     AZURE_CLIENT_ID: "{{ sap_vm_provision_msazure_app_client_id }}"
         #     AZURE_SECRET: "{{ sap_vm_provision_msazure_app_client_secret }}"
 
+    - name: Set fact when using Bastion SSH Proxy connection from Ansible control node to target node/s
+      ansible.builtin.set_fact:
+        __ssh_args_bastion: -o ProxyCommand='ssh -W %h:%p {{ sap_vm_provision_bastion_user }}@{{ sap_vm_provision_bastion_public_ip }} -p {{ sap_vm_provision_bastion_ssh_port }} -i {{ sap_vm_provision_ssh_bastion_private_key_file_path }} -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null'
+      when:
+        - sap_vm_provision_bastion_execution
+        - sap_vm_provision_bastion_user is defined or not sap_vm_provision_bastion_user == ''
+        - sap_vm_provision_bastion_public_ip is defined or not sap_vm_provision_bastion_public_ip == ''
+        - sap_vm_provision_bastion_ssh_port is defined or not sap_vm_provision_bastion_ssh_port == ''
+        - sap_vm_provision_ssh_bastion_private_key_file_path is defined or not sap_vm_provision_ssh_bastion_private_key_file_path == ''
+
     - name: Add hosts provisioned to the Ansible Inventory
       register: __sap_vm_provision_task_provision_host_all_add
       ansible.builtin.add_host:
@@ -96,7 +106,7 @@
         ansible_host: "{{ add_item[0].ansible_facts.azure_vm.network_profile.network_interfaces[0].properties.ip_configurations[0].private_ip_address }}"
         ansible_user: "root"
         ansible_ssh_private_key_file: "{{ sap_vm_provision_ssh_host_private_key_file_path }}"
-        ansible_ssh_common_args: -o ConnectTimeout=180 -o ControlMaster=auto -o ControlPersist=3600s -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ForwardX11=no -o ProxyCommand='ssh -W %h:%p {{ sap_vm_provision_bastion_user }}@{{ sap_vm_provision_bastion_public_ip }} -p {{ sap_vm_provision_bastion_ssh_port }} -i {{ sap_vm_provision_ssh_bastion_private_key_file_path }} -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null'
+        ansible_ssh_common_args: -o ConnectTimeout=180 -o ControlMaster=auto -o ControlPersist=3600s -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ForwardX11=no {{ __ssh_args_bastion if __ssh_args_bastion is defined else '' }}
       loop: "{{ ansible_play_hosts | map('extract', hostvars, 'register_provisioned_host_all')  }}"
       loop_control:
         label: "{{ add_item[0].host_node }}"

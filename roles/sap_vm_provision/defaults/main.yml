@@ -30,6 +30,11 @@ sap_vm_provision_group_anydb_secondary: anydb_secondary
 # Only for use when 'ansible' is value provided for variable sap_vm_provision_iac_type
 ####
 
+# For security purposes, assume usage of SSH Proxy connection from Ansible control node, via Bastion host to the Target host/s:
+# - This is a common pattern for Cloud IaaS, using a Bastion for connectivity
+# - When using VPN or in On-Premise/Hosted Datacenters, this can be disabled if there is direct connectivity
+sap_vm_provision_bastion_execution: true
+
 sap_vm_provision_bastion_public_ip: ""
 
 sap_vm_provision_bastion_ssh_port: 50222
