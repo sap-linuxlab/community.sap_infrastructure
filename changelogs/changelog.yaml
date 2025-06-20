@@ -84,3 +84,9 @@ releases:
         - sap_vm_provision - update azure.azcollection minimum version requirement (https://github.com/sap-linuxlab/community.sap_infrastructure/pull/81)
         - sap_vm_provision/sap_vm_temp_vip - Add dynamic group handling for provisioning (https://github.com/sap-linuxlab/community.sap_infrastructure/pull/78)
         - sap_vm_verify - stub code comments and reorder (https://github.com/sap-linuxlab/community.sap_infrastructure/pull/80)
+  1.1.3:
+    release_date: '2025-06-20'
+    changes:
+      release_summary: Bastion SSH Proxy boolean
+      bugfixes:
+        - sap_vm_provision - bastion boolean, to allow Bastion SSH Proxy or direct (e.g. VPN) for all Infrastructure Platforms (https://github.com/sap-linuxlab/community.sap_infrastructure/pull/93)
