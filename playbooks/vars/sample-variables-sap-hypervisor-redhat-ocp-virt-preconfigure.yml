@@ -67,6 +67,9 @@ sap_hypervisor_node_preconfigure_ignore_minimal_memory_check: false
 # Namespace to be used for the Red Hat Openshift Virtualization Operator
 sap_hypervisor_node_preconfigure_ocpv_namespace: openshift-cnv
 
+# Channel to be used for the Red Hat Openshift Virtualization Operator
+sap_hypervisor_node_preconfigure_ocpv_subscription_channel: stable
+
 # Namespace to be used for the Red Hat Openshift Nmstate Operator
 sap_hypervisor_node_preconfigure_nmstate_namespace: openshift-nmstate
 
