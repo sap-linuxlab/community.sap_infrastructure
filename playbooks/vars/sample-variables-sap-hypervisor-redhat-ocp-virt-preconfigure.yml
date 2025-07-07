@@ -50,7 +50,7 @@ sap_hypervisor_node_preconfigure_enable_kargs: true
 ###########################################################
 
 # URL of the trident installer package to use
-sap_hypervisor_node_preconfigure_install_trident_url: https://github.com/NetApp/trident/releases/download/v24.06.0/trident-installer-24.06.0.tar.gz
+sap_hypervisor_node_preconfigure_install_trident_url: https://github.com/NetApp/trident/releases/download/v25.02.1/trident-installer-25.02.1.tar.gz
 
 # Allow unsupported NICs to be used for SR-IOV?
 sap_hypervisor_node_preconfigure_sriov_enable_unsupported_nics: false
