@@ -1,7 +1,7 @@
 ---
 - name: Include node network
   ansible.builtin.include_tasks: node-network.yml
-  with_items: "{{ __sap_hypervisor_node_preconfigure_register_worker.networks }}"
+  loop: "{{ __sap_hypervisor_node_preconfigure_register_worker.networks }}"
   loop_control:
     loop_var: __sap_hypervisor_node_preconfigure_register_worker_network
     index_var: __sap_hypervisor_node_preconfigure_register_worker_network_nr
