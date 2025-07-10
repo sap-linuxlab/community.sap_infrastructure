@@ -9,7 +9,7 @@
     __sap_hypervisor_node_preconfigure_register_worker_node_name_list:
       "{{ __sap_hypervisor_node_preconfigure_register_worker_node_name_list | \
        d([]) + [__sap_hypervisor_node_preconfigure_register_worker_node.name] }}"
-  with_items: "{{ sap_hypervisor_node_preconfigure_cluster_config.workers }}"
+  loop: "{{ sap_hypervisor_node_preconfigure_cluster_config.workers }}"
   loop_control:
     loop_var: __sap_hypervisor_node_preconfigure_register_worker_node
 
@@ -18,7 +18,7 @@
     __sap_hypervisor_node_preconfigure_register_nodes:
       "{{ __sap_hypervisor_node_preconfigure_register_nodes | \
        d([]) + [__sap_hypervisor_node_preconfigure_register_host] }}"
-  with_items: "{{ __sap_hypervisor_node_preconfigure_register_node_list['resources'] }}"
+  loop: "{{ __sap_hypervisor_node_preconfigure_register_node_list['resources'] }}"
   loop_control:
     loop_var: __sap_hypervisor_node_preconfigure_register_host
   when: __sap_hypervisor_node_preconfigure_register_host.metadata.name in __sap_hypervisor_node_preconfigure_register_worker_node_name_list
