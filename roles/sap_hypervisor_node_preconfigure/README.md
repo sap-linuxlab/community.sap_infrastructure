@@ -110,7 +110,13 @@ Let's have a look at the most important variables you need to set.
 sap_hypervisor_node_preconfigure_kubeconfig:
 
 ```
-You need to provide a `kubeconfig` file in `sap_hypervisor_node_kubeconfig` or if omitted, either the environment variables `K8S_AUTH_KUBECONFIG` or `KUBECONFIG` has to point to it. If using the trident storage operator, the `kubeconfig` has also to contain a valid API token.
+The `kubeconfig` configuration file has to be provided by either:
+
+1. The Ansible variable `sap_hypervisor_node_kubeconfig`.
+2. The environment variable `K8S_AUTH_KUBECONFIG`.
+3. The environment variable `KUBECONFIG`.
+
+If using the trident storage operator, the `kubeconfig` has also to contain a valid API token.
 
 Next are variables that define what storage configuration should be configured, if the operators should be installed and the configuration of the workers should be done.
 
