@@ -100,7 +100,7 @@ sap_hypervisor_node_preconfigure_cluster_config:
     nfs_mount_options: nfsvers=3
     export_policy: default
     storageclass_name: sapstorage  # Name of the storage class (careful, there can only be one SC with this name)
-    default_storageclass: True     # Should this storage class be default?
+    default_storageclass: true     # Should this storage class be default?
 
   # CPU cores which will be reserved for kubernetes
   worker_kubernetes_reserved_cpus: "0,1"
@@ -112,7 +112,7 @@ sap_hypervisor_node_preconfigure_cluster_config:
   worker_localstorage_storageclass_name: sapstorage
 
   # Should the local storage class be default?
-  worker_localstorage_default_storageclass: True
+  worker_localstorage_default_storageclass: true
 
   # detailed configuration for every worker that should be configured
   workers:
