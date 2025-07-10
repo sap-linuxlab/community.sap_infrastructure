@@ -5,8 +5,8 @@
 
 - name: Include install sriov operator
   ansible.builtin.include_tasks:
-    file:  "platform/{{ sap_hypervisor_node_preconfigure_platform }}/operators/install-sriov-operator.yml"
+    file: "platform/{{ sap_hypervisor_node_preconfigure_platform }}/operators/install-sriov-operator.yml"
 
 - name: Include install nmstate operator
   ansible.builtin.include_tasks:
-    file:  "platform/{{ sap_hypervisor_node_preconfigure_platform }}/operators/install-nmstate-operator.yml"
+    file: "platform/{{ sap_hypervisor_node_preconfigure_platform }}/operators/install-nmstate-operator.yml"
