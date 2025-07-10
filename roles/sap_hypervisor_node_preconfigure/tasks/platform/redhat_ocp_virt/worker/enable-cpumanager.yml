@@ -63,4 +63,5 @@
           cpuManagerReconcilePeriod: 5s
 
 - name: Include wait mcp finished updating
-  ansible.builtin.include_tasks: "platform/{{ sap_hypervisor_node_preconfigure_platform }}/cluster/wait-mcp-finished-updating.yml"
+  ansible.builtin.include_tasks:
+    file:  "platform/{{ sap_hypervisor_node_preconfigure_platform }}/cluster/wait-mcp-finished-updating.yml"

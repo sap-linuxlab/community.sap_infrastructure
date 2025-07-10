@@ -65,31 +65,39 @@
   when: __sap_hypervisor_node_preconfigure_register_worker_memory_gib | int >= 512
 
 - name: Include prepare
-  ansible.builtin.include_tasks: "platform/{{ sap_hypervisor_node_preconfigure_platform }}/prepare.yml"
+  ansible.builtin.include_tasks:
+    file:  "platform/{{ sap_hypervisor_node_preconfigure_platform }}/prepare.yml"
 
 - name: Include patch cluster masters unschedulable
-  ansible.builtin.include_tasks: "platform/{{ sap_hypervisor_node_preconfigure_platform }}/master/patch-cluster-masters-unschedulable.yml"
+  ansible.builtin.include_tasks:
+    file: "platform/{{ sap_hypervisor_node_preconfigure_platform }}/master/patch-cluster-masters-unschedulable.yml"
 
 - name: Include tuned virtual host
-  ansible.builtin.include_tasks: "platform/{{ sap_hypervisor_node_preconfigure_platform }}/worker/tuned-virtual-host.yml"
+  ansible.builtin.include_tasks:
+    file: "platform/{{ sap_hypervisor_node_preconfigure_platform }}/worker/tuned-virtual-host.yml"
 
 - name: Include install operators
-  ansible.builtin.include_tasks: "platform/{{ sap_hypervisor_node_preconfigure_platform }}/operators/main.yml"
+  ansible.builtin.include_tasks:
+    file: "platform/{{ sap_hypervisor_node_preconfigure_platform }}/operators/main.yml"
   when: sap_hypervisor_node_preconfigure_install_operators
 
 - name: Include setup worker nodes
-  ansible.builtin.include_tasks: "platform/{{ sap_hypervisor_node_preconfigure_platform }}/worker/setup-worker-nodes.yml"
+  ansible.builtin.include_tasks:
+    file: "platform/{{ sap_hypervisor_node_preconfigure_platform }}/worker/setup-worker-nodes.yml"
   when: sap_hypervisor_node_preconfigure_setup_worker_nodes
 
 - name: Include task enable featuregate downwardmetrics
-  ansible.builtin.include_tasks: "platform/{{ sap_hypervisor_node_preconfigure_platform }}/cluster/enable-featuregate-downwardmetrics.yml"
+  ansible.builtin.include_tasks:
+    file: "platform/{{ sap_hypervisor_node_preconfigure_platform }}/cluster/enable-featuregate-downwardmetrics.yml"
 
 - name: Include Trident installation
-  ansible.builtin.include_tasks: "platform/{{ sap_hypervisor_node_preconfigure_platform }}/storage/install-trident.yml"
+  ansible.builtin.include_tasks:
+    file: "platform/{{ sap_hypervisor_node_preconfigure_platform }}/storage/install-trident.yml"
   when: sap_hypervisor_node_preconfigure_install_trident
 
 - name: Include local storage creation (HPP)
-  ansible.builtin.include_tasks: "platform/{{ sap_hypervisor_node_preconfigure_platform }}/storage/install-hpp.yml"
+  ansible.builtin.include_tasks:
+    file: "platform/{{ sap_hypervisor_node_preconfigure_platform }}/storage/install-hpp.yml"
   when: sap_hypervisor_node_preconfigure_install_hpp
 
 - name: Remove temporary directory

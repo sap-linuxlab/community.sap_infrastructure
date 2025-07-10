@@ -1,6 +1,7 @@
 ---
 - name: Include worker node mkfs loop
-  ansible.builtin.include_tasks: "platform/{{ sap_hypervisor_node_preconfigure_platform }}/storage/worker-mkfs-loop.yml"
+  ansible.builtin.include_tasks:
+    file:  "platform/{{ sap_hypervisor_node_preconfigure_platform }}/storage/worker-mkfs-loop.yml"
   loop: "{{ sap_hypervisor_node_preconfigure_cluster_config.workers }}"
   loop_control:
     loop_var: __sap_hypervisor_node_preconfigure_register_worker
@@ -38,7 +39,8 @@
                 name: create-mount-localstorage.service
 
 - name: Include wait mcp finished updating
-  ansible.builtin.include_tasks: "platform/{{ sap_hypervisor_node_preconfigure_platform }}/cluster/wait-mcp-finished-updating.yml"
+  ansible.builtin.include_tasks:
+    file: "platform/{{ sap_hypervisor_node_preconfigure_platform }}/cluster/wait-mcp-finished-updating.yml"
 
 - name: Create hostpath provisioner (HPP)
   kubernetes.core.k8s:
