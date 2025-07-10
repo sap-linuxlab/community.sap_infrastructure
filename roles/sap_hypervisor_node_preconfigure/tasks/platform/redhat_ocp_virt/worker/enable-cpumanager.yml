@@ -64,4 +64,4 @@
 
 - name: Include wait mcp finished updating
   ansible.builtin.include_tasks:
-    file:  "platform/{{ sap_hypervisor_node_preconfigure_platform }}/cluster/wait-mcp-finished-updating.yml"
+    file: "platform/{{ sap_hypervisor_node_preconfigure_platform }}/cluster/wait-mcp-finished-updating.yml"

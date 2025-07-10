@@ -14,6 +14,6 @@
   when: sap_hypervisor_node_preconfigure_enable_cpumanager
 
 - name: Include enable kargs
-  ansible.builtin.include_tasks: 
+  ansible.builtin.include_tasks:
     file: "platform/{{ sap_hypervisor_node_preconfigure_platform }}/worker/enable-kargs.yml"
   when: sap_hypervisor_node_preconfigure_enable_kargs
