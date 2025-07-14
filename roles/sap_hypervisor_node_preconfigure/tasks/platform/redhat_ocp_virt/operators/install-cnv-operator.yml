@@ -124,7 +124,7 @@
     namespace: "{{ sap_hypervisor_node_preconfigure_ocpv_namespace }}"
     wait_condition:
       type: Available
-      status: "True"
+      status: true
     wait_timeout: 600
   register: hyperconverged_status
 
