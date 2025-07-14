@@ -67,7 +67,7 @@
     wait: true
     wait_condition:
       type: Available
-      status: "True"
+      status: true
       reason: Complete
     wait_sleep: 30
     wait_timeout: 300
