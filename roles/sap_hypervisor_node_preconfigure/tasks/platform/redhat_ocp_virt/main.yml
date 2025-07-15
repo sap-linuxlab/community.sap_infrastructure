@@ -1,4 +1,8 @@
 ---
+- name: Check configuration
+  ansible.builtin.include_tasks:
+    file: "platform/{{ sap_hypervisor_node_preconfigure_platform }}/assert/main.yml"
+
 - name: Get a list of all nodes from any namespace
   kubernetes.core.k8s_info:
     kind: Node
