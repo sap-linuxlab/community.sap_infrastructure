@@ -1,0 +1,5 @@
+---
+- name: Check if all trident config values are defined
+  ansible.builtin.include_tasks:
+    file: "platform/{{ sap_hypervisor_node_preconfigure_platform }}/assert/trident.yml"
+  when: sap_hypervisor_node_preconfigure_install_trident
