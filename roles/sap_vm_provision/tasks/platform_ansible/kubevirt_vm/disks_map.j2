@@ -1,0 +1,18 @@
+{%- set disks_map = [
+{
+  'metadata': { 'name': ( disk_name | replace('_', '-') ) },
+  'spec' : {
+    'source' : disk_source,
+    'storage' : {
+      'accessModes': disk_access_modes | d('[ReadWriteMany]'),
+      'resources': {
+        'requests': {
+          'storage': disk_size
+        }
+      },
+      'storageClassName': disk_storageclass_name | d('')
+    }
+  }
+}
+] -%}
+{{ disks_map }}
