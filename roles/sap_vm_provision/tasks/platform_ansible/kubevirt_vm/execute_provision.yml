@@ -22,38 +22,56 @@
 
 - name: Set fact for download OS Image
   ansible.builtin.set_fact:
-    os_image: |
-      {{ lookup('template', 'disks_map.j2',
-        template_vars={
-          'disk_name': __sap_vm_provision_register_vm_name + '-boot',
-          'disk_access_mode': __sap_vm_provision_register_vm_config.os_image.access_modes,
-          'disk_source': {
-            'registry' : {
-              'url': __sap_vm_provision_register_vm_config.os_image.url,
-              'pullMethod': 'node'
+    os_image: |-
+      {%- set disks_map = [
+        {
+          'metadata': { 'name': (__sap_vm_provision_register_vm_name + '-boot' | replace('_', '-')) },
+          'spec' : {
+            'source' : {
+              'registry' : {
+                'url': __sap_vm_provision_register_vm_config.os_image.url,
+                'pullMethod': 'node'
+              },
             },
-          },
-          'disk_size': __sap_vm_provision_register_vm_config.os_image.size,
+            'storage' : {
+              'accessModes': __sap_vm_provision_register_vm_config.os_image.access_modes,
+              'resources': {
+                'requests': {
+                  'storage': __sap_vm_provision_register_vm_config.os_image.size
+                }
+              }
+            }
+          }
         }
-      ), }}
+      ] -%}
+      {{ disks_map }}
   when: __sap_vm_provision_register_vm_config.os_image.url is defined
 
 - name: Set fact for existing OS Image
   ansible.builtin.set_fact:
     os_image: |
-      {{ lookup('template', 'disks_map.j2',
-        template_vars={
-          'disk_name': __sap_vm_provision_register_vm_name + '-boot',
-          'disk_access_mode': __sap_vm_provision_register_vm_config.os_image.access_modes,
-          'disk_source': {
-            'pvc' : {
-              'name': __sap_vm_provision_register_vm_config.os_image.source_pvc_name,
-              'namespace': __sap_vm_provision_register_vm_config.os_image.namespace
+      {%- set disks_map = [
+        {
+          'metadata': { 'name': (__sap_vm_provision_register_vm_name + '-boot' | replace('_', '-')) },
+          'spec' : {
+            'source' : {
+              'pvc' : {
+                'name': __sap_vm_provision_register_vm_config.os_image.source_pvc_name,
+                'namespace': __sap_vm_provision_register_vm_config.os_image.namespace
+              },
             },
-          },
-          'disk_size': __sap_vm_provision_register_vm_config.os_image.size,
+            'storage' : {
+              'accessModes': __sap_vm_provision_register_vm_config.os_image.access_modes,
+              'resources': {
+                'requests': {
+                  'storage': __sap_vm_provision_register_vm_config.os_image.size
+                }
+              }
+            }
+          }
         }
-      ), }}
+      ] -%}
+      {{ disks_map }}
   when:
     - __sap_vm_provision_register_vm_config.os_image.source_pvc_name is defined
     - __sap_vm_provision_register_vm_config.os_image.namespace is defined
@@ -63,18 +81,24 @@
     storage_disks_map: |-
       {% set disks_map = [] -%}
       {% for storage_item in __sap_vm_provision_register_vm_config.storage_definition -%}
-        {% set vol = disks_map.extend([
-          lookup('template', 'disks_map.j2',
-          template_vars={
-            'disk_name': __sap_vm_provision_register_vm_name + '-' + storage_item.name,
-            'disk_access_mode': storage_item.access_modes,
-            'disk_source': {
-              'blank' : {}
-            },
-            'disk_size': ((storage_item.disk_size | default(0)) | string) + 'Gi'
-            'disk_storageclass_name': storage_item.disk_type
-          }), 
-        }]) %}
+              {% set vol = disks_map.extend([
+              {
+                'metadata': { 'name': (__sap_vm_provision_register_vm_name + '-' + storage_item.name | replace('_', '-')) },
+                'spec' : {
+                  'source' : {
+                    'blank' : {}
+                  },
+                  'storage' : {
+                    'accessModes': storage_item.access_modes,
+                    'resources': {
+                      'requests': {
+                        'storage': ((storage_item.disk_size | default(0)) | string) + 'Gi'
+                      }
+                    },
+                    'storageClassName': storage_item.disk_type | default('')
+                  }
+                }
+              }]) %}
       {%- endfor %}
       {{ disks_map }}
 
