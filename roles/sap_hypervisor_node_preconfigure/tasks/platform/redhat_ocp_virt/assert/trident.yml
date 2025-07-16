@@ -18,7 +18,7 @@
 
 - name: Initialize list of missing or empty trident keys
   ansible.builtin.set_fact:
-     __sap_hypervisor_node_preconfigure_trident_missing_or_empty_keys: []
+    __sap_hypervisor_node_preconfigure_trident_missing_or_empty_keys: []
 
 - name: Check each trident key for existence and non-empty value
   ansible.builtin.set_fact:
