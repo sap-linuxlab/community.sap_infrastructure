@@ -33,10 +33,10 @@
         sap_vm_provision_kubevirt_vm_kubeconfig == None or
         sap_vm_provision_kubevirt_vm_kubeconfig == ''
       ansible.builtin.set_fact:
-         sap_vm_provision_kubevirt_vm_kubeconfig: "{{ lookup('env', 'K8S_AUTH_KUBECONFIG') | default(lookup('env', 'KUBECONFIG'), true) }}"
+        sap_vm_provision_kubevirt_vm_kubeconfig: "{{ lookup('env', 'K8S_AUTH_KUBECONFIG') | default(lookup('env', 'KUBECONFIG'), true) }}"
 
     - name: Ensure that kubeconfig is set
-      assert:
+      ansible.builtin.assert:
         that:
           - sap_vm_provision_kubevirt_vm_kubeconfig is defined
           - sap_vm_provision_kubevirt_vm_kubeconfig is not none

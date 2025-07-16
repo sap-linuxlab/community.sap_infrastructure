@@ -18,7 +18,7 @@ sap_vm_provision_kubevirt_vm_os_user: cloud-user
 sap_vm_provision_kubevirt_vm_os_user_password: ""
 
 # SSH key files, must be accessible on the ansible controller
-sap_vm_provision_ssh_host_private_key_file_path: /path/to/id_rsa 
+sap_vm_provision_ssh_host_private_key_file_path: /path/to/id_rsa
 sap_vm_provision_ssh_host_public_key_file_path: /path/to/id_rsa.pub
 
 # RAM Overhead [GiB] for virt-launcher container, this can be small for VMs < 1 TB and without SRIOV but should be increased to 16 or more for VMs > 1TB
