@@ -34,7 +34,7 @@
               },
             },
             'storage' : {
-              'accessModes': __sap_vm_provision_register_vm_config.os_image.access_modes,
+              'accessModes': __sap_vm_provision_register_vm_config.os_image.access_modes | d['ReadWriteMany'],
               'resources': {
                 'requests': {
                   'storage': __sap_vm_provision_register_vm_config.os_image.size
@@ -61,7 +61,7 @@
               },
             },
             'storage' : {
-              'accessModes': __sap_vm_provision_register_vm_config.os_image.access_modes,
+              'accessModes': __sap_vm_provision_register_vm_config.os_image.access_modes | d['ReadWriteMany'],
               'resources': {
                 'requests': {
                   'storage': __sap_vm_provision_register_vm_config.os_image.size
@@ -89,7 +89,7 @@
                     'blank' : {}
                   },
                   'storage' : {
-                    'accessModes': storage_item.access_modes,
+                    'accessModes': storage_item.access_modes | d['ReadWriteMany'],
                     'resources': {
                       'requests': {
                         'storage': ((storage_item.disk_size | default(0)) | string) + 'Gi'
