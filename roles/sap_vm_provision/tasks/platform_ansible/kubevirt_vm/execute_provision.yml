@@ -26,7 +26,7 @@
       {{ lookup('template', 'disks_map.j2',
         template_vars={
           'disk_name': __sap_vm_provision_register_vm_name + '-boot',
-          'disk_access_mode': __sap_vm_provision_register_vm_config.os_image.access_modes | d(['ReadWriteMany']),
+          'disk_access_mode': __sap_vm_provision_register_vm_config.os_image.access_modes,
           'disk_source': {
             'registry' : {
               'url': __sap_vm_provision_register_vm_config.os_image.url,
@@ -44,7 +44,7 @@
       {{ lookup('template', 'disks_map.j2',
         template_vars={
           'disk_name': __sap_vm_provision_register_vm_name + '-boot',
-          'disk_access_mode': __sap_vm_provision_register_vm_config.os_image.access_modes | d(['ReadWriteMany']),
+          'disk_access_mode': __sap_vm_provision_register_vm_config.os_image.access_modes,
           'disk_source': {
             'pvc' : {
               'name': __sap_vm_provision_register_vm_config.os_image.source_pvc_name,
@@ -67,14 +67,14 @@
           lookup('template', 'disks_map.j2',
           template_vars={
             'disk_name': __sap_vm_provision_register_vm_name + '-' + storage_item.name,
-            'disk_access_mode': storage_item.access_modes | d(['ReadWriteMany']),
+            'disk_access_mode': storage_item.access_modes,
             'disk_source': {
               'blank' : {}
             },
-            'disk_size': ((storage_item.disk_size | default(0)) | string) + 'Gi',
+            'disk_size': ((storage_item.disk_size | default(0)) | string) + 'Gi'
             'disk_storageclass_name': storage_item.disk_type
-          }),
-        ]) %}
+          }), 
+        }]) %}
       {%- endfor %}
       {{ disks_map }}
 
