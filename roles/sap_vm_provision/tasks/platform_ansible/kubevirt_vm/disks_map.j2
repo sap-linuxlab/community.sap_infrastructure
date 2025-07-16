@@ -4,7 +4,7 @@
   'spec' : {
     'source' : disk_source,
     'storage' : {
-      'accessModes': disk_access_modes | d('[ReadWriteMany]'),
+      'accessModes': disk_access_modes | d(['ReadWriteMany']),
       'resources': {
         'requests': {
           'storage': disk_size
