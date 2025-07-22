@@ -34,7 +34,7 @@
               },
             },
             'storage' : {
-              'accessModes': ['ReadWriteMany'],
+              'accessModes': __sap_vm_provision_register_vm_config.os_image.access_modes | d(['ReadWriteMany']),
               'resources': {
                 'requests': {
                   'storage': __sap_vm_provision_register_vm_config.os_image.size
@@ -61,7 +61,7 @@
               },
             },
             'storage' : {
-              'accessModes': ['ReadWriteMany'],
+              'accessModes': __sap_vm_provision_register_vm_config.os_image.access_modes | d(['ReadWriteMany']),
               'resources': {
                 'requests': {
                   'storage': __sap_vm_provision_register_vm_config.os_image.size
@@ -81,24 +81,24 @@
     storage_disks_map: |-
       {% set disks_map = [] -%}
       {% for storage_item in __sap_vm_provision_register_vm_config.storage_definition -%}
-              {% set vol = disks_map.extend([
-              {
-                'metadata': { 'name': (__sap_vm_provision_register_vm_name + '-' + storage_item.name | replace('_', '-')) },
-                'spec' : {
-                  'source' : {
-                    'blank' : {}
-                  },
-                  'storage' : {
-                    'accessModes': ['ReadWriteMany'],
-                    'resources': {
-                      'requests': {
-                        'storage': ((storage_item.disk_size | default(0)) | string) + 'Gi'
-                      }
-                    },
-                    'storageClassName': storage_item.disk_type | default('')
+          {% set vol = disks_map.extend([
+          {
+            'metadata': { 'name': (__sap_vm_provision_register_vm_name + '-' + storage_item.name | replace('_', '-')) },
+            'spec' : {
+              'source' : {
+                'blank' : {}
+              },
+              'storage' : {
+                'accessModes': storage_item.access_modes | d(['ReadWriteMany']),
+                'resources': {
+                  'requests': {
+                    'storage': ((storage_item.disk_size | default(0)) | string) + 'Gi',
                   }
-                }
-              }]) %}
+                },
+                'storageClassName': storage_item.disk_type | default(''),
+              }
+            }
+          }]) %}
       {%- endfor %}
       {{ disks_map }}
 
@@ -243,22 +243,16 @@
         cpu:
           cores: "{{ __sap_vm_provision_register_vm_config.kubevirt_vm_cpu_cores }}"
           threads: "{{ __sap_vm_provision_register_vm_config.kubevirt_vm_cpu_smt }}"
-          dedicatedCpuPlacement: true
-          model: host-passthrough
-          numa:
-            guestMappingPassthrough: {}
-          features:
-            - name: x2apic
-              policy: require
-            - name: rdtscp
-              policy: require
-            - name: invtsc
-              policy: require
 
         memory:
           guest: "{{ __sap_vm_provision_register_vm_config.kubevirt_vm_memory_gib }}Gi"
           hugepages:
             pageSize: 1Gi
+
+- name: Apply CPU performance settings
+  ansible.builtin.set_fact:
+    __sap_vm_provision_register_vm_deploy_config: >-
+      {{ __sap_vm_provision_register_vm_deploy_config | combine({'domain': { 'cpu': __sap_vm_provision_register_vm_deploy_config.domain.cpu | combine(sap_vm_provision_kubevirt_vm_performance_cpu_settings)}}, recursive=True) }}
 
 - name: Provision KubeVirt Virtual Machine
   kubevirt.core.kubevirt_vm:

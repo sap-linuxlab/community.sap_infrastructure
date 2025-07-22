@@ -3,6 +3,11 @@
 # Red Hat OpenShift Virtualization         #
 ############################################
 
+# kubeconfig for Red Hat OpenShift cluster connection.
+# If not provided, the kubeconfig will be read from the environment variables
+# KUBECONFIG or K8S_AUTH_KUBECONFIG
+# sap_vm_provision_kubevirt_vm_kubeconfig: /path/to/clusterconfigs/kubeconfig
+
 # Namespace where the VM should be created in
 sap_vm_provision_kubevirt_vm_target_namespace: sap
 
@@ -12,50 +17,18 @@ sap_vm_provision_kubevirt_vm_os_user: cloud-user
 # Password for the above user
 sap_vm_provision_kubevirt_vm_os_user_password: ""
 
-# how to authenticate to the guest vm [password|private_key|private_key_data]
-# password: uses provided password in sap_vm_provision_kubevirt_vm_os_user_password, make sure your ssh config allows password authentication
-# private_key: use the private ssh key at the location defined by sap_vm_provision_ssh_host_private_key_file_path
-# private_key_data: use the private ssh key provided in sap_vm_provision_ssh_host_private_key_data and write it to the location defined in sap_vm_provision_ssh_host_private_key_file_path
-sap_vm_provision_kubevirt_vm_guest_ssh_auth_mechanism: private-key
-
-# Private SSH key file, must be accessible on the ansible controller
-# sap_vm_provision_ssh_host_private_key_file_path: <your private ssh key file>
-
-# private ssh key, make sure the indentation is correct, here it's two spaces at the beginning of every line
-# sap_vm_provision_ssh_host_private_key_data: |
-#  < your key data>
-
-# Should the CA cert and the API endpoint be extracted from the kubeconfig file?
-sap_vm_provision_kubevirt_vm_extract_kubeconfig: true
-
-# Should an existing VM be overwritten?
-sap_vm_provision_kubevirt_vm_overwrite_vm: false
-
-# Kubeconfig file for cluster where VMs should be created
-sap_vm_provision_kubevirt_vm_kubeconfig_path: /path/to/clusterconfigs/kubeconfig
-
-# In order to use secured communication, provide the CA cert bundle for the cluster.
-# This can be extracted from the kubeconfig file with the following command from the
-# kubeconfig file:
-#   grep certificate-authority-data ${KUBECONFIG} | awk '{ print $2 }' | base64 --decode > cluster-ca-cert.pem
-# This variable will not be used if sap_vm_provision_kubevirt_vm_extract_kubeconfig = true
-# sap_vm_provision_kubevirt_vm_ca_cert: /path/to/clusterconfigs/cluster-ca-cert.pem
-
-# API endpoint of the cluster
-# This variable will not be used if sap_vm_provision_kubevirt_vm_extract_kubeconfig = true
-# sap_vm_provision_kubevirt_vm_api_endpoint: https://api.cluster.domain.tld:6443
-
-# Admin username for the cluster communication
-sap_vm_provision_kubevirt_vm_admin_username: kubeadmin
-
-# Password for the above admin user
-sap_vm_provision_kubevirt_vm_admin_password: AAAAA-BBBBB-CCCCC-DDDDD
+# SSH key files, must be accessible on the ansible controller
+sap_vm_provision_ssh_host_private_key_file_path: /path/to/id_rsa
+sap_vm_provision_ssh_host_public_key_file_path: /path/to/id_rsa.pub
 
 # RAM Overhead [GiB] for virt-launcher container, this can be small for VMs < 1 TB and without SRIOV but should be increased to 16 or more for VMs > 1TB
 sap_vm_provision_kubevirt_vm_container_memory_overhead: 1
 
 # hostname of the ansible controller
-sap_vm_provision_kubevirt_vm_ansible_controller: localhost # on AAP, this is localhost
+sap_vm_provision_execution_host: localhost # on AAP, this is localhost
+
+# What's the host specification plan that should be rolled out?
+sap_vm_provision_host_specification_plan: example_host_specification_plan
 
 sap_vm_provision_kubevirt_vm_host_specifications_dictionary:
   example_host_specification_plan:
@@ -69,11 +42,17 @@ sap_vm_provision_kubevirt_vm_host_specifications_dictionary:
       # Provide either an existing PVC or a URL for an OS image
       os_image: # either url or source_pvc_name have to be provided
         # URL for an image to be used
-        url: "docker://registry.redhat.io/rhel8/rhel-guest-image:8.8.0"
+        #url: "docker://registry.redhat.io/rhel8/rhel-guest-image:8.8.0"
+        #url: "docker://registry.redhat.io/rhel8/rhel-guest-image:8.10.0"
+        #url: "docker://registry.redhat.io/rhel9/rhel-guest-image:9.4"
+        url: "docker://registry.redhat.io/rhel9/rhel-guest-image:9.6"
+        #url: "docker://registry.redhat.io/rhel10/rhel-guest-image:10.0"
         # Name for a PVC to be cloned
         # source_pvc_name: "rhel-8.8"
         namespace: openshift-virtualization-os-images
         size: "50Gi"
+        access_modes:                    # e.g. ReadWriteMany | ReadWriteOnce
+          - ReadWriteMany
       network_definition:
         - name: sapbridge
           type: bridge
@@ -84,21 +63,22 @@ sap_vm_provision_kubevirt_vm_host_specifications_dictionary:
           mountpoint: /hana
           disk_count: 1                  # default: 1
           disk_size: 2048                # size in GB, integer
-          disk_type: nas                 # KubeVirt Storage Class
+          disk_type: sapstorage          # KubeVirt Storage Class
+          access_modes:                  # e.g. ReadWriteMany | ReadWriteOnce
+            - ReadWriteMany
       cloudinit:
         userData: |-
           #cloud-config
           timezone: Europe/Berlin
-          hostname: "{{ scaleout_origin_host_spec }}"
+          hostname: host1
           user: {{ sap_vm_provision_kubevirt_vm_os_user if sap_vm_provision_kubevirt_vm_os_user is defined }}
           password: {{ sap_vm_provision_kubevirt_vm_os_user_password if sap_vm_provision_kubevirt_vm_os_user_password is defined }}
           chpasswd:
             expire: false
           ssh_authorized_keys:
-            - "{{ lookup('ansible.builtin.file', sap_vm_provision_ssh_host_public_key_file_path ) }}"
+            - "{{ lookup('ansible.builtin.file', sap_vm_provision_ssh_host_public_key_file_path ) if sap_vm_provision_ssh_host_public_key_file_path is defined }}"
         networkData: |-
-          network:
-            version: 2
-            ethernets:
-              eth0:
-                dhcp4: true
+          version: 2
+          ethernets:
+            eth0:
+              dhcp4: true
