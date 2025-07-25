@@ -15,7 +15,7 @@
         sap_hypervisor_node_preconfigure_kubeconfig: "{{ lookup('env', 'K8S_AUTH_KUBECONFIG') | default(lookup('env', 'KUBECONFIG'), true) }}"
 
     - name: Ensure that kubeconfig is set
-      assert:
+      ansible.builtin.assert:
         that:
           - sap_hypervisor_node_preconfigure_kubeconfig is defined
           - sap_hypervisor_node_preconfigure_kubeconfig is not none
