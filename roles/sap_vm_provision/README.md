@@ -23,7 +23,7 @@ The prerequisites are listed only for Control Node, because Managed Nodes are pr
 For a list of requirements and recommended authorizations on each Infrastructure Platform, please see the separate [Infrastructure Platform Guidance](./PLATFORM_GUIDANCE.md) document and the drop-down for each different Infrastructure Platform.
 
 ### Base Prerequisites
-For list of all collection prerequisites, please see [Ansible Collection Readme](https://github.com/sap-linuxlab/community.sap_infrastructure/blob/main/README.md#equirements)
+For list of all collection prerequisites, please see [Ansible Collection Readme](https://github.com/sap-linuxlab/community.sap_infrastructure/blob/main/README.md#requirements)
 - Operating System packages:
   - Python 3.11 or higher
   - Terraform 1.0.0 to 1.5.5 _(when Ansible to Terraform, or legacy Ansible Collection for IBM Cloud)_
