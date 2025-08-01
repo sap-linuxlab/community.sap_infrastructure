@@ -1,6 +1,7 @@
 `WIP`
 
 # sap_vm_verify Ansible Role
+![Ansible Lint for sap_vm_verify](https://github.com/sap-linuxlab/community.sap_infrastructure/actions/workflows/ansible-lint-sap_vm_verify.yml/badge.svg)
 
 Ansible Role for verification of Virtual Machine state and readiness to perform SAP Software installation.
 
