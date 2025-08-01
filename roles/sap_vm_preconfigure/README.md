@@ -1,6 +1,7 @@
 `WIP`
 
 # sap_vm_preconfigure
+![Ansible Lint for sap_vm_preconfigure](https://github.com/sap-linuxlab/community.sap_infrastructure/actions/workflows/ansible-lint-sap_vm_preconfigure.yml/badge.svg)
 
 Ansible Role for Vendor-specific configuration preparation tasks for Virtual Machines running SAP Systems.
 

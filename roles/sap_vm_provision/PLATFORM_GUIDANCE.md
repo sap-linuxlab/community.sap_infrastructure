@@ -5,31 +5,31 @@ Table of Contents:
 - [Recommended Infrastructure Platform authorizations](#recommended-infrastructure-platform-authorizations)
 - [Recommended Infrastructure Platform configuration](#recommended-infrastructure-platform-configuration)
 
-## Key note - Connectivity
+## Key note - Cloud Connectivity
 
-The Ansible Control Node AKA Controller (i.e. device where Ansible Playbook is executed), must be able to directly call the platform's API endpoints. For example:
-
+The Ansible Control Node AKA Execution Node (i.e. device where Ansible Playbook is executed), must be able to directly call the platform's API endpoints. For example:
 - AWS EC2 API endpoint `ec2.us-east-1.amazonaws.com`
-- VMware vSphere REST API endpoint `<VMware vCenter Server Appliance hostnamee>.:443`
+- VMware vSphere REST API endpoint `<VMware vCenter Server Appliance hostname>.:443`
 
-By default, a Cloud account will use Public internet endpoints which should be accessible in most cases. The Cloud account may utilise Private endpoints for security, as would an On-Premise Hypervisor. Examples include:
+By default, a Cloud account will use Public internet endpoints which should be accessible in most cases.  
+The Cloud account may utilize Private endpoints for security, as would an On-Premise Hypervisor. Examples include:
+- Connection from a public device (e.g. Personal laptop).
+  - It can access Private endpoint using direct Cloud VPN solution or Client-to-Site VPN Client (e.g. OpenVPN Connect) to connect to Company network, which has access to Private endpoint.
+- Connection from an existing host in private network in on-premise.
+  - It can access Private endpoint directly if on-premise network is connected with Cloud (e.g. Site-to-Site VPN, AWS Direct Connect, Azure ExpressRoute, etc.).
+- Connection from an existing host in private network in Cloud.
+  - It can access Private endpoint directly.
 
-- running an Ansible Playbook from a personal laptop, then the personal laptop acts as the Ansible Control Node and can access the platform's APIs using a Client-to-Site VPN Client (such as OpenVPN Connect) to provision Virtual Machines for deploying SAP software
-- running an Ansible Playbook from an existing host (e.g. VM) inside the platform's private network, then the existing host acts as the Ansible Control Node and can access the platform's APIs to provision Virtual Machines for deploying SAP software
-
-The subsequent provisioned Virtual Machine, must be accessible too - this can utilise a Bastion for SSH Proxy connection, which is common for Cloud IaaS.
-
-The Ansible Control Node AKA Controller (i.e. device where Ansible Playbook is executed), must be able to SSH to the Ansible Target Node (i.e. Virtual Machine) using:
-
-- DEFAULT: SSH Proxy connection from Ansible control node, via Bastion host, to target node (`sap_vm_provision_bastion_execution: true`); with SSH Private Keys for the host and the bastion (`sap_vm_provision_ssh_host_private_key_file_path: "/path"` and `sap_vm_provision_ssh_bastion_private_key_file_path: "/path"`)
-- Direct SSH connection from Ansible control node to target node (`sap_vm_provision_bastion_execution: false`); with SSH Private Key for the host (`sap_vm_provision_ssh_host_private_key_file_path: "/path"`).
+By default, this Ansible Role utilizes Bastion host as SSH Proxy for connection to provisioned hosts, which is recommended method for Security.  
+This behavior is controlled by variable `sap_vm_provision_bastion_execution`:
+- `true`: SSH Proxy connection from Ansible control node, via Bastion host, to target node with SSH Private Keys for the host `sap_vm_provision_ssh_bastion_private_key_file_path` and the bastion `sap_vm_provision_ssh_host_private_key_file_path`.
+- `false`: Direct SSH connection from Ansible control node to target node with SSH Private Key for the host `sap_vm_provision_ssh_host_private_key_file_path`.
 
 
-## Required resources when Ansible provisioning VMs
+## Infrastructure Prerequisites for Ansible provisioning method
+**NOTE:** The following does not apply if `sap_vm_provision_iac_type: ansible_to_terraform` is used.
 
-The following does not apply if Ansible to Terraform is used.
-
-See below for the drop-down list of required environment resources on an Infrastructure Platform resources when Ansible is used to provision Virtual Machines.
+See below for the drop-down list of required environment resources on an Infrastructure Platform.
 
 <details>
 <summary><b>Amazon Web Services (AWS):</b></summary>
@@ -41,7 +41,7 @@ See below for the drop-down list of required environment resources on an Infrast
 - Route53 (Private DNS)
 - Internet Gateway (SNAT)
 - EFS (NFS)
-- Bastion host (AWS EC2 VS)
+- Bastion host (AWS EC2 VS) - This becomes optional, if `sap_vm_provision_bastion_execution` is set to `false`.
 - Key Pair for hosts
 
 </details>
@@ -56,7 +56,7 @@ See below for the drop-down list of required environment resources on an Infrast
     - Cloud NAT (SNAT)
 - DNS Managed Zone (Private DNS)
 - Filestore (NFS) or NFS server
-- Bastion host (GCP CE VM)
+- Bastion host (GCP CE VM) - This becomes optional, if `sap_vm_provision_bastion_execution` is set to `false`.
 
 </details>
 
@@ -72,7 +72,7 @@ See below for the drop-down list of required environment resources on an Infrast
 - Storage Account
     - Azure Files (aka. File Storage Share, NFS)
     - Private Endpoint Connection
-- Bastion host (MS Azure VM)
+- Bastion host (MS Azure VM) - This becomes optional, if `sap_vm_provision_bastion_execution` is set to `false`.
 - Key Pair for hosts
 
 </details>
@@ -88,7 +88,7 @@ See below for the drop-down list of required environment resources on an Infrast
 - Private DNS
 - Public Gateway (SNAT)
 - File Share (NFS)
-- Bastion host (IBM Cloud VS)
+- Bastion host (IBM Cloud VS) - This becomes optional, if `sap_vm_provision_bastion_execution` is set to `false`.
 - Key Pair for hosts
 
 </details>
@@ -102,7 +102,7 @@ See below for the drop-down list of required environment resources on an Infrast
     - Cloud Connection (from secure enclave to IBM Cloud)
 - Private DNS Zone
 - Public Gateway (SNAT)
-- Bastion host (IBM Cloud VS or IBM Power VS)
+- Bastion host (IBM Cloud VS or IBM Power VS) - This becomes optional, if `sap_vm_provision_bastion_execution` is set to `false`.
 - Key Pair for hosts (in IBM Power Workspace)
 
 </details>
@@ -121,7 +121,7 @@ See below for the drop-down list of required environment resources on an Infrast
 <details>
 <summary><b>Red Hat OpenShift Virtualization (kubevirt_vm)</b></summary>
 
-- IMPORTANT: The playbook has to run with the environment variable `ANSIBLE_JINJA2_NATIVE=true` otherwise you will see an unmarshalling error when the VM is created. On Ansible Automation Platform Controller (AAPC) you have to set this in Settings --> Job Settings --> Extra Environment Variables, e.g.
+- IMPORTANT: The playbook has to run with the environment variable `ANSIBLE_JINJA2_NATIVE=true` otherwise you will see an `unmarshalling` error when the VM is created. On Ansible Automation Platform Controller (AAPC) you have to set this in Settings --> Job Settings --> Extra Environment Variables, e.g.
 ```
 {
   "ANSIBLE_JINJA2_NATIVE": "true",
@@ -167,15 +167,11 @@ See below for the drop-down list of required environment resources on an Infrast
 - Datastore
 - Content Library
     - VM Template
-
 </details>
 
 
-
 ## Recommended Infrastructure Platform authorizations
-
 See below for the drop-down list of recommended authorizations for each Infrastructure Platform.
-
 
 <details>
 <summary><b>Amazon Web Services (AWS):</b></summary>
@@ -241,7 +237,6 @@ It is recommended to create new AWS IAM Policy with detailed actions to improve 
 	]
 }
 ```
-
 </details>
 
 <details>
@@ -307,7 +302,6 @@ dns.resourceRecordSets.get
 dns.resourceRecordSets.list
 dns.resourceRecordSets.update
 ```
-
 </details>
 
 <details>
@@ -385,7 +379,6 @@ It is recommended to create new Azure custom role with detailed actions to impro
 ```
 
 Note: MS Azure VMs provisioned will contain Hyper-V Hypervisor virtual interfaces using eth* on the OS, and when Accelerated Networking (AccelNet) is enabled for the MS Azure VM then the Mellanox SmartNIC/DPU SR-IOV Virtual Function (VF) may use enP* on the OS. For further information, see [MS Azure - How Accelerated Networking works](https://learn.microsoft.com/en-us/azure/virtual-network/accelerated-networking-how-it-works). During High Availability executions, failures may occur and may require additional variable 'sap_ha_pacemaker_cluster_vip_client_interface' to be defined.
-
 </details>
 
 <details>
@@ -420,14 +413,12 @@ Alternatively, use the IBM Cloud web console:
   - `[OPTIONAL]` IAM Services > All Identity and Access enabled services > click All resources as scope + Platform Access as Viewer + Resource group access as Administrator
   - `[OPTIONAL]` Account Management > Identity and Access Management > click Platform access as Editor
   - `[OPTIONAL]` Account Management > IAM Access Groups Service > click All resources as scope + Platform Access as Editor
-
 </details>
 
 <details>
 <summary><b>IBM PowerVC:</b></summary>
 
 The recommended [IBM PowerVC Security Role](https://www.ibm.com/docs/en/powervc/latest?topic=security-managing-roles) is 'Administrator assistant' (admin_assist), because the 'Virtual machine manager' (vm_manager) role is not able to create IBM PowerVM Compute Template (required for setting OpenStack extra_specs specific to the IBM PowerVM hypervisor infrastructure platform, such as Processing Units). Note that the 'Administrator assistant' does not have the privilege to delete Virtual Machines.
-
 </details>
 
 
@@ -446,8 +437,6 @@ Issues were resolved by following [Troubleshooting SLES pay-as-you-go registrati
 ```
 Cloud NAT parameter "minimum ports per VM instance" has to be increased to higher than 160 (Recommended higher).
 ```
-
-
 </details>
 
 <details>
@@ -499,7 +488,6 @@ When VMware vCenter and vSphere clusters with VMware NSX virtualized network ove
 - For outbound internet connectivity, use SNAT configuration (e.g. rule added on NSX Gateway) set for the Subnet which the VMware VM Template is attached to. Alternatively, use a Web Forward Proxy.
 
 N.B. When VMware vCenter and vSphere clusters with direct network subnet IP allocations to the VMXNet network adapter (no VMware NSX network overlays), the above actions may not be required.
-
 </details>
 
 
