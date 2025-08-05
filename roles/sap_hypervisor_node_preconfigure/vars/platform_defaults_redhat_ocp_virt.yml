@@ -6,28 +6,11 @@
 # Red Hat OpenShift cluster connection details
 ###########################################################
 
-# Admin username for Red Hat OpenShift cluster connection
-sap_hypervisor_node_preconfigure_ocp_admin_username:
-
-# Admin password for Red Hat OpenShift cluster connection
-sap_hypervisor_node_preconfigure_ocp_admin_password:
-
-# Path to kubeconfig file Red Hat OpenShift cluster connection
-sap_hypervisor_node_preconfigure_ocp_kubeconfig_path:
-
-# If this is set to true, the API endpoint and the
-# CA Certificate are extracted from the kubeconfig file.
-# If set to false, sap_hypervisor_node_preconfigure_ocp_endpoint and
-# sap_hypervisor_node_preconfigure_ocp_ca_cert have to be specified.
-sap_hypervisor_node_preconfigure_ocp_extract_kubeconfig: true
-
-# URL to the API endpoint of Red Hat OpenShift cluster
-#sap_hypervisor_node_preconfigure_ocp_endpoint:
-
-# CA Certificate for Red Hat OpenShift cluster connection
-# To extract the CA Cert from the kubeconfig, you can use
-# grep certificate-authority-data ${KUBECONFIG} | awk '{ print $2 }' | base64 --decode > client-cert.pem
-#sap_hypervisor_node_preconfigure_ocp_ca_cert:
+# kubeconfig for Red Hat OpenShift cluster connection.
+# Needs to contain a valid API token for trident storage operator to work.
+# If not provided, the kubeconfig will be read from the environment variables
+# KUBECONFIG or K8S_AUTH_KUBECONFIG
+# sap_hypervisor_node_preconfigure_kubeconfig:
 
 
 ###########################################################
@@ -45,6 +28,21 @@ sap_hypervisor_node_preconfigure_install_operators: true
 
 # Configure the workers?
 sap_hypervisor_node_preconfigure_setup_worker_nodes: true
+
+
+###################################################################################
+# Individual worker nodes config details, typically no need to change anything here.
+# Requires sap_hypervisor_node_preconfigure_setup_worker_nodes to be set to true.
+###################################################################################
+
+# Should the network of the nodes be configured?
+sap_hypervisor_node_preconfigure_configure_worker_node_network: true
+
+# Should the cpumanager be enabled? This has to be set to true.
+sap_hypervisor_node_preconfigure_enable_cpumanager: true
+
+# Should the kargs be applied to the worker nodes?
+sap_hypervisor_node_preconfigure_enable_kargs: true
 
 
 ###########################################################
@@ -68,6 +66,12 @@ sap_hypervisor_node_preconfigure_ignore_minimal_memory_check: false
 
 # Namespace to be used for the Red Hat Openshift Virtualization Operator
 sap_hypervisor_node_preconfigure_ocpv_namespace: openshift-cnv
+
+# Namespace to be used for the Red Hat Openshift Nmstate Operator
+sap_hypervisor_node_preconfigure_nmstate_namespace: openshift-nmstate
+
+# Mountpoint for hostpath provisioner
+sap_hypervisor_node_preconfigure_hpp_mountpoint: /var/localstorage
 
 
 ###########################################################
@@ -93,12 +97,22 @@ sap_hypervisor_node_preconfigure_cluster_config:
     password: xxxxx
     storage_driver: ontap-nas
     storage_prefix: ocpv_sap_
+    nfs_mount_options: nfsvers=3
+    export_policy: default
+    storageclass_name: sapstorage  # Name of the storage class (careful, there can only be one SC with this name)
+    default_storageclass: true     # Should this storage class be default?
 
   # CPU cores which will be reserved for kubernetes
   worker_kubernetes_reserved_cpus: "0,1"
 
   # Storage device used for host path provisioner as local storage.
   worker_localstorage_device: /dev/vdb
+
+  # Name of the storage class for locastorage
+  worker_localstorage_storageclass_name: sapstorage
+
+  # Should the local storage class be default?
+  worker_localstorage_default_storageclass: true
 
   # detailed configuration for every worker that should be configured
   workers:
