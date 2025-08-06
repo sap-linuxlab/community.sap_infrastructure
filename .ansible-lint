@@ -2,12 +2,14 @@
 # Collection wide lint-file
 # DO NOT CHANGE
 exclude_paths:
+  - .ansible/
   - .cache/
   - .github/
   #- docs/
+  - changelogs/  # Changelog files are missing '---' required in normal yml files.
+  - roles/sap_vm_preconfigure  # Role is WIP
+  # TODO: Remove when ansible-lint issues are resolved (Issue #101).
   - roles/sap_hypervisor_node_preconfigure
-  #- roles/sap_vm_provision
-  - roles/sap_vm_preconfigure
 
 enable_list:
   - yaml
