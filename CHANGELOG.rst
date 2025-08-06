@@ -4,6 +4,47 @@ community.sap\_infrastructure Release Notes
 
 .. contents:: Topics
 
+v1.1.4
+======
+
+Release Summary
+---------------
+
+Updated sap_vm_provision(kubevirt_vm) and sap_hypervisor_node_preconfigure(redhat_ocpv)
+
+Bugfixes
+--------
+
+- sap_hypervisor_node_preconfigure(redhat_ocpv): nmstate: wait for webhooks pods to be available
+- sap_hypervisor_node_preconfigure(redhat_ocpv): fix bridge and NAD name for additional bridges
+- sap_hypervisor_node_preconfigure(redhat_ocpv): added MCP wait to when installing hostpath provisioner
+
+Minor Changes
+-------------
+
+- sap_hypervisor_node_preconfigure(redhat_ocpv): Added assert for kubeconfig
+- sap_hypervisor_node_preconfigure(redhat_ocpv): Unified storageclass to sapstorage for both trident and hpp and make configurable
+- sap_hypervisor_node_preconfigure(redhat_ocpv): trident: update to 25.02.1 and make parameters configurable in role
+- sap_hypervisor_node_preconfigure(redhat_ocpv): removed unused create-sap-bridge.yml, label-worker-invtsc.yml, sriov-enabled-unsupported-nics.sh
+- sap_hypervisor_node_preconfigure(redhat_ocpv): restructured tasks
+- sap_hypervisor_node_preconfigure(redhat_ocpv): added flags for finegranular tasks control, mainly for debugging
+- sap_hypervisor_node_preconfigure(redhat_ocpv): add vlan interface support
+- sap_hypervisor_node_preconfigure(redhat_ocpv): Storageclass names and default is configurable now
+- sap_vm_provision(kubevirt_vm): Added assert for kubeconfig
+- sap_vm_provision(kubevirt_vm): Unified storageclass to sapstorage for both trident and hpp and make configurable
+- sap_vm_provision(kubevirt_vm): trident: make parameters configurable in role - Renamed default namespace for VMs to sap
+- sap_vm_provision(kubevirt_vm): Define public ssh key explicitly - fixed network config cloudinit
+- sap_vm_provision(kubevirt_vm): added sap_vm_provision_host_specification_plan to sample var file
+- sap_vm_provision(kubevirt_vm): make disk access_modes configurable
+- sap_vm_provision(kubevirt_vm): make CPU performance settings configurable
+- sap_vm_provision(kubevirt_vm): Deprecated var sap_vm_provision_kubevirt_vm_guest_ssh_auth_mechanism
+- sap_vm_provision(kubevirt_vm): Deprecated var sap_vm_provision_kubevirt_vm_extract_kubeconfig
+- sap_vm_provision(kubevirt_vm): Deprecated var sap_vm_provision_kubevirt_vm_kubeconfig_path
+- sap_vm_provision(kubevirt_vm): Deprecated var sap_vm_provision_kubevirt_vm_ca_cert
+- sap_vm_provision(kubevirt_vm): Deprecated var sap_vm_provision_kubevirt_vm_api_endpoint
+- sap_vm_provision(kubevirt_vm): Deprecated var sap_vm_provision_kubevirt_vm_admin_username
+- sap_vm_provision(kubevirt_vm): Deprecated var sap_vm_provision_kubevirt_vm_admin_password
+
 v1.1.3
 ======
 
