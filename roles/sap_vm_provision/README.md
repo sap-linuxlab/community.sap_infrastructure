@@ -121,7 +121,7 @@ A series of choices are deciding Ansible Role behavior:
 
 ### Example
 <!-- BEGIN Execution Example -->
-The playbooks using this Ansible Role are required to dynamically crate Ansible Inventory group during runtime, which will allow parallel provisioning of resources.
+The playbooks using this Ansible Role are required to dynamically create Ansible Inventory group during runtime, which will allow parallel provisioning of resources.
 
 **Reasoning behind this concept:** This required structure avoids the Ansible Role using a sequential loop, where each host will execute all Ansible Tasks before the next host is provisioned; or using an async loop which hides all Ansible Task output from the end user.
 
