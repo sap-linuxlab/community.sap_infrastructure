@@ -12,7 +12,8 @@
   ansible.builtin.shell:
     cmd: set -o pipefail && ip -oneline address show {{ __sap_vm_temp_vip_get_route.stdout }} | grep {{ sap_vm_temp_vip_default_ip }}
   when:
-    - __sap_vm_temp_vip_get_route.stdout is defined  and __sap_vm_temp_vip_get_route.stdout | length > 0
+    - __sap_vm_temp_vip_get_route.stdout is defined
+    - __sap_vm_temp_vip_get_route.stdout | length > 0
   register: __sap_vm_temp_vip_get_ips
   changed_when: false
   failed_when: false

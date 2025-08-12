@@ -41,7 +41,9 @@
   ansible.builtin.shell:
     cmd: set -o pipefail && ip -oneline address show | grep {{ __sap_vm_temp_vip_address }}
   when:
-    - __sap_vm_temp_vip_address is defined and __sap_vm_temp_vip_address | length > 0
+    - __sap_vm_temp_vip_address is defined
+    - __sap_vm_temp_vip_address is not none
+    - __sap_vm_temp_vip_address | length > 0
   register: __sap_vm_temp_vip_get_vip
   changed_when: false
   ignore_errors: true
@@ -72,7 +74,7 @@
     __vip_multiple: "{{ true if __sap_vm_temp_vip_get_vip.stdout_lines | length > 1 else false }}"
   when:
     - __sap_vm_temp_vip_get_vip.stdout is defined and __sap_vm_temp_vip_get_vip.stdout | length > 0
-    - __sap_vm_temp_vip_address is defined and __sap_vm_temp_vip_address | length > 0
+    - __sap_vm_temp_vip_address is not none and __sap_vm_temp_vip_address | length > 0
 
 
 # Dynamically generate IP creation command depending on values gathered before:
@@ -88,7 +90,7 @@
         ip address add {{ __sap_vm_temp_vip_address }}/{{ __sap_vm_temp_vip_prefix }} brd + dev {{ sap_vm_temp_vip_default_interface }} noprefixroute
       {%- endif -%}
   when:
-    - __sap_vm_temp_vip_address is defined and __sap_vm_temp_vip_address | length > 0
+    - __sap_vm_temp_vip_address is not none and __sap_vm_temp_vip_address | length > 0
     - __sap_vm_temp_vip_prefix | length > 0
     - __sap_vm_temp_vip_get_vip.stdout is defined and __sap_vm_temp_vip_get_vip.stdout | length == 0
 
