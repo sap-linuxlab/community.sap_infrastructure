@@ -11,8 +11,8 @@
       spec:
         profile:
           - data: |
-                [main]
-                include=virtual-host
+              [main]
+              include=virtual-host
             name: virtual-host
         recommend:
           - match:

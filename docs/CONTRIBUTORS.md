@@ -5,8 +5,12 @@
     - **Sean Freeman** - Developer of Ansible Collection and sap_vm_provision Ansible Role
 - **Red Hat**
   - Red Hat for SAP CoP
-    - **Janine Fuchs** - Developer of Ansible parallelisation and OVirt capability for sap_vm_provision Ansible Role
+    - **Janine Fuchs** - Developer of Ansible parallelization and OVirt capability for sap_vm_provision Ansible Role
     - **Nils Koenig** - Developer of sap_hypervisor_node_preconfigure and KubeVirt capability for sap_vm_provision Ansible Role
+- **SUSE**
+  - SUSE SAP Emerging Technology Solutions
+    - **Marcel Mamula** - Developer of Ansible Collection
+
 
 # New contributors
 

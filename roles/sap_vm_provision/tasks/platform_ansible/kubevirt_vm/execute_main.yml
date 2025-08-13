@@ -1,11 +1,4 @@
 ---
-- name: Fail if sap_vm_provision_kubevirt_vm_os_user_password is not set and sap_vm_provision_kubevirt_vm_guest_ssh_auth_mechanism is set to password
-  ansible.builtin.fail:
-    msg: Password is not allowed to be empty or undefined (sap_vm_provision_kubevirt_vm_os_user_password).
-  when:
-    - sap_vm_provision_kubevirt_vm_guest_ssh_auth_mechanism == "password"
-    - sap_vm_provision_kubevirt_vm_os_user_password == "" or sap_vm_provision_kubevirt_vm_os_user_password == null
-
 - name: Ansible Task block for looped provisioning of KubeVirt Virtual Machines
   any_errors_fatal: true
   # Using environment, no_log is ineffective and log will show 'EXEC /bin/sh -c 'ENV_VAR=value python3 /AnsiballZ_ansible_module_name.py && sleep 0'
@@ -68,24 +61,14 @@
         - not lookup('ansible.builtin.vars', loop_item, default='') is skipped
         - lookup('ansible.builtin.vars', loop_item, default='') is failed
 
-- name: Write private ssh key to ansible_controller
-  delegate_to: "{{ sap_vm_provision_kubevirt_vm_ansible_controller }}"
-  no_log: true
-  ansible.builtin.copy:
-    dest: "{{ sap_vm_provision_ssh_host_private_key_file_path }}"
-    content: "{{ sap_vm_provision_ssh_host_private_key_data }}"
-    mode: "0600"
-  when: sap_vm_provision_kubevirt_vm_guest_ssh_auth_mechanism == "private_key_data"
-
 - name: Ansible Task block to execute on target inventory hosts
   remote_user: "{{ sap_vm_provision_kubevirt_vm_os_user }}"
   become: true
   become_user: root
   delegate_to: "{{ inventory_hostname }}"
   vars:
-    ansible_password: "{{ sap_vm_provision_kubevirt_vm_os_user_password }}"
     ansible_ssh_private_key_file: "{{ sap_vm_provision_ssh_host_private_key_file_path }}"
-    ansible_ssh_common_args: "-o ConnectTimeout=180 -o ControlMaster=auto -o ControlPersist=3600s -o UserKnownHostsFile=/dev/null -o ForwardX11=no -o ProxyJump={{ __sap_vm_provision_kubevirt_vm_register_execution_host_user }}@{{ sap_vm_provision_execution_host }}"
+    ansible_ssh_common_args: "-o StrictHostKeyChecking=no -o ConnectTimeout=180 -o ControlMaster=auto -o ControlPersist=3600s -o UserKnownHostsFile=/dev/null -o ForwardX11=no -o ProxyJump={{ __sap_vm_provision_kubevirt_vm_register_execution_host_user }}@{{ sap_vm_provision_execution_host }}"
 
   block:
 
@@ -132,13 +115,3 @@
     - name: Register Package Repositories
       ansible.builtin.include_tasks:
         file: common/register_os.yml
-
-  always:
-
-    - name: Delete private ssh key from ansible_controller
-      delegate_to: "{{ sap_vm_provision_register_ansible_controller }}"
-      become: false
-      ansible.builtin.file:
-        path: "{{ sap_vm_provision_ssh_host_private_key_file_path }}"
-        state: absent
-      when: sap_vm_provision_kubevirt_vm_guest_ssh_auth_mechanism == "private_key_data"

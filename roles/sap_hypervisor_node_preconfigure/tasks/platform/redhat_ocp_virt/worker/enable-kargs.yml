@@ -1,0 +1,15 @@
+---
+- name: Render template
+  ansible.builtin.template:
+    src: 99-kargs-worker.yml.j2
+    dest: "{{ __sap_hypervisor_node_preconfigure_register_tmpdir_role.path }}/99-kargs-worker.yml"
+    mode: "0644"
+
+- name: Enable hugepages
+  kubernetes.core.k8s:
+    state: present
+    src: "{{ __sap_hypervisor_node_preconfigure_register_tmpdir_role.path }}/99-kargs-worker.yml"
+
+- name: Include wait mcp finished updating
+  ansible.builtin.include_tasks:
+    file: "platform/{{ sap_hypervisor_node_preconfigure_platform }}/cluster/wait-mcp-finished-updating.yml"

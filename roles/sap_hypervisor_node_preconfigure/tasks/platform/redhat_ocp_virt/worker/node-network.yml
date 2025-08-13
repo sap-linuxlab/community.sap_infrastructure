@@ -21,6 +21,7 @@
             - "{{ __sap_hypervisor_node_preconfigure_register_worker_network }}"
   when: __sap_hypervisor_node_preconfigure_register_worker_network.type == 'linux-bridge'
           or __sap_hypervisor_node_preconfigure_register_worker_network.type == 'ethernet'
+          or __sap_hypervisor_node_preconfigure_register_worker_network.type == 'vlan'
 
 - name: "Create NetworkAttachmentDefinition {{ __sap_hypervisor_node_preconfigure_register_worker_network.name }}"
   kubernetes.core.k8s:
@@ -34,13 +35,13 @@
         annotations:
           k8s.v1.cni.cncf.io/resourceName: "bridge.network.kubevirt.io/{{ __sap_hypervisor_node_preconfigure_register_worker_network.name }}"
       spec:
-        config: '{
-          "cniVersion": "0.3.1",
-          "name": "sapbridge-network-definition",
-          "type": "cnv-bridge",
-          "bridge": "sapbridge",
-          "macspoofchk": true
-        }'
+        config: "{{ {
+          'cniVersion': '0.3.1',
+          'name': __sap_hypervisor_node_preconfigure_register_worker_network.name,
+          'type': 'cnv-bridge',
+          'bridge': __sap_hypervisor_node_preconfigure_register_worker_network.name,
+          'macspoofchk': true
+        } | to_json }}"
   when: __sap_hypervisor_node_preconfigure_register_worker_network.type == 'linux-bridge'
 
 - name: Label the node with feature.node.kubernetes.io/network-sriov.capable=true

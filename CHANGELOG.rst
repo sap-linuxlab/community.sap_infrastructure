@@ -4,6 +4,22 @@ community.sap\_infrastructure Release Notes
 
 .. contents:: Topics
 
+v1.2.0
+======
+
+Release Summary
+---------------
+
+Various enhancements and readme update
+
+Minor Changes
+--------
+
+- collection - Readme update to align with project readme update (https://github.com/sap-linuxlab/community.sap_infrastructure/pull/104)
+- sap_hypervisor_node_preconfigure - Readme update to align with project readme update (https://github.com/sap-linuxlab/community.sap_infrastructure/pull/109)
+- sap_hypervisor_node_preconfigure - Updated redhat_ocpv (https://github.com/sap-linuxlab/community.sap_infrastructure/pull/106)
+- sap_vm_provision - Updated kubevirt_vm (https://github.com/sap-linuxlab/community.sap_infrastructure/pull/100)
+
 v1.1.3
 ======
 

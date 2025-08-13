@@ -1,0 +1,37 @@
+---
+- name: Define required trident keys
+  ansible.builtin.set_fact:
+    __sap_hypervisor_node_preconfigure_required_trident_keys:
+      - management
+      - data
+      - svm
+      - backend
+      - aggregate
+      - username
+      - password
+      - storage_driver
+      - storage_prefix
+      - nfs_mount_options
+      - export_policy
+      - storageclass_name
+      - default_storageclass
+
+- name: Initialize list of missing or empty trident keys
+  ansible.builtin.set_fact:
+    __sap_hypervisor_node_preconfigure_trident_missing_or_empty_keys: []
+
+- name: Check each trident key for existence and non-empty value
+  ansible.builtin.set_fact:
+    __sap_hypervisor_node_preconfigure_trident_missing_or_empty_keys: "{{ __sap_hypervisor_node_preconfigure_trident_missing_or_empty_keys + [item] }}"
+  when: >
+    sap_hypervisor_node_preconfigure_cluster_config.trident[item] is not defined or
+    (sap_hypervisor_node_preconfigure_cluster_config.trident[item] | string | trim | length == 0)
+  loop: "{{ __sap_hypervisor_node_preconfigure_required_trident_keys }}"
+
+- name: Assert all trident keys are present and non-empty
+  ansible.builtin.assert:
+    that:
+      - __sap_hypervisor_node_preconfigure_trident_missing_or_empty_keys | length == 0
+    fail_msg: >-
+      The following trident keys are missing or empty:
+      {{ __sap_hypervisor_node_preconfigure_trident_missing_or_empty_keys | join(', ') }}
