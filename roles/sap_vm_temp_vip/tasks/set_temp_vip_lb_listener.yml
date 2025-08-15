@@ -3,6 +3,7 @@
 # 55550 - SAP HANA and SAP AnyDB
 # 55551 - SAP SAP NetWeaver ASCS
 # 55552 - SAP NetWeaver ERS
+# Else ensures that we always return String, not NoneType.
 - name: Set fact for temporary listening port
   ansible.builtin.set_fact:
     __sap_vm_temp_vip_port: >-
@@ -14,6 +15,8 @@
         55551
       {%- elif groups[sap_vm_temp_vip_group_nwas_ers] | d([]) | length > 0 and inventory_hostname in groups[sap_vm_temp_vip_group_nwas_ers] -%}
         55552
+      {%- else -%}
+        {{ '' }}
       {%- endif %}
 
 
@@ -24,14 +27,14 @@
     cmd: ss -tulnH "sport = :{{ __sap_vm_temp_vip_port }}"
   register: __sap_vm_temp_vip_port_check
   when:
-    - __sap_vm_temp_vip_port is defined and __sap_vm_temp_vip_port | length > 0
+    - __sap_vm_temp_vip_port | length > 0
   changed_when: false
 
 
 - name: Block to start temporary netcat processes for Load Balancer Health Checks
   when:
-    - __sap_vm_temp_vip_address is defined and __sap_vm_temp_vip_address | length > 0
-    - __sap_vm_temp_vip_port is defined and __sap_vm_temp_vip_port | length > 0
+    - __sap_vm_temp_vip_address | length > 0
+    - __sap_vm_temp_vip_port | length > 0
     - __sap_vm_temp_vip_port_check.stdout is defined and __sap_vm_temp_vip_port_check.stdout | length == 0
     - __sap_vm_temp_vip_prefix | length > 0  # Dont execute if prefix was empty during VIP creation
   block:

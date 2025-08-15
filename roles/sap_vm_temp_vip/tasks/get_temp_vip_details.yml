@@ -37,13 +37,13 @@
 - name: Calculate prefix from IP {{ sap_vm_temp_vip_default_ip }} if sap_vm_temp_vip_default_netmask is empty
   ansible.builtin.set_fact:
     __sap_vm_temp_vip_get_prefix_ip:
-      "{{ (__sap_vm_temp_vip_inet[0] | basename) if __sap_vm_temp_vip_inet | length > 0 else __sap_vm_temp_vip_inet }}"
+      "{{ __sap_vm_temp_vip_inet[0] if __sap_vm_temp_vip_inet | length > 0 else '' }}"
   vars:
-    __sap_vm_temp_vip_inet: "{{ __sap_vm_temp_vip_get_ips.stdout | regex_search('inet ([0-9.]+/[0-9]+)', '\\1') }}"
+    __sap_vm_temp_vip_inet: "{{ __sap_vm_temp_vip_get_ips.stdout | regex_search('inet [0-9.]+/([0-9]+)', '\\1') }}"
   when:
     - sap_vm_temp_vip_default_prefix == ''
     - sap_vm_temp_vip_default_netmask == ''
-    - __sap_vm_temp_vip_get_ips is defined and __sap_vm_temp_vip_get_ips.stdout is defined and __sap_vm_temp_vip_get_ips.stdout | length > 0
+    - __sap_vm_temp_vip_get_ips.stdout is defined and __sap_vm_temp_vip_get_ips.stdout | length > 0
   changed_when: false
 
 
@@ -83,7 +83,7 @@
     __sap_vm_temp_vip_brd: "{{ __sap_vm_temp_vip_get_ips.stdout | regex_search('brd ([0-9.]+)', '\\1') }}"
   when:
     - sap_vm_temp_vip_default_broadcast == ''
-    - __sap_vm_temp_vip_get_ips is defined and __sap_vm_temp_vip_get_ips.stdout is defined and __sap_vm_temp_vip_get_ips.stdout | length > 0
+    - __sap_vm_temp_vip_get_ips.stdout is defined and __sap_vm_temp_vip_get_ips.stdout | length > 0
   changed_when: false
 
 # Combine final broadcast IP based on decision below:
