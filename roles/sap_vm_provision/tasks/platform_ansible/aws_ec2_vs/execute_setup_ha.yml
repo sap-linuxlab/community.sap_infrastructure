@@ -17,11 +17,11 @@
   loop:
     "{{
       (groups[sap_vm_provision_group_hana_primary] + groups[sap_vm_provision_group_hana_secondary]
-      if groups[sap_vm_provision_group_hana_secondary] is defined and groups[sap_vm_provision_group_hana_secondary] else [])
+      if groups[sap_vm_provision_group_hana_secondary] is defined and groups[sap_vm_provision_group_hana_secondary] | length > 0 else [])
       + (groups[sap_vm_provision_group_anydb_primary] + groups[sap_vm_provision_group_anydb_secondary]
-      if groups[sap_vm_provision_group_anydb_secondary] is defined and groups[sap_vm_provision_group_anydb_secondary] else [])
+      if groups[sap_vm_provision_group_anydb_secondary] is defined and groups[sap_vm_provision_group_anydb_secondary] | length > 0 else [])
       + (groups[sap_vm_provision_group_nwas_ascs] + groups[sap_vm_provision_group_nwas_ers]
-      if groups[sap_vm_provision_group_nwas_ers] is defined and groups[sap_vm_provision_group_nwas_ers] else [])
+      if groups[sap_vm_provision_group_nwas_ers] is defined and groups[sap_vm_provision_group_nwas_ers] | length > 0 else [])
     }}"
   loop_control:
     loop_var: host_node
