@@ -669,7 +669,13 @@
 
     - name: MS Azure Load Balancer (network L4) - Define Ansible Variable of Load Balancer for Database Server
       ansible.builtin.set_fact:
-        __sap_vm_provision_task_msazure_lb1_info: "{{ __sap_vm_provision_task_msazure_lb1a_info if (groups[sap_vm_provision_group_hana_secondary] is defined and (groups[sap_vm_provision_group_hana_secondary]|length>0)) else __sap_vm_provision_task_msazure_lb1b_info if (groups[sap_vm_provision_group_anydb_secondary] is defined and (groups[sap_vm_provision_group_anydb_secondary]|length>0)) }}"
+        __sap_vm_provision_task_msazure_lb1_info:
+          "{{ __sap_vm_provision_task_msazure_lb1a_info
+            if (groups[sap_vm_provision_group_hana_secondary] is defined and (groups[sap_vm_provision_group_hana_secondary]|length>0))
+            else __sap_vm_provision_task_msazure_lb1b_info
+              if (groups[sap_vm_provision_group_anydb_secondary] is defined and (groups[sap_vm_provision_group_anydb_secondary]|length>0))
+              else none }}"
+
       when: (groups[sap_vm_provision_group_hana_secondary] is defined and (groups[sap_vm_provision_group_hana_secondary]|length>0)) or (groups[sap_vm_provision_group_anydb_secondary] is defined and (groups[sap_vm_provision_group_anydb_secondary]|length>0))
 
     - name: Set fact to hold loop variables from include_tasks when SAP HANA HA
