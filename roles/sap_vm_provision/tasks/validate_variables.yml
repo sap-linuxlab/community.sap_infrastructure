@@ -33,7 +33,7 @@
 - name: Block to validate host_specifications_dictionary
   vars:
     __sap_vm_provision_host_dictionary_name: "{{ 'sap_vm_provision_' ~ sap_vm_provision_iac_platform ~ '_host_specifications_dictionary' }}"
-  no_log: true
+  # no_log: true
   block:
     - name: Assert that the variable {{ __sap_vm_provision_host_dictionary_name }} is defined and valid
       ansible.builtin.assert:
