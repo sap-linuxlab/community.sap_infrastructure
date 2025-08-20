@@ -6,26 +6,26 @@
   register: __sap_hypervisor_node_preconfigure_kernelcmdline_assert
   changed_when: __sap_hypervisor_node_preconfigure_kernelcmdline_assert.rc != 0
 
-- name: "Assert - Kernel same page merging (KSM): Get status"
+- name: "Assert - Kernel same page merging (KSM): Get status"  # noqa: ignore-errors
   ansible.builtin.command: systemctl status ksm
   register: __sap_hypervisor_node_preconfigure_ksmstatus_assert
   ignore_errors: true
   changed_when: __sap_hypervisor_node_preconfigure_ksmstatus_assert.rc != 0
 
-- name: "Assert - Kernel same page merging (KSM): Check if stopped"
+- name: "Assert - Kernel same page merging (KSM): Check if stopped"  # noqa: ignore-errors
   ansible.builtin.assert:
     that: "'Active: inactive (dead)' in __sap_hypervisor_node_preconfigure_ksmstatus_assert.stdout"
     fail_msg: "FAIL: ksm is running"
     success_msg: "PASS: ksm not running"
   ignore_errors: "{{ sap_hypervisor_node_preconfigure_ignore_failed_assertion }}"
 
-- name: "Assert - Kernel same page merging (KSM) Tuning Daemon: Get status"
+- name: "Assert - Kernel same page merging (KSM) Tuning Daemon: Get status"  # noqa: ignore-errors
   ansible.builtin.command: systemctl status ksmtuned
   register: __sap_hypervisor_node_preconfigure_ksmtunedstatus_assert
   ignore_errors: true
   changed_when: __sap_hypervisor_node_preconfigure_ksmtunedstatus_assert.rc != 0
 
-- name: "Assert - Kernel same page merging (KSM) Tuning Daemon: Check if stopped"
+- name: "Assert - Kernel same page merging (KSM) Tuning Daemon: Check if stopped"  # noqa: ignore-errors
   ansible.builtin.assert:
     that: "'Active: inactive (dead)' in __sap_hypervisor_node_preconfigure_ksmtunedstatus_assert.stdout"
     fail_msg: "FAIL: ksmtuned is running"
@@ -49,20 +49,20 @@
 - name: Assert - Check Intel Skylake CPU Platform
   when: __sap_hypervisor_node_preconfigure_cpu_stepping_assert == "4"
   block:
-    - name: Get ple_gap
+    - name: Get ple_gap  # noqa: ignore-errors
       ansible.builtin.command: grep -E '^options\s+kvm_intel.*?ple_gap\s*=\s*0.*$' /etc/modprobe.d/kvm.conf
       register: __sap_hypervisor_node_preconfigure_skylake_plegap_assert
       ignore_errors: true
       changed_when: __sap_hypervisor_node_preconfigure_skylake_plegap_assert.rc != 0
 
-    - name: Assert - Check if ple_gap=0
+    - name: Assert - Check if ple_gap=0  # noqa: ignore-errors
       ansible.builtin.assert:
         that: "__sap_hypervisor_node_preconfigure_skylake_plegap_assert.rc == 0"
         fail_msg: "FAIL: ple_gap is not set to 0"
         success_msg: "PASS: ple_gap is set to 0"
       ignore_errors: "{{ sap_hypervisor_node_preconfigure_ignore_failed_assertion }}"
 
-    - name: Assert - Check for spectre_v2=retpoline
+    - name: Assert - Check for spectre_v2=retpoline  # noqa: ignore-errors
       ansible.builtin.assert:
         that: "'spectre_v2=retpoline' in __sap_hypervisor_node_preconfigure_kernelcmdline_assert.stdout"
         fail_msg: "FAIL: spectre_v2=retpoline is not on Kernel command line"
@@ -75,7 +75,7 @@
     - name: Set fact for sap_hypervisor_node_preconfigure_register_assert_nx_huge_pages
       ansible.builtin.set_fact:
         sap_hypervisor_node_preconfigure_register_assert_nx_huge_pages: "{{ __sap_hypervisor_node_preconfigure_kernelcmdline_assert.stdout | regex_search('kvm.nx_huge_pages=(.+)', '\\1') | first }}"
-    - name: "Assert - Check kvm.nx_huge_pages is {{ sap_hypervisor_node_preconfigure_kvm_nx_huge_pages }}"
+    - name: "Assert - Check kvm.nx_huge_pages is {{ sap_hypervisor_node_preconfigure_kvm_nx_huge_pages }}"  # noqa: ignore-errors
       ansible.builtin.assert:
         that: sap_hypervisor_node_preconfigure_register_assert_nx_huge_pages == sap_hypervisor_node_preconfigure_kvm_nx_huge_pages
         fail_msg: "FAIL: kvm.nx_huge_pages is not {{ sap_hypervisor_node_preconfigure_kvm_nx_huge_pages }}"
@@ -84,13 +84,13 @@
 
 - name: Assert - check seccomp_sandbox=0
   block:
-    - name: Get seccomp setting
+    - name: Get seccomp setting  # noqa: ignore-errors
       ansible.builtin.command: grep -E '^seccomp_sandbox\s+=\s+0.*$' /etc/libvirt/qemu.conf
       register: __sap_hypervisor_node_preconfigure_seccomp_assert
       ignore_errors: true
       changed_when: __sap_hypervisor_node_preconfigure_seccomp_assert.rc != 0
 
-    - name: "Assert - Check seccomp_sandbox=0 is in /etc/libvirt/qemu.conf"
+    - name: "Assert - Check seccomp_sandbox=0 is in /etc/libvirt/qemu.conf"  # noqa: ignore-errors
       ansible.builtin.assert:
         that: __sap_hypervisor_node_preconfigure_seccomp_assert is success
         fail_msg: "FAIL: seccomp_sandbox != 0"
@@ -104,7 +104,7 @@
       register: __sap_hypervisor_node_preconfigure_1g_hugepages_assert
       changed_when: __sap_hypervisor_node_preconfigure_1g_hugepages_assert.rc != 0
 
-    - name: "Check that at least {{ sap_hypervisor_node_preconfigure_reserved_ram }} GB are available for the hypervisor and the rest are 1G hugepages"
+    - name: "Ensure hypervisor RAM and hugepages meet min requirement (GB) {{ sap_hypervisor_node_preconfigure_reserved_ram }}"  # noqa: ignore-errors
       ansible.builtin.assert:
         that: ((ansible_memtotal_mb / 1024) | int - sap_hypervisor_node_preconfigure_reserved_ram | int)  >= (__sap_hypervisor_node_preconfigure_1g_hugepages_assert.stdout | int)
         fail_msg: "FAIL: Not enough memory reserved for hypervisor"
@@ -113,14 +113,14 @@
 
 - name: Assert - check Kernel command line
   block:
-    - name: Ensure iommu is enabled
+    - name: Ensure iommu is enabled  # noqa: ignore-errors
       ansible.builtin.assert:
         that: "'intel_iommu=on' in __sap_hypervisor_node_preconfigure_kernelcmdline_assert.stdout"
         fail_msg: "FAIL: intel_iommu=on not on Kernel command line"
         success_msg: "PASS: intel_iommu=on on Kernel command line"
       ignore_errors: "{{ sap_hypervisor_node_preconfigure_ignore_failed_assertion }}"
 
-    - name: Ensure iommu passthrough is enabled
+    - name: Ensure iommu passthrough is enabled  # noqa: ignore-errors
       ansible.builtin.assert:
         that: "'iommu=pt' in __sap_hypervisor_node_preconfigure_kernelcmdline_assert.stdout"
         fail_msg: "FAIL: iommu=pt not on Kernel command line"
@@ -128,7 +128,7 @@
       ignore_errors: "{{ sap_hypervisor_node_preconfigure_ignore_failed_assertion }}"
 
     # See SAP Note 2737837 - SAP HANA and the Intel Transactional Synchronization Extensions Capability
-    - name: Ensure tsx is on
+    - name: Ensure tsx is on  # noqa: ignore-errors
       ansible.builtin.assert:
         that: "'tsx=on' in __sap_hypervisor_node_preconfigure_kernelcmdline_assert.stdout"
         fail_msg: "FAIL: tsx=on not in Kernel command line"

@@ -4,7 +4,7 @@
   register: __sap_hypervisor_node_preconfigure_register_file_permissions_assert
   changed_when: __sap_hypervisor_node_preconfigure_register_file_permissions_assert.rc != 0
 
-- name: Assert hook file permissions
+- name: Assert hook file permissions  # noqa: ignore-errors
   ansible.builtin.assert:
     that: "__sap_hypervisor_node_preconfigure_register_file_permissions_assert.stdout == '755'"
     fail_msg: "FAIL: Hook {{ item }} does not have the correct file permissions (!= 755)."
@@ -23,13 +23,13 @@
     src: "{{ item }}"
     mode: "0755"
 
-- name: Diff hook
+- name: Diff hook  # noqa: ignore-errors
   ansible.builtin.command: "diff -uw /tmp/sap_hypervisor_node_preconfigure/{{ item }} /usr/libexec/vdsm/hooks/before_vm_start/{{ item }}"
   register: __sap_hypervisor_node_preconfigure_register_hook_diff_assert
   ignore_errors: true
   changed_when: __sap_hypervisor_node_preconfigure_register_hook_diff_assert.rc != 0
 
-- name: Assert hook content
+- name: Assert hook content  # noqa: ignore-errors
   ansible.builtin.assert:
     that: "__sap_hypervisor_node_preconfigure_register_hook_diff_assert.rc == 0"
     fail_msg: "FAIL: Hook {{ item }} has been modified, please investigate manually."

@@ -12,16 +12,16 @@
     assert_prefix: "assert-"
   when: sap_hypervisor_node_preconfigure_assert
 
-- name: Include "{{ assert_prefix }}installation.yml"
+- name: Include the task file "{{ assert_prefix ~ 'installation.yml' }}"
   ansible.builtin.include_tasks: '{{ assert_prefix }}installation.yml'
 
-- name: Include "{{ assert_prefix }}configuration.yml"
+- name: Include the task file "{{ assert_prefix ~ 'configuration.yml' }}"
   ansible.builtin.include_tasks: '{{ assert_prefix }}configuration.yml'
 
-- name: Include "{{ assert_prefix }}set-tuned-profile.yml"
+- name: Include the task file "{{ assert_prefix ~ 'set-tuned-profile.yml' }}"
   ansible.builtin.include_tasks: '{{ assert_prefix }}set-tuned-profile.yml'
 
-- name: Include "{{ assert_prefix }}rhv-hooks.yml"
+- name: Include the task file "{{ assert_prefix ~ 'rhv-hooks.yml' }}"
   ansible.builtin.include_tasks: "{{ assert_prefix }}rhv-hooks.yml"
   loop:
     - 50_hana

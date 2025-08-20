@@ -56,7 +56,7 @@
   vars:
     install_plan_name: "{{ __sap_hypervisor_node_preconfigure_register_cnv_subscription_install_plan_name.stdout }}"
   block:
-    - name: Get Install Plan details
+    - name: Get Install Plan details  # noqa: ignore-errors
       kubernetes.core.k8s_info:
         api_version: operators.coreos.com/v1alpha1
         kind: InstallPlan
@@ -73,7 +73,7 @@
         msg: "Install Plan is not Complete after the specified wait period."
       when: __sap_hypervisor_node_preconfigure_register_wait_for_installplan.resources[0].status.phase != "Complete"
 
-- name: Wait and check for pod with label name hyperconverged-cluster-webhook under "{{ sap_hypervisor_node_preconfigure_ocpv_namespace }}" namespace
+- name: Wait and check for pod with label name hyperconverged-cluster-webhook under the namespace "{{ sap_hypervisor_node_preconfigure_ocpv_namespace }}"
   kubernetes.core.k8s_info:
     kind: Pod
     namespace: "{{ sap_hypervisor_node_preconfigure_ocpv_namespace }}"
@@ -84,7 +84,7 @@
   delay: 60
   until: hco_webhook_pod.resources | selectattr('status.phase', 'equalto', 'Running') | list | length == hco_webhook_pod.resources | length
 
-- name: Wait and check for pod with name hco-webhook under "{{ sap_hypervisor_node_preconfigure_ocpv_namespace }}" namespace
+- name: Wait and check for pod with name hco-webhook under the namespace "{{ sap_hypervisor_node_preconfigure_ocpv_namespace }}"
   kubernetes.core.k8s_info:
     kind: Pod
     namespace: "{{ sap_hypervisor_node_preconfigure_ocpv_namespace }}"
@@ -95,7 +95,7 @@
   delay: 60
   until: __sap_hypervisor_node_preconfigure_register_hco_webhook_pod.resources | selectattr('status.phase', 'equalto', 'Running') | list | length == __sap_hypervisor_node_preconfigure_register_hco_webhook_pod.resources | length
 
-- name: Wait and check if hco-webhook-service exists in "{{ sap_hypervisor_node_preconfigure_ocpv_namespace }}" namespace
+- name: Wait and check if hco-webhook-service exists in the namespace "{{ sap_hypervisor_node_preconfigure_ocpv_namespace }}"
   kubernetes.core.k8s_info:
     kind: Service
     namespace: "{{ sap_hypervisor_node_preconfigure_ocpv_namespace }}"

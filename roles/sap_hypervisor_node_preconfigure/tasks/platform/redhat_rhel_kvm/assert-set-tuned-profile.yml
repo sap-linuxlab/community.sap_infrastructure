@@ -6,7 +6,7 @@
       register: __sap_hypervisor_node_preconfigure_tuned_profile_assert
       changed_when: __sap_hypervisor_node_preconfigure_tuned_profile_assert.rc != 0
 
-    - name: Verify tuned profile
+    - name: Verify tuned profile  # noqa: ignore-errors
       ansible.builtin.assert:
         that: "'Current active profile: sap-hana-kvm-host' in __sap_hypervisor_node_preconfigure_tuned_profile_assert.stdout"
         fail_msg: "FAIL: tuned profile is not sap-hana-kvm-host"

@@ -45,7 +45,7 @@
     __sap_hypervisor_node_preconfigure_register_worker_memory_gib:
       "{{ (__sap_hypervisor_node_preconfigure_register_nodes[0]['status']['capacity']['memory'] | replace('Ki', '') | int / 1048576) }}"
 
-- name: Check if host has minimal amount of memory (96GiB)
+- name: Check if host has minimal amount of memory (96GiB)  # noqa: ignore-errors
   ansible.builtin.assert:
     that: __sap_hypervisor_node_preconfigure_register_worker_memory_gib | int >= 96
     fail_msg: "Not enough memory on node {{ __sap_hypervisor_node_preconfigure_register_worker_name }}"

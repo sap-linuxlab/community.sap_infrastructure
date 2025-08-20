@@ -5,7 +5,7 @@
     src: "{{ sap_hypervisor_node_preconfigure_install_trident_url }}"
     dest: "{{ __sap_hypervisor_node_preconfigure_register_tmpdir_role.path }}/"
 
-- name: Uninstall trident
+- name: Uninstall trident  # noqa: ignore-errors
   ansible.builtin.command: "{{ __sap_hypervisor_node_preconfigure_register_tmpdir_role.path }}/trident-installer/tridentctl uninstall -n trident"
   ignore_errors: true
   register: __sap_hypervisor_node_preconfigure_register_uninstall_trident
