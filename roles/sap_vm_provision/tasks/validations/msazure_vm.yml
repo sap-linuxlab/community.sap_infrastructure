@@ -73,6 +73,7 @@
   vars:
     __sap_vm_provision_os_image_dictionary_name: "{{ 'sap_vm_provision_' ~ sap_vm_provision_iac_platform ~ '_host_os_image_dictionary' }}"
     __sap_vm_provision_os_image_name: "{{ 'sap_vm_provision_' ~ sap_vm_provision_iac_platform ~ '_host_os_image' }}"
+    __sap_vm_provision_os_image_value: "{{ lookup('ansible.builtin.vars', __sap_vm_provision_os_image_name) }}"
   block:
     - name: Assert that the variable {{ __sap_vm_provision_os_image_dictionary_name }} is defined and valid
       ansible.builtin.assert:
@@ -87,7 +88,8 @@
     - name: Assert that the value of variable {{ __sap_vm_provision_os_image_name }} is present in a dictionary
       ansible.builtin.assert:
         that:
-          - lookup('ansible.builtin.vars', __sap_vm_provision_os_image_dictionary_name)[__sap_vm_provision_os_image_name] is defined
-          - lookup('ansible.builtin.vars', __sap_vm_provision_os_image_dictionary_name)[__sap_vm_provision_os_image_name] | length > 0
+          - lookup('ansible.builtin.vars', __sap_vm_provision_os_image_dictionary_name)[__sap_vm_provision_os_image_value] is defined
+          - lookup('ansible.builtin.vars', __sap_vm_provision_os_image_dictionary_name)[__sap_vm_provision_os_image_value] | length > 0
         fail_msg: |
-          The value of variable {{ __sap_vm_provision_os_image_name }} is not present in a dictionary {{ __sap_vm_provision_os_image_dictionary_name }}.
+          Invalid value '{{ __sap_vm_provision_os_image_value }}' provided for the variable '{{ __sap_vm_provision_os_image_name }}'.
+          Available options: {{ lookup('ansible.builtin.vars', __sap_vm_provision_os_image_dictionary_name).keys() | list | join(', ') }}
