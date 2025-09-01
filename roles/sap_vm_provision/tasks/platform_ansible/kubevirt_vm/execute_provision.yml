@@ -223,8 +223,8 @@
       volumes: "{{ storage_disk_name_list + cloud_init_volume }}"
       networks: "{{ __sap_vm_provision_register_networks_definition }}"
       domain:
-        # shared | auto, auto prevents live migration
-        ioThreadsPolicy: shared
+#        # shared | auto, auto prevents live migration
+#        ioThreadsPolicy: shared
         hostname: "{{ __sap_vm_provision_register_vm_name }}"
         evictionStrategy: LiveMigrate
         terminationGracePeriodSeconds: 1800 # 30 minutes after stop request before VM is force terminated
@@ -246,8 +246,8 @@
 
         memory:
           guest: "{{ __sap_vm_provision_register_vm_config.kubevirt_vm_memory_gib }}Gi"
-          hugepages:
-            pageSize: 1Gi
+#          hugepages:
+#            pageSize: 1Gi
 
 - name: Apply CPU performance settings
   ansible.builtin.set_fact:
