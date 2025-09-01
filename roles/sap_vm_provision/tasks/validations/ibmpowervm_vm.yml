@@ -1,0 +1,70 @@
+---
+#### Validate required variables for specific 'sap_vm_provision_iac_platform ####
+
+- name: Assert that string variables are valid for {{ sap_vm_provision_iac_platform }}
+  ansible.builtin.assert:
+    that:
+      - lookup('ansible.builtin.vars', item, default='SAP_VM_PROVISION_UNDEFINED_VARIABLE_DETECTED') != 'SAP_VM_PROVISION_UNDEFINED_VARIABLE_DETECTED'
+      - lookup('ansible.builtin.vars', item) is string
+      - lookup('ansible.builtin.vars', item) | trim | length > 0
+    fail_msg: |
+      {% if lookup('ansible.builtin.vars', item, default='SAP_VM_PROVISION_UNDEFINED_VARIABLE_DETECTED') == 'SAP_VM_PROVISION_UNDEFINED_VARIABLE_DETECTED' %}
+        The variable '{{ item }}' is undefined.
+      {% elif lookup('ansible.builtin.vars', item) is not string %}
+        The variable '{{ item }}' is not a String.
+      {% else %}
+        The variable '{{ item }}' is empty.
+      {% endif %}
+  loop:
+    - sap_vm_provision_ibmpowervm_vc_auth_endpoint
+    - sap_vm_provision_ibmpowervm_vc_user
+    - sap_vm_provision_ibmpowervm_vc_user_password
+    - sap_vm_provision_ibmpowervm_vc_project_name
+    - sap_vm_provision_ibmpowervm_host_group_name
+    - sap_vm_provision_ibmpowervm_host_group_shared_procesor_pool_name
+    - sap_vm_provision_ibmpowervm_network_name
+    - sap_vm_provision_ibmpowervm_network_vnic_type
+    - sap_vm_provision_ibmpowervm_storage_template_name
+    - sap_vm_provision_ibmpowervm_placement_resource_name
+    - sap_vm_provision_ibmpowervm_vm_host_os_image
+
+
+- name: Assert that string variables are valid for {{ sap_vm_provision_iac_platform }} using 'ansible'
+  ansible.builtin.assert:
+    that:
+      - lookup('ansible.builtin.vars', item, default='SAP_VM_PROVISION_UNDEFINED_VARIABLE_DETECTED') != 'SAP_VM_PROVISION_UNDEFINED_VARIABLE_DETECTED'
+      - lookup('ansible.builtin.vars', item) is string
+      - lookup('ansible.builtin.vars', item) | trim | length > 0
+    fail_msg: |
+      {% if lookup('ansible.builtin.vars', item, default='SAP_VM_PROVISION_UNDEFINED_VARIABLE_DETECTED') == 'SAP_VM_PROVISION_UNDEFINED_VARIABLE_DETECTED' %}
+        The variable '{{ item }}' is undefined.
+      {% elif lookup('ansible.builtin.vars', item) is not string %}
+        The variable '{{ item }}' is not a String.
+      {% else %}
+        The variable '{{ item }}' is empty.
+      {% endif %}
+  loop:
+    - sap_vm_provision_ibmpowervm_key_pair_name_ssh_host_public_key
+    - sap_vm_provision_ssh_host_public_key_file_path
+  when:
+    - sap_vm_provision_iac_type == 'ansible'
+
+
+- name: Assert that boolean variables are valid for {{ sap_vm_provision_iac_platform }}
+  ansible.builtin.assert:
+    that:
+      - lookup('ansible.builtin.vars', __sap_vm_provision_loop_bool_var, default='SAP_VM_PROVISION_UNDEFINED_VARIABLE_DETECTED') != 'SAP_VM_PROVISION_UNDEFINED_VARIABLE_DETECTED'
+      - lookup('ansible.builtin.vars', __sap_vm_provision_loop_bool_var) is boolean
+      - lookup('ansible.builtin.vars', __sap_vm_provision_loop_bool_var) | trim | length > 0
+    fail_msg: |
+      {% if lookup('ansible.builtin.vars', item, default='SAP_VM_PROVISION_UNDEFINED_VARIABLE_DETECTED') == 'SAP_VM_PROVISION_UNDEFINED_VARIABLE_DETECTED' %}
+        The variable '{{ __sap_vm_provision_loop_bool_var }}' is undefined.
+      {% elif lookup('ansible.builtin.vars', item) is not boolean %}
+        The variable '{{ __sap_vm_provision_loop_bool_var }}' is not a Boolean.
+      {% else %}
+        The variable '{{ __sap_vm_provision_loop_bool_var }}' is empty.
+      {% endif %}
+  loop:
+    - sap_vm_provision_ibmpowervm_placement_strategy_spread
+  vars:
+    __sap_vm_provision_loop_bool_var: "{{ item }}"
