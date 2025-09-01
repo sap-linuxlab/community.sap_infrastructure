@@ -1,4 +1,5 @@
 ---
 
-# ibmpower_phyp, redhat_ocp_virt, redhat_rhel_kvm, vmware_vsphere
-sap_hypervisor_node_preconfigure_platform:
+# Define which hypervisor platform to use (String).
+# Available options: redhat_ocp_virt, redhat_rhel_kvm
+sap_hypervisor_node_preconfigure_platform: ''

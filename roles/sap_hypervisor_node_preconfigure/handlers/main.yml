@@ -1,3 +1,5 @@
 ---
 - name: Hypervisor node preconfigure - Include Handler Tasks for {{ sap_hypervisor_node_preconfigure_platform }}
-  ansible.builtin.import_tasks: "platform/{{ sap_hypervisor_node_preconfigure_platform }}/main.yml"
+  ansible.builtin.include_tasks:
+    file: "platform/{{ sap_hypervisor_node_preconfigure_platform }}/main.yml"
+  when: (role_path ~ '/handlers/platform/' ~ sap_hypervisor_node_preconfigure_platform ~ '/main.yml') is file

@@ -5,7 +5,7 @@
 
 - name: "Create NodeNetworkConfigurationPolicy \
          {{ __sap_hypervisor_node_preconfigure_register_worker_network.name }} on \
-         {{ __sap_hypervisor_node_preconfigure_register_worker.name }}"
+         {{ __sap_hypervisor_node_preconfigure_register_worker.name }}"  # noqa name[template]
   kubernetes.core.k8s:
     state: present
     definition:
@@ -23,7 +23,7 @@
           or __sap_hypervisor_node_preconfigure_register_worker_network.type == 'ethernet'
           or __sap_hypervisor_node_preconfigure_register_worker_network.type == 'vlan'
 
-- name: "Create NetworkAttachmentDefinition {{ __sap_hypervisor_node_preconfigure_register_worker_network.name }}"
+- name: "Create NetworkAttachmentDefinition {{ __sap_hypervisor_node_preconfigure_register_worker_network.name }}"  # noqa jinja
   kubernetes.core.k8s:
     state: present
     definition:
@@ -41,7 +41,7 @@
           'type': 'cnv-bridge',
           'bridge': __sap_hypervisor_node_preconfigure_register_worker_network.name,
           'macspoofchk': true
-        } | to_json }}"
+          } | to_json }}"
   when: __sap_hypervisor_node_preconfigure_register_worker_network.type == 'linux-bridge'
 
 - name: Label the node with feature.node.kubernetes.io/network-sriov.capable=true
@@ -58,7 +58,7 @@
 
 - name: "Create SR-IOV NodeNetworkConfigurationPolicy \
          {{ __sap_hypervisor_node_preconfigure_register_worker_network.name }} on \
-         {{ __sap_hypervisor_node_preconfigure_register_worker.name }}"
+         {{ __sap_hypervisor_node_preconfigure_register_worker.name }}"  # noqa name[template]
   kubernetes.core.k8s:
     state: present
     definition:

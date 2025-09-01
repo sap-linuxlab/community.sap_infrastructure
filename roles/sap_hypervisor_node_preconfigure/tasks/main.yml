@@ -1,6 +1,21 @@
 ---
+- name: Assert that the variable 'sap_hypervisor_node_preconfigure_platform' is defined and valid
+  ansible.builtin.assert:
+    that:
+      - sap_hypervisor_node_preconfigure_platform is defined
+      - sap_hypervisor_node_preconfigure_platform is string
+      - sap_hypervisor_node_preconfigure_platform | trim | length > 0
+      - sap_hypervisor_node_preconfigure_platform in ['redhat_ocp_virt', 'redhat_rhel_kvm']
+    fail_msg: |
+      The variable 'sap_hypervisor_node_preconfigure_platform' is undefined or invalid.
+      Available options: redhat_ocp_virt, redhat_rhel_kvm
+
 - name: SAP certified hypervisor node preconfigure - Include Vars for {{ sap_hypervisor_node_preconfigure_platform }}
-  ansible.builtin.include_vars: "platform_defaults_{{ sap_hypervisor_node_preconfigure_platform }}.yml"
+  ansible.builtin.include_vars:
+    file: "platform_defaults_{{ sap_hypervisor_node_preconfigure_platform }}.yml"
+  when: (role_path ~ '/vars/platform_defaults_' ~ sap_hypervisor_node_preconfigure_platform ~ '.yml') is file
 
 - name: SAP certified hypervisor node preconfigure - Include Tasks for {{ sap_hypervisor_node_preconfigure_platform }}
-  ansible.builtin.include_tasks: "platform/{{ sap_hypervisor_node_preconfigure_platform }}/main.yml"
+  ansible.builtin.include_tasks:
+    file: "platform/{{ sap_hypervisor_node_preconfigure_platform }}/main.yml"
+  when: (role_path ~ '/tasks/platform/' ~ sap_hypervisor_node_preconfigure_platform ~ '/main.yml') is file

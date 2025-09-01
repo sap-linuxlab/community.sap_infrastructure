@@ -1,7 +1,9 @@
 ---
 - name: Install libhugetlbfs
-  ansible.builtin.yum:
-    name: libhugetlbfs, libhugetlbfs-utils
+  ansible.builtin.package:
+    name:
+      - libhugetlbfs
+      - libhugetlbfs-utils
     state: present
 
 # better location than rc.local?
