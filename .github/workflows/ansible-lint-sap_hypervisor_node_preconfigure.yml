@@ -24,19 +24,20 @@ jobs:
 
     steps:
       - name: Check out the code
-        uses: actions/checkout@main
+        uses: actions/checkout@v4
 
       - name: Set up Python 3
-        uses: actions/setup-python@main
+        uses: actions/setup-python@v5
         with:
-          python-version: '3.9'
+          python-version: '3.13'
 
       - name: Install test dependencies
         run: |
-          pip3 install ansible==7.5.0
-          pip3 install ansible-compat==3.0.2
-          pip3 install ansible-core==2.14.5
-          pip3 install ansible-lint==6.8.6
+          pip3 install \
+            ansible-core~=2.18.0 \
+            ansible~=11.0.0 \
+            ansible-lint~=25.1.0 \
+            ansible-compat~=25.1.0
 
       - name: Run ansible-lint
         working-directory: /home/runner/work/community.sap_infrastructure/community.sap_infrastructure/roles/sap_hypervisor_node_preconfigure

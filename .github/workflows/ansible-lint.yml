@@ -21,15 +21,16 @@ jobs:
       - name: Set up Python 3
         uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
+          python-version: '3.13'
 
-      - name: Install dependencies for Python
+      - name: Install test dependencies
         run: |
-          pip3 install ansible==9.1.0
-          pip3 install ansible-compat==4.1.10
-          pip3 install ansible-core==2.16.2
-          pip3 install ansible-lint==6.22.1
-          pip3 install jmespath==1.0.1
+          pip3 install \
+            ansible-core~=2.18.0 \
+            ansible~=11.0.0 \
+            ansible-lint~=25.1.0 \
+            ansible-compat~=25.1.0 \
+            jmespath~=1.0.0
 
       - name: Install dependencies for Ansible
         run: ansible-galaxy collection install -r /home/runner/work/community.sap_infrastructure/community.sap_infrastructure/requirements.yml
