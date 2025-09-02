@@ -18,6 +18,8 @@ on:
     paths:
       - 'roles/sap_hypervisor_node_preconfigure/**'
 
+  workflow_dispatch:
+
 jobs:
   ansible-lint:
     runs-on: ubuntu-latest
