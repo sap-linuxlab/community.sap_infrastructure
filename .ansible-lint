@@ -30,9 +30,8 @@ skip_list:
   - no-handler
   # Disable jinja formatting check
   - jinja[spacing]
-
-  # Disabled skips, because they are not not required now.
-  # - yaml[comments]
-  # - yaml[line-length]
-  # - no-tabs
+  # Removing these skips would require refactoring of most roles
+  - yaml[comments]
+  - yaml[line-length]
+  - no-tabs
   # - var-naming[no-jinja]
