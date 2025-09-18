@@ -188,7 +188,7 @@ The `sap_vm_provision` roles is continuously tested for Red Hat OpenShift. Goal 
 - On a kubevirt platform (e.g. Red Hat OpenShift) `ANSIBLE_JINJA2_NATIVE=true` has to be set in the environment.
 <!-- END Further Information -->
 
-## License Information
+## License
 <!-- BEGIN License -->
 Apache 2.0
 <!-- END License -->
