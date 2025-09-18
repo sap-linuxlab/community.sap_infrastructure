@@ -185,7 +185,7 @@ The `sap_vm_provision` roles is continuously tested for Red Hat OpenShift. Goal 
 
 ### Known issues
 - VMware REST API combined with cloud-init is unstable, `userdata` configuration may not execute and provisioning will fail
-- On a kubevirt platfrom (e.g. Red Hat OpenShift) `ANSIBLE_JINJA2_NATIVE=true` has to be set in the environment.
+- On a kubevirt platform (e.g. Red Hat OpenShift) `ANSIBLE_JINJA2_NATIVE=true` has to be set in the environment.
 <!-- END Further Information -->
 
 ## License Information
