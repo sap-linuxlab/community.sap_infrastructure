@@ -20,7 +20,7 @@ This Ansible Role follows requirements and best practices of each Infrastructure
 ## Prerequisites (Control Node)
 The prerequisites are listed only for Control Node, because Managed Nodes are provisioned during runtime.
 
-For a list of requirements and recommended authorizations on each Infrastructure Platform, please see the separate [Infrastructure Platform Guidance](./PLATFORM_GUIDANCE.md) document and the drop-down for each different Infrastructure Platform.
+For a list of requirements and recommended authorizations on each Infrastructure Platform, please see the separate [Infrastructure Platform Guidance](https://github.com/sap-linuxlab/community.sap_infrastructure/tree/main/roles/sap_vm_provision/PLATFORM_GUIDANCE.md) document and the drop-down for each different Infrastructure Platform.
 
 ### Base Prerequisites
 For list of all collection prerequisites, please see [Ansible Collection Readme](https://github.com/sap-linuxlab/community.sap_infrastructure/blob/main/README.md#requirements)
@@ -33,8 +33,8 @@ For list of all collection prerequisites, please see [Ansible Collection Readme]
   - `passlib` 1.7 or higher
   - `jmespath` 1.0.1 or higher
 - Ansible Collections:
-  - `cloud.common`
-  - `cloud.terraform` When `Ansible to Terraform` is used.
+  - `cloud.common` 
+  - `cloud.terraform` when `Ansible to Terraform` is used.
 
 ### Amazon Web Services (AWS) Prerequisites
 - Python libraries and modules:
@@ -103,7 +103,7 @@ A series of choices are deciding Ansible Role behavior:
 - Microsoft Azure Virtual Machines
 - IBM PowerVM Virtual Machines _(formerly LPAR)_
 - OVirt Virtual Machines `[Experimental]`
-- KubeVirt Virtual Machines `[Experimental]` (e.g. Red Hat OpenShift Virtualization)
+- KubeVirt Virtual Machines `[beta]` (e.g. Red Hat OpenShift Virtualization)
 - VMware vSphere Virtual Machines `[Experimental]`
 <!-- END Execution -->
 
@@ -167,11 +167,14 @@ Explanation of workflow:
 3. Third play: `Ansible Play for remaining tasks on provisioned hosts`
   - Example of how newly provisioned hosts can be targeted with additional tasks (e.g. SAP Installation).
 
-For further information, see the [sample Ansible Playbooks in `/playbooks`](../playbooks/).
+For further information, see the [sample Ansible Playbooks in `/playbooks`](https://github.com/sap-linuxlab/community.sap_infrastructure/tree/main/playbooks/).
 <!-- END Execution Example -->
 
 <!-- BEGIN Role Tags -->
 <!-- END Role Tags -->
+
+## Testing
+The `sap_vm_provision` roles is continuously tested for Red Hat OpenShift. Goal is to ensure that this roles work on all supported OpenShift versions. All network related setup is tested with ipv4 only.
 
 <!-- BEGIN Further Information -->
 ## Further Information
@@ -182,9 +185,10 @@ For further information, see the [sample Ansible Playbooks in `/playbooks`](../p
 
 ### Known issues
 - VMware REST API combined with cloud-init is unstable, `userdata` configuration may not execute and provisioning will fail
+- On a kubevirt platfrom (e.g. Red Hat OpenShift) `ANSIBLE_JINJA2_NATIVE=true` has to be set in the environment.
 <!-- END Further Information -->
 
-## License
+## License Information
 <!-- BEGIN License -->
 Apache 2.0
 <!-- END License -->
@@ -198,7 +202,7 @@ Apache 2.0
 
 ## Role Variables
 <!-- BEGIN Role Variables -->
-The list of all available variables: [/defaults parameters file](./defaults/main.yml).
+The list of all available variables: [/defaults parameters file](https://github.com/sap-linuxlab/community.sap_infrastructure/tree/main/roles/sap_vm_provision/defaults/main.yml).
 
 **Following key variables are required.**
 
@@ -238,7 +242,7 @@ Customization options:<br>
 
 ### Credentials
 
-Each Infrastructure Platform has list of required variables defined in [/defaults parameters file](./defaults/main.yml).
+Each Infrastructure Platform has list of required variables defined in [/defaults parameters file](https://github.com/sap-linuxlab/community.sap_infrastructure/tree/main/roles/sap_vm_provision/defaults/main.yml).
 Example for `aws_ec2_vs`:
 - `sap_vm_provision_aws_access_key`
 - `sap_vm_provision_aws_secret_access_key`

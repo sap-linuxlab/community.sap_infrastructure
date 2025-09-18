@@ -108,7 +108,7 @@ For information on how to contribute, please see our [contribution guidelines](h
 
 
 ## Contributors
-You can find list of Contributors at [/docs/contributors](./docs/CONTRIBUTORS.md).
+You can find list of Contributors at [/docs/contributors](https://github.com/sap-linuxlab/community.sap_infrastructure/tree/main/docs/CONTRIBUTORS.md).
 
 
 ## Support
@@ -125,5 +125,5 @@ The release notes for this collection can be found in the [CHANGELOG file](https
 Please follow [Ansible Precedence guidelines](https://docs.ansible.com/ansible/latest/playbook_guide/playbooks_variables.html#variable-precedence-where-should-i-put-a-variable) on how to pass variables when using this collection.
 
 
-## License
+## License Information
 [Apache 2.0](https://github.com/sap-linuxlab/community.sap_infrastructure/blob/main/LICENSE)
