@@ -174,7 +174,7 @@ For further information, see the [sample Ansible Playbooks in `/playbooks`](http
 <!-- END Role Tags -->
 
 ## Testing
-The `sap_vm_provision` roles is continuously tested for Red Hat OpenShift. Goal is to ensure that this roles work on all supported OpenShift versions. All network related setup is tested with ipv4 only.
+Additionally the Ansible Role `sap_vm_provision` is continuously tested for Red Hat OpenShift. Goal is to ensure that this roles work on all supported OpenShift versions. All network related setup is tested with ipv4 only.
 
 <!-- BEGIN Further Information -->
 ## Further Information

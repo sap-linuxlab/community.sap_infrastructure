@@ -11,7 +11,7 @@ The Ansible Role `sap_hypervisor_node_preconfigure` configures hypervisor nodes 
 
 This Ansible role supports the following hypervisors:
 - Red Hat OpenShift Virtualization (OCPV): 4.14 or higher
-- Red Hat Enterprise Virtualization (RHV): 4.4 or higher
+- Red Hat Enterprise Virtualization (RHV) `deprecated`: 4.4 or higher
   - _Formerly called Red Hat Enterprise Virtualization (RHEV) prior to version 4.4_
   - _Note: This role is not compatible with standalone RHEL KVM (RHEL-KVM) hypervisor nodes._
 
@@ -126,13 +126,7 @@ See [sample-sap-hypervisor-redhat-rhel-kvm-preconfigure.yml](https://github.com/
 <!-- END Further Information -->
 
 ## Testing
-The `sap_hypervisor_node_preconfigure` roles is continuously tested for Red Hat OpenShift. Goal is to ensure that this roles work on all supported OpenShift versions. All network related setup is tested with ipv4 only.
-
-## Contributing
-You can find more information about ways you can contribute at [sap-linuxlab website](https://sap-linuxlab.github.io/initiative_contributions/).
-
-## Support
-You can report any issues using [Issues](https://github.com/sap-linuxlab/community.sap_infrastructure/issues) section.
+Additionally the Ansible Role `sap_hypervisor_node_preconfigure` is continuously tested for Red Hat OpenShift. Goal is to ensure that this roles work on all supported OpenShift versions. All network related setup is tested with ipv4 only.
 
 ## License
 <!-- BEGIN License -->
