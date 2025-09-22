@@ -33,7 +33,7 @@ For list of all collection prerequisites, please see [Ansible Collection Readme]
   - `passlib` 1.7 or higher
   - `jmespath` 1.0.1 or higher
 - Ansible Collections:
-  - `cloud.common` 
+  - `cloud.common`
   - `cloud.terraform` when `Ansible to Terraform` is used.
 
 ### Amazon Web Services (AWS) Prerequisites
