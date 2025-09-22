@@ -85,7 +85,7 @@ Every worker has to have an entry in the `workers` section of the variable `sap_
 There is a section for the `trident` configuration, this is required when installing the NetApp Astra Trident Operator for NFS storage. When using the host path provisioner, `worker_localstorage_device` has to point to the block device which should be used.
 
 ### Example
-See [sample-sap-hypervisor-redhat_ocp_virt-preconfigure.yml](https://github.com/sap-linuxlab/community.sap_infrastructure/blob/main/playbooks/sample-sap-hypervisor-redhat_ocp_virt-preconfigure.yml) for an example.
+See [sample-sap-hypervisor-redhat-ocp-virt-preconfigure.yml](https://github.com/sap-linuxlab/community.sap_infrastructure/blob/main/playbooks/sample-sap-hypervisor-redhat-ocp-virt-preconfigure.yml) for an example.
 
 Make sure to set the `K8S_AUTH_KUBECONFIG` environment variable, e.g.
 ```
@@ -117,10 +117,6 @@ For a list of all collection prerequisites, please see the [Ansible Collection R
 
 ### Platform Specific Variables
 All platform specific variables are available in [vars/platform_defaults_redhat_rhel_kvm.yml](https://github.com/sap-linuxlab/community.sap_infrastructure/blob/main/roles/sap_hypervisor_node_preconfigure/vars/platform_defaults_redhat_rhel_kvm.yml).
-
-### Example
-See [sample-sap-hypervisor-redhat-rhel-kvm-preconfigure.yml](https://github.com/sap-linuxlab/community.sap_infrastructure/blob/main/playbooks/sample-sap-hypervisor-redhat-rhel-kvm-preconfigure.yml) for an example.
-
 
 <!-- BEGIN Further Information -->
 <!-- END Further Information -->
