@@ -1,0 +1,91 @@
+---
+#### Validate required variables for specific 'sap_vm_provision_iac_platform ####
+# Default lookup value ensures that undefined variables are validated.
+
+- name: Assert that string variables are valid for {{ sap_vm_provision_iac_platform }}
+  ansible.builtin.assert:
+    that:
+      - lookup('ansible.builtin.vars', item, default='SAP_VM_PROVISION_UNDEFINED_VARIABLE_DETECTED') != 'SAP_VM_PROVISION_UNDEFINED_VARIABLE_DETECTED'
+      - lookup('ansible.builtin.vars', item) is string
+      - lookup('ansible.builtin.vars', item) | trim | length > 0
+    fail_msg: |
+      {% if lookup('ansible.builtin.vars', item, default='SAP_VM_PROVISION_UNDEFINED_VARIABLE_DETECTED') == 'SAP_VM_PROVISION_UNDEFINED_VARIABLE_DETECTED' %}
+        The variable '{{ item }}' is undefined.
+      {% elif lookup('ansible.builtin.vars', item) is not string %}
+        The variable '{{ item }}' is not a String.
+      {% else %}
+        The variable '{{ item }}' is empty.
+      {% endif %}
+  loop:
+    - sap_vm_provision_gcp_credentials_json
+    - sap_vm_provision_gcp_project
+    - sap_vm_provision_gcp_region
+    - sap_vm_provision_gcp_region_zone
+    - sap_vm_provision_gcp_vpc_name
+    - sap_vm_provision_gcp_vpc_subnet_name
+    - sap_vm_provision_gcp_placement_resource_name
+    - sap_vm_provision_gcp_ce_vm_host_os_image
+
+
+- name: Assert that string variables are valid for {{ sap_vm_provision_iac_platform }} using 'ansible'
+  ansible.builtin.assert:
+    that:
+      - lookup('ansible.builtin.vars', item, default='SAP_VM_PROVISION_UNDEFINED_VARIABLE_DETECTED') != 'SAP_VM_PROVISION_UNDEFINED_VARIABLE_DETECTED'
+      - lookup('ansible.builtin.vars', item) is string
+      - lookup('ansible.builtin.vars', item) | trim | length > 0
+    fail_msg: |
+      {% if lookup('ansible.builtin.vars', item, default='SAP_VM_PROVISION_UNDEFINED_VARIABLE_DETECTED') == 'SAP_VM_PROVISION_UNDEFINED_VARIABLE_DETECTED' %}
+        The variable '{{ item }}' is undefined.
+      {% elif lookup('ansible.builtin.vars', item) is not string %}
+        The variable '{{ item }}' is not a String.
+      {% else %}
+        The variable '{{ item }}' is empty.
+      {% endif %}
+  loop:
+    - sap_vm_provision_ssh_host_public_key_file_path
+
+
+- name: Assert that boolean variables are valid for {{ sap_vm_provision_iac_platform }}
+  ansible.builtin.assert:
+    that:
+      - lookup('ansible.builtin.vars', __sap_vm_provision_loop_bool_var, default='SAP_VM_PROVISION_UNDEFINED_VARIABLE_DETECTED') != 'SAP_VM_PROVISION_UNDEFINED_VARIABLE_DETECTED'
+      - lookup('ansible.builtin.vars', __sap_vm_provision_loop_bool_var) is boolean
+      - lookup('ansible.builtin.vars', __sap_vm_provision_loop_bool_var) | trim | length > 0
+    fail_msg: |
+      {% if lookup('ansible.builtin.vars', item, default='SAP_VM_PROVISION_UNDEFINED_VARIABLE_DETECTED') == 'SAP_VM_PROVISION_UNDEFINED_VARIABLE_DETECTED' %}
+        The variable '{{ __sap_vm_provision_loop_bool_var }}' is undefined.
+      {% elif lookup('ansible.builtin.vars', item) is not boolean %}
+        The variable '{{ __sap_vm_provision_loop_bool_var }}' is not a Boolean.
+      {% else %}
+        The variable '{{ __sap_vm_provision_loop_bool_var }}' is empty.
+      {% endif %}
+  loop:
+    - sap_vm_provision_gcp_placement_strategy_spread
+  vars:
+    __sap_vm_provision_loop_bool_var: "{{ item }}"
+
+
+- name: Block to validate host_specifications_dictionary
+  vars:
+    __sap_vm_provision_os_image_dictionary_name: "{{ 'sap_vm_provision_' ~ sap_vm_provision_iac_platform ~ '_host_os_image_dictionary' }}"
+    __sap_vm_provision_os_image_name: "{{ 'sap_vm_provision_' ~ sap_vm_provision_iac_platform ~ '_host_os_image' }}"
+    __sap_vm_provision_os_image_value: "{{ lookup('ansible.builtin.vars', __sap_vm_provision_os_image_name) }}"
+  block:
+    - name: Assert that the variable {{ __sap_vm_provision_os_image_dictionary_name }} is defined and valid
+      ansible.builtin.assert:
+        that:
+          - lookup('ansible.builtin.vars', __sap_vm_provision_os_image_dictionary_name) is defined
+          - lookup('ansible.builtin.vars', __sap_vm_provision_os_image_dictionary_name) is mapping
+          - lookup('ansible.builtin.vars', __sap_vm_provision_os_image_dictionary_name) | length > 0
+        fail_msg: |
+          The variable {{ __sap_vm_provision_os_image_dictionary_name }} is undefined or invalid.
+          It must be a non-empty dictionary.
+
+    - name: Assert that the value of variable {{ __sap_vm_provision_os_image_name }} is present in a dictionary
+      ansible.builtin.assert:
+        that:
+          - lookup('ansible.builtin.vars', __sap_vm_provision_os_image_dictionary_name)[__sap_vm_provision_os_image_value] is defined
+          - lookup('ansible.builtin.vars', __sap_vm_provision_os_image_dictionary_name)[__sap_vm_provision_os_image_value] | length > 0
+        fail_msg: |
+          Invalid value '{{ __sap_vm_provision_os_image_value }}' provided for the variable '{{ __sap_vm_provision_os_image_name }}'.
+          Available options: {{ lookup('ansible.builtin.vars', __sap_vm_provision_os_image_dictionary_name).keys() | list | join(', ') }}

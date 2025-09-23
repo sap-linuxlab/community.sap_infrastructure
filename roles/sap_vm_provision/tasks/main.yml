@@ -1,24 +1,35 @@
 ---
-
-#### Provision host/s for Deployment of SAP Software (as part of an SAP Software Solution Scenario e.g. SAP S/4HANA Distributed HA) ####
-
-- name: Begin execution
+# Block is required for 'delegate_facts'.
+- name: Main Block
   delegate_to: "{{ sap_vm_provision_execution_host }}"
   delegate_facts: false # keep facts with the original play hosts, not the delegated host
   block:
 
-    - name: Execute to target {{ sap_vm_provision_iac_platform }} using {{ sap_vm_provision_iac_type }}
-      ansible.builtin.include_tasks: "{{ 'platform_' + sap_vm_provision_iac_type }}/{{ sap_vm_provision_iac_platform }}/execute_main.yml"
-      when: not sap_vm_provision_iac_post_deployment is defined or not sap_vm_provision_iac_post_deployment
+    - name: Block with simplified task file variable
+      vars:
+        __sap_vm_provision_task_file: "{{ 'platform_' + sap_vm_provision_iac_type }}/{{ sap_vm_provision_iac_platform }}"
+      block:
+
+        #### Validate required variables ####
+        - name: Validate required variables for platform {{ sap_vm_provision_iac_platform }} using {{ sap_vm_provision_iac_type }}
+          ansible.builtin.include_tasks:
+            file: validate_variables.yml
 
 
-#### Post Deployment of SAP - tasks for GCP, IBM Cloud, MS Azure ####
+        #### Provision host/s for Deployment of SAP Software (as part of an SAP Software Solution Scenario e.g. SAP S/4HANA Distributed HA) ####
+        - name: Provision hosts to platform {{ sap_vm_provision_iac_platform }} using {{ sap_vm_provision_iac_type }}
+          ansible.builtin.include_tasks:
+            file: "{{ __sap_vm_provision_task_file }}/execute_main.yml"
+          when:
+            - sap_vm_provision_iac_post_deployment is not defined or not sap_vm_provision_iac_post_deployment
 
-- name: Begin execution
-  delegate_to: "{{ sap_vm_provision_execution_host }}"
-  delegate_facts: false # keep facts with the original play hosts, not the delegated host
-  block:
 
-    - name: Execute Post Deployment tasks for SAP on target {{ sap_vm_provision_iac_platform }} using {{ sap_vm_provision_iac_type }}
-      ansible.builtin.include_tasks: "{{ 'platform_' + sap_vm_provision_iac_type }}/{{ sap_vm_provision_iac_platform }}/post_deployment_execute.yml"
-      when: sap_vm_provision_iac_post_deployment is defined and sap_vm_provision_iac_post_deployment
+        #### Post Deployment of SAP - tasks for GCP, IBM Cloud, MS Azure ####
+        - name: Execute Post Deployment tasks on platform {{ sap_vm_provision_iac_platform }} using {{ sap_vm_provision_iac_type }}
+          ansible.builtin.include_tasks:
+            file: "{{ 'platform_' + sap_vm_provision_iac_type }}/{{ sap_vm_provision_iac_platform }}/post_deployment_execute.yml"
+          when:
+            - sap_vm_provision_iac_post_deployment is defined
+            - sap_vm_provision_iac_post_deployment
+            # Execute only for files that are present
+            - (role_path ~ '/tasks/' ~ __sap_vm_provision_task_file ~ '/post_deployment_execute.yml') is file

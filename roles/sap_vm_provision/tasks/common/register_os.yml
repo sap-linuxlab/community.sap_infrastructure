@@ -23,7 +23,7 @@
       when: (sap_vm_provision_os_registration_ca_file_path is defined) and (sap_vm_provision_os_registration_ca_file_path | length > 0)
 
     - name: Red Hat Package Repositories - Update CA trust
-      ansible.builtin.command: update-ca-trust && update-ca-certificates
+      ansible.builtin.command: update-ca-trust
 
     - name: Red Hat Package Repositories - Execute Registration Script to connect host to Red Hat Satellite
       ansible.builtin.shell: "{{ sap_vm_provision_os_registration_script_command }}"  # noqa: command-instead-of-shell

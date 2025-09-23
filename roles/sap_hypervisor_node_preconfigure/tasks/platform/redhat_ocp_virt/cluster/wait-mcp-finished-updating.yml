@@ -1,5 +1,5 @@
 ---
-- name: Wait for worker MachineConfigPool to start updating
+- name: Wait for worker MachineConfigPool to start updating  # noqa: ignore-errors
   kubernetes.core.k8s_info:
     api_version: machineconfiguration.openshift.io/v1
     kind: MachineConfigPool

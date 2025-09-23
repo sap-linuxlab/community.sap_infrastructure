@@ -5,11 +5,10 @@ exclude_paths:
   - .ansible/
   - .cache/
   - .github/
-  #- docs/
+  - docs/
   - changelogs/  # Changelog files are missing '---' required in normal yml files.
   - roles/sap_vm_preconfigure  # Role is WIP
-  # TODO: Remove when ansible-lint issues are resolved (Issue #101).
-  - roles/sap_hypervisor_node_preconfigure
+  - roles/sap_vm_verify  # Role is WIP
 
 enable_list:
   - yaml
@@ -25,10 +24,14 @@ skip_list:
   - schema
   # Allow templating inside name because it creates more detailed output:
   - name[template]
+  # Allow command tasks without defining changed_when
+  - no-changed-when
+  # Allow tasks that could be replaced by handlers
+  - no-handler
+  # Disable jinja formatting check
+  - jinja[spacing]
+  # Removing these skips would require refactoring of most roles
   - yaml[comments]
   - yaml[line-length]
-  - no-changed-when
   - no-tabs
-  - no-handler
-  - jinja[spacing]
-  - var-naming[no-jinja]
+  # - var-naming[no-jinja]

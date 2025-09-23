@@ -1,0 +1,93 @@
+---
+#### Validate required variables ####
+# This file servers starting point for validation of all required variables. Validation order:
+# 1. Mandatory shared variables.
+# 2. Specific to 'sap_vm_provision_iac_type', if file exists.
+# 3. Specific to 'sap_vm_provision_iac_platform', if file exists.
+# 4. Specific to bastion, if 'sap_vm_provision_bastion_execution' is true.
+
+# Lookup if variable is defined is using default 'SAP_VM_PROVISION_UNDEFINED_VARIABLE_DETECTED',
+# which is required to ensure compatibility between ansible-core versions.
+
+- name: Assert that the variable 'sap_vm_provision_iac_type' is defined and valid
+  ansible.builtin.assert:
+    that:
+      - sap_vm_provision_iac_type is defined
+      - sap_vm_provision_iac_type is string
+      - sap_vm_provision_iac_type in ['ansible', 'ansible_to_terraform']
+    fail_msg: |
+      The variable 'sap_vm_provision_iac_type' is undefined or invalid.
+      Available options: ansible, ansible_to_terraform
+
+- name: Assert that the variable 'sap_vm_provision_iac_platform' is defined and valid
+  ansible.builtin.assert:
+    that:
+      - sap_vm_provision_iac_platform is defined
+      - sap_vm_provision_iac_platform is string
+      - sap_vm_provision_iac_platform in ['aws_ec2_vs', 'gcp_ce_vm', 'msazure_vm', 'ibmcloud_powervs', 'ibmcloud_vs', 'ibmpowervm_vm', 'kubevirt_vm', 'ovirt_vm', 'vmware_vm']
+    fail_msg: |
+      The variable 'sap_vm_provision_iac_platform' is undefined or invalid.
+      Available options: aws_ec2_vs, gcp_ce_vm, msazure_vm, ibmcloud_powervs, ibmcloud_vs, ibmpowervm_vm, kubevirt_vm, ovirt_vm, vmware_vm
+
+
+- name: Block to validate host_specifications_dictionary
+  vars:
+    __sap_vm_provision_host_dictionary_name: "{{ 'sap_vm_provision_' ~ sap_vm_provision_iac_platform ~ '_host_specifications_dictionary' }}"
+  # no_log: true
+  block:
+    - name: Assert that the variable {{ __sap_vm_provision_host_dictionary_name }} is defined and valid
+      ansible.builtin.assert:
+        that:
+          - lookup('ansible.builtin.vars', __sap_vm_provision_host_dictionary_name) is defined
+          - lookup('ansible.builtin.vars', __sap_vm_provision_host_dictionary_name) is mapping
+          - lookup('ansible.builtin.vars', __sap_vm_provision_host_dictionary_name) | length > 0
+        fail_msg: |
+          The variable {{ __sap_vm_provision_host_dictionary_name }} is undefined or invalid.
+          It must be a non-empty dictionary.
+
+    - name: Assert that the variable 'sap_vm_provision_host_specification_plan' is defined and valid
+      ansible.builtin.assert:
+        that:
+          - sap_vm_provision_host_specification_plan is defined
+          - sap_vm_provision_host_specification_plan is string
+          - sap_vm_provision_host_specification_plan | trim | length > 0
+        fail_msg: |
+          The variable 'sap_vm_provision_host_specification_plan' is undefined or invalid.
+          It must be a non-empty string.
+
+    - name: Assert that the value of variable 'sap_vm_provision_host_specification_plan' is present in a dictionary
+      ansible.builtin.assert:
+        that:
+          - lookup('ansible.builtin.vars', __sap_vm_provision_host_dictionary_name)[sap_vm_provision_host_specification_plan] is defined
+          - lookup('ansible.builtin.vars', __sap_vm_provision_host_dictionary_name)[sap_vm_provision_host_specification_plan] is mapping
+          - lookup('ansible.builtin.vars', __sap_vm_provision_host_dictionary_name)[sap_vm_provision_host_specification_plan] | length > 0
+        fail_msg: |
+          The value of variable 'sap_vm_provision_host_specification_plan' is not present in a dictionary {{ __sap_vm_provision_host_dictionary_name }}.
+
+    - name: Set fact with content of the key 'sap_vm_provision_host_specification_plan'
+      ansible.builtin.set_fact:
+        __sap_vm_provision_host_dictionary_name:
+          "{{ lookup('ansible.builtin.vars', __sap_vm_provision_host_dictionary_name)[sap_vm_provision_host_specification_plan] }}"
+
+
+# Validation specific to 'sap_vm_provision_iac_type'
+- name: Include task for validation of {{ sap_vm_provision_iac_type }} variables
+  ansible.builtin.include_tasks:
+    file: "validations/platform_{{ sap_vm_provision_iac_type }}.yml"
+  when:
+    - (role_path ~ '/tasks/validations/platform_' ~ sap_vm_provision_iac_type ~ '.yml') is file
+
+
+# Validation specific to 'sap_vm_provision_iac_platform'
+- name: Include task for validation of {{ sap_vm_provision_iac_platform }} variables
+  ansible.builtin.include_tasks:
+    file: "validations/{{ sap_vm_provision_iac_platform }}.yml"
+  when:
+    - (role_path ~ '/tasks/validations/' ~ sap_vm_provision_iac_platform ~ '.yml') is file
+
+
+# Validation specific to bastion
+- name: Include task for validation of bastion variables
+  ansible.builtin.include_tasks:
+    file: "validations/bastion.yml"
+  when: sap_vm_provision_bastion_execution

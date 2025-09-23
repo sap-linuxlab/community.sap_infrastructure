@@ -474,8 +474,11 @@ The VM Template must be prepared with cloud-init. This process is subjective to 
     - [VMware KB 90331 - How does vSphere Guest OS Customization work with cloud-init to customize a Linux VM](https://kb.vmware.com/s/article/90331)
     - [VMware KB 91809 - VMware guest customization key cloud-init changes](https://kb.vmware.com/s/article/91809)
     - [VMware KB 74880 - Setting the customization script for virtual machines in vSphere 7.x and 8.x](https://kb.vmware.com/s/article/74880)
-    - [vSphere Web Services SDK Programming Guide - Guest Customization Using cloud-init](https://developer.vmware.com/docs/18555/GUID-75E27FA9-2E40-4CBF-BF3D-22DCFC8F11F7.html)
+    - [vSphere Web Services SDK Programming Guide - Guest Customization Using cloud-init](https://techdocs.broadcom.com/us/en/vmware-cis/vsphere/vsphere-sdks-tools/8-0/web-services-sdk-programming-guide/virtual-machine-guest-operations/guest-customization-using-cloud-init.html)
     - [cloud-init documentation - Reference - Datasources - VMware](https://cloudinit.readthedocs.io/en/latest/reference/datasources/vmware.html)
+    - [How to customize virtual machine using Cloud-init metadata and user data in vSphere 7.0 Update 3](https://knowledge.broadcom.com/external/article/311895/how-to-customize-virtual-machine-using-c.html)
+    - [vSphere Automation API - Guest_CloudinitConfiguration](https://developer.broadcom.com/xapis/vsphere-automation-api/v7.0u3/vcenter/data-structures/Guest_CloudinitConfiguration/index?scrollString=Guest_CloudinitConfiguration)
+    - [How does vSphere Guest OS Customization work with cloud-init to customize a Linux VM](https://knowledge.broadcom.com/external/article/311864/how-does-vsphere-guest-os-customization.html)
 
 
 When VMware vCenter and vSphere clusters with VMware NSX virtualized network overlays using Segments (e.g. 192.168.0.0/16) connected to Tier-0/Tier-1 Gateways (which are bound to the backbone network subnet, e.g. 10.0.0.0/8), it is recommended to:
