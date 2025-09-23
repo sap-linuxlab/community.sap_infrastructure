@@ -4,6 +4,31 @@ community.sap\_infrastructure Release Notes
 
 .. contents:: Topics
 
+v1.3.0
+======
+
+Release Summary
+---------------
+
+Various enhancements, documentation update and adjustment for ansible-core 2.19.
+
+Minor Changes
+--------
+
+- collection - Adjustment of the roles for ansible-core 2.19 (https://github.com/sap-linuxlab/community.sap_infrastructure/pull/113)
+- collection - Update ansible-lint actions and configuration (https://github.com/sap-linuxlab/community.sap_infrastructure/pull/122)
+- collection - Update Documentation (https://github.com/sap-linuxlab/community.sap_infrastructure/pull/123)
+- sap_vm_provision - Add variable validations (https://github.com/sap-linuxlab/community.sap_infrastructure/pull/114)
+- sap_vm_provision - Append VMware notes for Issue 82 (https://github.com/sap-linuxlab/community.sap_infrastructure/pull/115)
+- sap_vm_provision - Update SLES images and add SLES 15 SP7 (https://github.com/sap-linuxlab/community.sap_infrastructure/pull/118)
+
+Bugfixes
+--------
+
+- sap_hypervisor_node_preconfigure - Fix ansible-lint errors from issue 101 (https://github.com/sap-linuxlab/community.sap_infrastructure/pull/116)
+- sap_vm_provision - Removed update-ca-certificates for issue 119 (https://github.com/sap-linuxlab/community.sap_infrastructure/pull/121)
+
+
 v1.2.0
 ======
 
