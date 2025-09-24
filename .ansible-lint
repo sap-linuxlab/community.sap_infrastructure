@@ -9,6 +9,7 @@ exclude_paths:
   - changelogs/  # Changelog files are missing '---' required in normal yml files.
   - roles/sap_vm_preconfigure  # Role is WIP
   - roles/sap_vm_verify  # Role is WIP
+  - tests/
 
 enable_list:
   - yaml
