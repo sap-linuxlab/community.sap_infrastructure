@@ -1,53 +1,41 @@
 ---
-
-# Worflow for ansible-test sanity tests
-
-name: ansible-test sanity of the collection
+name: Ansible Test - Sanity
 
 on:
   schedule:
-    - cron: '31 12 * * 1'
+    # This is 02:05 UTC, which is 4:05 AM in Prague/CEST
+    - cron: '5 4 * * 1'
+
+  pull_request:
+    branches:
+      - main
+      - dev
 
   workflow_dispatch:
 
 jobs:
   sanity:
     runs-on: ubuntu-latest
+    name: Sanity (Ⓐ${{ matrix.ansible }})
+    strategy:
+      fail-fast: false  # Disabled so we can see all failed combinations.
+      # Define a build matrix to test compatibility across multiple Ansible versions.
+      # Each version listed below will spawn a separate job that runs in parallel.
+      matrix:
+        ansible:
+          - 'stable-2.14'
+          - 'stable-2.15'
+          - 'stable-2.16'
+          - 'stable-2.17'
+          - 'stable-2.18'
+          - 'stable-2.19'
+          - 'devel'  # Test against the upcoming development version
 
     steps:
-      - name: Check out the code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - name: Set up Python 3
-        uses: actions/setup-python@v5
+      - name: ansible-test - sanity
+        uses: ansible-community/ansible-test-gh-action@release/v1
         with:
-          python-version: '3.12'
-
-      - name: Install test dependencies
-        run: |
-          pip3 install ansible-lint==6.22.1
-          pip3 install ansible-compat==4.1.10
-
-#      - name: Install collection dependencies
-#        run: ansible-galaxy collection install community.general
-
-      - name: Move the collection to the correct location - Create new directory
-        run: mkdir -p /home/runner/.ansible/collections/ansible_collections/community
-
-      - name: Move the collection to the correct location - Move the collection
-        working-directory: /home/runner/
-        run: mv /home/runner/work/community.sap_infrastructure/community.sap_infrastructure /home/runner/.ansible/collections/ansible_collections/community
-
-      - name: Move the collection to the correct location - Rename the directory
-        working-directory: /home/runner/
-        run: mv /home/runner/.ansible/collections/ansible_collections/community/community.sap_infrastructure /home/runner/.ansible/collections/ansible_collections/community/sap_infrastructure
-
-
-      - name: Run sanity tests
-        working-directory: /home/runner/.ansible/collections/ansible_collections/community/sap_infrastructure
-        run: ansible-test sanity
-
-
-      - name: Move the collection to its previous location
-        working-directory: /home/runner/
-        run: mv /home/runner/.ansible/collections/ansible_collections/community/sap_infrastructure /home/runner/work/community.sap_infrastructure/community.sap_infrastructure
+          ansible-core-version: ${{ matrix.ansible }}
+          testing-type: sanity
