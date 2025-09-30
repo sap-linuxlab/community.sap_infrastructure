@@ -3,7 +3,7 @@ name: Ansible Lint - Collection
 
 on:
   schedule:
-    # This is 01:05 UTC, which is 3:05 AM in Prague/CEST.
+    # This is 01:05 UTC, which is 3:05 AM in Prague/CEST
     - cron: '5 1 * * 1'
 
   workflow_dispatch:

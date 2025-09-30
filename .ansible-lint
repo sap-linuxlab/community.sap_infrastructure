@@ -1,15 +1,23 @@
 ---
-# Collection wide lint-file
-# DO NOT CHANGE
+## Collection wide ansible-lint configuration file.
+# Changes for ansible-lint v25.7.0+
+# - Always executed from collection root using collection configuration.
+# - .ansible-lint-ignore can be used to ignore files, not folders.
+## Execution examples:
+# ansible-lint
+# ansible-lint roles/sap_vm_provision
+# ansible-lint roles/sap_vm_provision -c roles/sap_vm_provision/.ansible-lint
+
 exclude_paths:
   - .ansible/
   - .cache/
   - .github/
-  - docs/
-  - changelogs/  # Changelog files are missing '---' required in normal yml files.
-  - roles/sap_vm_preconfigure  # Role is WIP
-  - roles/sap_vm_verify  # Role is WIP
+  - changelogs/
+  - playbooks/
   - tests/
+  # Roles which need to be excluded until their linting errors are resolved:
+  - roles/sap_vm_preconfigure
+  - roles/sap_vm_verify
 
 enable_list:
   - yaml

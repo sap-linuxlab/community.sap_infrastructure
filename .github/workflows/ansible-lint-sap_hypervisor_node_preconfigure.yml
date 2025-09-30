@@ -29,8 +29,8 @@ jobs:
         # Avoid using @main, which can introduce breaking changes unexpectedly.
       - uses: ansible/ansible-lint@v25
         with:
-          # Sets the linter's execution path to the specific role's directory.
-          # Uses role specific .ansible-lint, if present.
-          working_directory: ./roles/sap_hypervisor_node_preconfigure
+          # v25.7.0 no longer uses 'working_directory' and role path is set in 'args'.
+          # Role specific .ansible-lint can be added with argument '-c'.
+          args: roles/sap_hypervisor_node_preconfigure
           # Use the shared requirements file from the collection root for dependency context.
-          requirements_file: ../../requirements.yml
+          requirements_file: ./requirements.yml
