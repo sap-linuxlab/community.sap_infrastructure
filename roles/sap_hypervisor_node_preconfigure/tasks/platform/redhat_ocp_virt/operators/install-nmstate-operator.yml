@@ -39,7 +39,7 @@
   register: operatorgroup_status
   retries: 30
   delay: 10
-  until: operatorgroup_status.resources | length > 0
+  until: operatorgroup_status.resources | default([]) | length > 0
 
 - name: Subscribe to the nmstate Operator
   kubernetes.core.k8s:
@@ -98,7 +98,7 @@
   register: nmstate_status
   retries: 30
   delay: 10
-  until: nmstate_status.resources | length > 0
+  until: nmstate_status.resources | default([]) | length > 0
 
 - name: Wait and check for pod with label name nmstate-webhook under the namespace "{{ sap_hypervisor_node_preconfigure_nmstate_namespace }}"
   kubernetes.core.k8s_info:

@@ -68,7 +68,7 @@
   register: operatorgroup_status
   retries: 30
   delay: 10
-  until: operatorgroup_status.resources
+  until: operatorgroup_status.resources | default([]) | length > 0
 
 - name: Check if SriovOperatorConfig exists  # noqa: ignore-errors
   kubernetes.core.k8s_info:

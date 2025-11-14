@@ -103,7 +103,7 @@
   register: webhook_service
   retries: 2
   delay: 60
-  until: webhook_service.resources
+  until: webhook_service.resources | default([]) | length > 0
 
 - name: Create CNV HyperConverged
   kubernetes.core.k8s:
