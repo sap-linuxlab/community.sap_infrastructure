@@ -39,3 +39,6 @@ collections:
   - name: community.okd
     type: galaxy
     version: 3.0.1
+  - name: ansible.posix
+    type: galaxy
+    version: '>=1.5.4,<=2.1.0' # check galaxy for the best supported version
