@@ -108,7 +108,7 @@ For information on how to contribute, please see our [contribution guidelines](h
 
 
 ## Contributors
-You can find list of Contributors at [/docs/contributors](https://github.com/sap-linuxlab/community.sap_infrastructure/tree/main/docs/CONTRIBUTORS.md).
+We welcome contributions to this collection. For a list of all contributors and information on how you can get involved, please see our [CONTRIBUTORS document](./CONTRIBUTORS.md).
 
 
 ## Support
