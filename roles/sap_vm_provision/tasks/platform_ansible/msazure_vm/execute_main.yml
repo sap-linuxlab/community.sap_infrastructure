@@ -230,11 +230,21 @@
     # Enabling TCP timestamps will cause the health probes to fail.
     # Set parameter net.ipv4.tcp_timestamps to 0. For details see Load Balancer health probes:
     # https://learn.microsoft.com/en-us/azure/load-balancer/load-balancer-custom-probe-overview
-    - name: Adjust system tcp_timestamps
-      ansible.posix.sysctl:
-        name: net.ipv4.tcp_timestamps
-        value: "0"
-        state: present
+    - name: Adjust system tcp_timestamps - Set immediately
+      ansible.builtin.command:
+        cmd: sysctl -w net.ipv4.tcp_timestamps=0
+      changed_when: true
+      become: true
+
+    - name: Adjust system tcp_timestamps - Ensure persistence in sysctl.d
+      ansible.builtin.lineinfile:
+        path: /etc/sysctl.d/99-disable-tcp-timestamps.conf
+        line: net.ipv4.tcp_timestamps = 0
+        create: true
+        owner: root
+        group: root
+        mode: '0644'
+      become: true
 
     - name: Stop firewalld on all hosts before setup of Azure Load Balancer
       ansible.builtin.systemd:
