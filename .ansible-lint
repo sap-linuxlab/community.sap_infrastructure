@@ -44,3 +44,5 @@ skip_list:
   - yaml[line-length]
   - no-tabs
   # - var-naming[no-jinja]
+  # Rule for variable naming is required because of stricter linting requirements.
+  - var-naming[no-role-prefix]
