@@ -108,8 +108,8 @@
 - name: Check if CNV webhook endpoint is available
   ansible.builtin.include_tasks: wait_for_webhook_endpoints.yml
   vars:
-    webhook_service_name: virt-api
-    webhook_namespace: "{{ sap_hypervisor_node_preconfigure_ocpv_namespace }}"
+    sap_hypervisor_node_preconfigure_webhook_service_name: virt-api
+    sap_hypervisor_node_preconfigure_webhook_namespace: "{{ sap_hypervisor_node_preconfigure_ocpv_namespace }}"
 
 - name: Create CNV HyperConverged
   kubernetes.core.k8s:
