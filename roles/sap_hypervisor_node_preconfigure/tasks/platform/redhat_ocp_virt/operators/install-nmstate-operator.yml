@@ -110,3 +110,9 @@
   retries: 5
   delay: 60
   until: sap_hypervisor_node_preconfigure_register_webhook_pod.resources | selectattr('status.phase', 'equalto', 'Running') | list | length == sap_hypervisor_node_preconfigure_register_webhook_pod.resources | length
+
+- name: Check if nmstate webhook endpoint is available
+  include_tasks: wait_for_webhook_endpoints.yml
+  vars:
+    webhook_service_name: nmstate-webhook
+    webhook_namespace: openshift-nmstate
