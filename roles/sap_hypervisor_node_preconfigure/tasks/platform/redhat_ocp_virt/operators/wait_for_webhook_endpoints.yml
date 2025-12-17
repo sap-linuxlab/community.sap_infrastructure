@@ -1,0 +1,24 @@
+---
+- name: Wait for webhook endpoints
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: Endpoints
+    name: "{{ sap_hypervisor_node_preconfigure_webhook_service_name }}"
+    namespace: "{{ sap_hypervisor_node_preconfigure_webhook_namespace }}"
+  register: __sap_hypervisor_node_preconfigure_register_webhook_check
+  until:
+    - __sap_hypervisor_node_preconfigure_register_webhook_check is defined
+    - __sap_hypervisor_node_preconfigure_register_webhook_check.resources | length > 0
+    - __sap_hypervisor_node_preconfigure_register_webhook_check.resources[0].subsets is defined
+    - __sap_hypervisor_node_preconfigure_register_webhook_check.resources[0].subsets | length > 0
+    - __sap_hypervisor_node_preconfigure_register_webhook_check.resources[0].subsets[0].addresses is defined
+    - __sap_hypervisor_node_preconfigure_register_webhook_check.resources[0].subsets[0].addresses | length > 0
+  retries: "{{ sap_hypervisor_node_preconfigure_webhook_retries | default(30) }}"
+  delay: "{{ sap_hypervisor_node_preconfigure_webhook_delay | default(10) }}"
+
+- name: Fail if webhook endpoints never became available
+  ansible.builtin.fail:
+    msg: >
+      Webhook {{ sap_hypervisor_node_preconfigure_webhook_service_name }} in namespace
+      {{ sap_hypervisor_node_preconfigure_webhook_namespace }} did not become available in time.
+  when: __sap_hypervisor_node_preconfigure_register_webhook_check is failed

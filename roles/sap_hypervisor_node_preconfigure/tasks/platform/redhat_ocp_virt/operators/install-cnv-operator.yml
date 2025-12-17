@@ -105,6 +105,12 @@
   delay: 60
   until: webhook_service.resources | default([]) | length > 0
 
+- name: Check if CNV webhook endpoint is available
+  ansible.builtin.include_tasks: wait_for_webhook_endpoints.yml
+  vars:
+    sap_hypervisor_node_preconfigure_webhook_service_name: virt-api
+    sap_hypervisor_node_preconfigure_webhook_namespace: "{{ sap_hypervisor_node_preconfigure_ocpv_namespace }}"
+
 - name: Create CNV HyperConverged
   kubernetes.core.k8s:
     state: present
