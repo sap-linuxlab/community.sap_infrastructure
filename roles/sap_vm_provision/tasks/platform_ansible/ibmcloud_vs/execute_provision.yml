@@ -209,7 +209,7 @@
           {{ __sap_vm_provision_task_ibmcloud_ssh_public_key.resource.public_key }}
 
     # We cannot obtain these facts from delegate without registering them first.
-    # NOTE: Ansible 2.20 deprecation warning for ansible_ facts does not seem to apply here.
+    # NOTE: Ansible 2.20 deprecation warning for ansible_facts does not seem to apply here.
     - name: Get OS distribution facts on delegate host
       ansible.builtin.setup:
         gather_subset:

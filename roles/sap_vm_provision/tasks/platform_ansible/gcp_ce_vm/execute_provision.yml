@@ -168,6 +168,26 @@
     - sap_vm_provision_ssh_bastion_private_key_file_path is defined or not sap_vm_provision_ssh_bastion_private_key_file_path == ''
 
 
+- name: Wait for SSH port on provisioned host to become available
+  # This task runs a native ssh command from the execution host to check for connectivity before proceeding.
+  # It uses a retry loop and conditionally adds a ProxyCommand for bastion scenarios.
+  # Other modules and solutions are not suitable for this purpose, because:
+  # - 'wait_for' does not support ProxyCommand.
+  # - 'wait_for_connection' requires Python on the target, which may not be installed yet.
+  ansible.builtin.command: >
+    ssh
+    {{ delegate_ssh_args_bastion if delegate_ssh_args_bastion is defined else '' }}
+    -o ConnectTimeout=10 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null
+    -i {{ sap_vm_provision_ssh_host_private_key_file_path }}
+    admin@{{ provisioned_private_ip }} "exit"
+  vars:
+    delegate_ssh_args_bastion: -o ProxyCommand='ssh -W %h:%p {{ sap_vm_provision_bastion_user }}@{{ sap_vm_provision_bastion_public_ip }} -p {{ sap_vm_provision_bastion_ssh_port }} -i {{ sap_vm_provision_ssh_bastion_private_key_file_path }} -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null'
+  register: __sap_vm_provision_register_ssh_port_check
+  until: __sap_vm_provision_register_ssh_port_check.rc == 0
+  retries: 30
+  delay: 10
+  changed_when: false
+
 ### begin block, parameters will be applied to each task within the block
 - name: Allow login from root OS User
   remote_user: admin
@@ -204,6 +224,9 @@
     - name: Install required Python 3.11 on SLES 15 SP5-SP7 host
       ansible.builtin.raw: "zypper -n install python311"
       register: __sap_vm_provision_register_sles15_python311_install
+      # Retry loop in case package manager is locked after provisioning.
+      retries: 30
+      delay: 10
       changed_when:
         - __sap_vm_provision_register_sles15_python311_install.rc == 0
         - "'nothing to do' not in __sap_vm_provision_register_sles15_python311_install.stdout"
@@ -230,7 +253,7 @@
           {{ lookup('ansible.builtin.file', sap_vm_provision_ssh_host_public_key_file_path ) }}
 
     # We cannot obtain these facts from delegate without registering them first.
-    # NOTE: Ansible 2.20 deprecation warning for ansible_ facts does not seem to apply here.
+    # NOTE: Ansible 2.20 deprecation warning for ansible_facts does not seem to apply here.
     - name: Get OS distribution facts on delegate host
       ansible.builtin.setup:
         gather_subset:
