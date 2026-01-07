@@ -347,6 +347,8 @@ sap_vm_provision_aws_ec2_vs_host_os_image_dictionary:
   sles-15-6-sap-ha: "*suse-sles-sap-15-sp6-v202*-hvm-ssd-x86_64*"
   sles-15-7: "*suse-sles-15-sp7-v202*-hvm-ssd-x86_64*"
   sles-15-7-sap-ha: "*suse-sles-sap-15-sp7-v202*-hvm-ssd-x86_64*"
+  sles-16-0: "*suse-sles-16-0-v202*-hvm-ssd-x86_64*"
+  sles-16-0-sap-ha: "*suse-sles-sap-16-0-v202*-hvm-ssd-x86_64*"
 
   # SUSE - Bring-your-own-subscription (BYOS)
   sles-15-5-byos: "*suse-sles-15-sp5-byos-v202*-hvm-ssd-x86_64*"
@@ -355,6 +357,8 @@ sap_vm_provision_aws_ec2_vs_host_os_image_dictionary:
   sles-15-6-sap-ha-byos: "*suse-sles-sap-15-sp6-byos-v202*-hvm-ssd-x86_64*"
   sles-15-7-byos: "*suse-sles-15-sp7-byos-v202*-hvm-ssd-x86_64*"
   sles-15-7-sap-ha-byos: "*suse-sles-sap-15-sp7-byos-v202*-hvm-ssd-x86_64*"
+  sles-16-0-byos: "*suse-sles-16-0-byos-v202*-hvm-ssd-x86_64*"
+  sles-16-0-sap-ha-byos: "*suse-sles-sap-16-0-byos-v202*-hvm-ssd-x86_64*"
 
 
 # OS Images - Google Cloud
@@ -401,6 +405,12 @@ sap_vm_provision_gcp_ce_vm_host_os_image_dictionary:
   sles-15-7-sap-ha:
     project: "suse-sap-cloud"
     family: "sles-15-sp7-sap"
+  sles-16-0:
+    project: "suse-cloud"
+    family: "sles-16-0-x86-64"
+  sles-16-0-sap-ha:
+    project: "suse-sap-cloud"
+    family: "sles-sap-16-0-x86-64"
 
   # SUSE - Bring-your-own-subscription (BYOS)
   sles-15-5-byos:
@@ -421,6 +431,12 @@ sap_vm_provision_gcp_ce_vm_host_os_image_dictionary:
   sles-15-7-sap-byos:
     project: "suse-byos-cloud"
     family: "sles-15-sp7-sap-byos"
+  sles-16-0-byos:
+    project: "suse-byos-cloud"
+    family: "sles-16-0-byos-x86-64"
+  sles-16-0-sap-byos:
+    project: "suse-byos-cloud"
+    family: "sles-sap-16-0-byos-x86-64"
 
 
 # OS Images - IBM Cloud
@@ -606,6 +622,14 @@ sap_vm_provision_msazure_vm_host_os_image_dictionary:
     publisher: "SUSE"
     offer: "sles-sap-15-sp7"
     sku: "gen2"
+  sles-16-0:
+    publisher: "SUSE"
+    offer: "sles-16-0-x86-64"
+    sku: "gen2"
+  sles-16-0-sap-ha:
+    publisher: "SUSE"
+    offer: "sles-sap-16-0-x86-64"
+    sku: "gen2"
 
   # SUSE - Bring-your-own-subscription (BYOS)
   sles-15-5-byos:
@@ -631,6 +655,14 @@ sap_vm_provision_msazure_vm_host_os_image_dictionary:
   sles-15-7-sap-byos:
     publisher: "SUSE"
     offer: "sles-sap-15-sp7-byos"
+    sku: "gen2"
+  sles-16-0-byos:
+    publisher: "SUSE"
+    offer: "sles-16-0-byos-x86-64"
+    sku: "gen2"
+  sles-16-0-sap-byos:
+    publisher: "SUSE"
+    offer: "sles-sap-16-0-byos-x86-64"
     sku: "gen2"
 
 

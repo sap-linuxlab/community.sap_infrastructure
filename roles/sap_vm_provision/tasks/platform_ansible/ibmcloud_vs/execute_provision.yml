@@ -208,12 +208,29 @@
         content: |
           {{ __sap_vm_provision_task_ibmcloud_ssh_public_key.resource.public_key }}
 
+    # We cannot obtain these facts from delegate without registering them first.
+    # NOTE: Ansible 2.20 deprecation warning for ansible_ facts does not seem to apply here.
+    - name: Get OS distribution facts on delegate host
+      ansible.builtin.setup:
+        gather_subset:
+          - 'distribution_major_version'
+          - 'os_family'
+      register: __sap_vm_provision_register_delegate_facts
+
     - name: Permit root login
       register: __sap_vm_provision_task_os_sshd_config
       ansible.builtin.replace:
-        path: /etc/ssh/sshd_config
+        path: "{{ __ssh_config }}"
         regexp: '(^PermitRootLogin no)'
         replace: 'PermitRootLogin yes'
+      vars:
+        # With SLES 16, the sshd_config file is located in /usr/etc/ssh/sshd_config.
+        # TODO: Move this conditional to vars/main.yml during refactoring of the role.
+        __ssh_config: >-
+          {{ '/usr/etc/ssh/sshd_config'
+             if __sap_vm_provision_register_delegate_facts.ansible_facts['ansible_os_family'] == 'Suse' and
+              (__sap_vm_provision_register_delegate_facts.ansible_facts['ansible_distribution_major_version'] | int) >= 16
+             else '/etc/ssh/sshd_config' }}
 
     - name: Reload sshd service
       ansible.builtin.service:
