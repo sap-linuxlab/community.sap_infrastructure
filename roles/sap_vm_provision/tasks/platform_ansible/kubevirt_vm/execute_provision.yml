@@ -219,7 +219,7 @@
 
 - name: Set fact for memory definition
   ansible.builtin.set_fact:
-    __sap_vm_provision_register_memory_definition: >-
+    __sap_vm_provision_fact_memory_definition: >-
       {{
         {
           'guest': __sap_vm_provision_register_vm_config.kubevirt_vm_memory_gib ~ 'Gi'
@@ -259,7 +259,7 @@
           cores: "{{ __sap_vm_provision_register_vm_config.kubevirt_vm_cpu_cores }}"
           threads: "{{ __sap_vm_provision_register_vm_config.kubevirt_vm_cpu_smt }}"
 
-        memory: "{{ __sap_vm_provision_register_memory_definition }}"
+        memory: "{{ __sap_vm_provision_fact_memory_definition }}"
 
 - name: Apply CPU performance settings
   ansible.builtin.set_fact:
