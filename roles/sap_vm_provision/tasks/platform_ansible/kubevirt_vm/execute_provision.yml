@@ -217,6 +217,36 @@
       {%- endfor %}
       {{ networks }}
 
+- name: Fail if hugepages are not used but dedicated CPU placement and/or NUMA guestMappingPassthrough
+  ansible.builtin.fail:
+    msg: |
+      FAIL: Invalid CPU configuration: dedicatedCpuPlacement=true cannot be used
+      together with numa.guestMappingPassthrough without huge pages.
+  when:
+    - sap_vm_provision_kubevirt_vm_performance_cpu_settings.dedicatedCpuPlacement | d(false) | bool
+      or sap_vm_provision_kubevirt_vm_performance_cpu_settings.numa.guestMappingPassthrough is defined
+    - __sap_vm_provision_register_vm_config.kubevirt_vm_memory_hypervisor_hugepages is defined
+    - not (__sap_vm_provision_register_vm_config.kubevirt_vm_memory_hypervisor_hugepages | bool)
+
+- name: Set fact for memory definition
+  ansible.builtin.set_fact:
+    __sap_vm_provision_fact_memory_definition: >-
+      {{
+        {
+          'guest': __sap_vm_provision_register_vm_config.kubevirt_vm_memory_gib ~ 'Gi'
+        }
+        | combine(
+            (__sap_vm_provision_register_vm_config.kubevirt_vm_memory_hypervisor_hugepages | default(true)) | ternary(
+              {
+                 'hugepages': {
+                   'pageSize': (__sap_vm_provision_register_vm_config.kubevirt_vm_memory_hypervisor_hugepages | default('1Gi'))
+                 }
+              },
+              {}
+            )
+          )
+      }}
+
 - name: Set fact for VM deploy config
   ansible.builtin.set_fact:
     __sap_vm_provision_register_vm_deploy_config:
@@ -244,10 +274,7 @@
           cores: "{{ __sap_vm_provision_register_vm_config.kubevirt_vm_cpu_cores }}"
           threads: "{{ __sap_vm_provision_register_vm_config.kubevirt_vm_cpu_smt }}"
 
-        memory:
-          guest: "{{ __sap_vm_provision_register_vm_config.kubevirt_vm_memory_gib }}Gi"
-          hugepages:
-            pageSize: 1Gi
+        memory: "{{ __sap_vm_provision_fact_memory_definition }}"
 
 - name: Apply CPU performance settings
   ansible.builtin.set_fact:
