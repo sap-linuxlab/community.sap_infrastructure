@@ -782,7 +782,9 @@ sap_vm_provision_kubevirt_vm_host_specifications_dictionary:
       kubevirt_vm_cpu_smt: 2
       kubevirt_vm_cpu_cores: 2
       kubevirt_vm_memory_gib: 24
-      hugepages: 1Gi # Optional hugepage size (Default 1Gi). Usage of hugepages can be turned off by setting this to false.
+      kubevirt_vm_memory_hypervisor_hugepages: 1Gi # (default) Use 1Gi huge pages for VM on hypervisor
+      # Do not use huge pages for VM, remove NUMA and dedicatedCpuPlacement from sap_vm_provision_kubevirt_vm_performance_cpu_settings
+      # kubevirt_vm_memory_hypervisor_hugepages: false
       sap_system_type: project_dev # project_dev, project_tst, project_prd
       sap_host_type: hana_primary # hana_primary, hana_secondary, anydb_primary, anydb_secondary, nwas_ascs, nwas_ers, nwas_pas, nwas_aas
       # Provide either an existing PVC or a URL for an OS image

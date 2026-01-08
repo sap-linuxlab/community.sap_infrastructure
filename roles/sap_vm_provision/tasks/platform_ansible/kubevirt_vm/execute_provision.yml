@@ -225,8 +225,12 @@
           'guest': __sap_vm_provision_register_vm_config.kubevirt_vm_memory_gib ~ 'Gi'
         }
         | combine(
-            (__sap_vm_provision_register_vm_config.hugepages | default(true)) | ternary(
-              {'hugepages': {'pageSize': (__sap_vm_provision_register_vm_config.hugepages | default('1Gi')) }},
+            (__sap_vm_provision_register_vm_config.kubevirt_vm_memory_hypervisor_hugepages | default(true)) | ternary(
+              {
+                 'hugepages': {
+                   'pageSize': (__sap_vm_provision_register_vm_config.kubevirt_vm_memory_hypervisor_hugepages | default('1Gi'))
+                 }
+              },
               {}
             )
           )
