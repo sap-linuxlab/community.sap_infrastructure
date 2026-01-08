@@ -61,6 +61,9 @@
         - not lookup('ansible.builtin.vars', loop_item, default='') is skipped
         - lookup('ansible.builtin.vars', loop_item, default='') is failed
 
+    - name: Stop execution of playbook here if an error has occured
+      ansible.builtin.meta: end_host
+
 - name: Ansible Task block to execute on target inventory hosts
   remote_user: "{{ sap_vm_provision_kubevirt_vm_os_user }}"
   become: true
