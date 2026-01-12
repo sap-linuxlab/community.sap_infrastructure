@@ -25,10 +25,10 @@ For specific role maintainers, see the `README.md` file in the corresponding rol
 | Name | Commits | Lines Changed | Last Commit |
 | ---- | ------- | ------------- | ----------- |
 | [Sean Freeman](https://github.com/sean-freeman) | 100 | 27358 | 2025-06-20 |
-| [Marcel Mamula](https://github.com/marcelmamula) | 53 | 5728 | 2025-09-30 |
-| [Nils Koenig](https://github.com/newkit) | 41 | 3753 | 2025-09-22 |
+| [Marcel Mamula](https://github.com/marcelmamula) | 60 | 6100 | 2026-01-07 |
+| [Nils Koenig](https://github.com/newkit) | 59 | 3971 | 2026-01-12 |
 | [Bernd Finger](https://github.com/berndfinger) | 7 | 285 | 2025-02-25 |
-| [Geetika Kapoor](https://github.com/geetikakay) | 5 | 116 | 2024-12-06 |
+| [Geetika Kapoor](https://github.com/geetikakay) | 6 | 124 | 2025-11-14 |
 | [Janine Fuchs](https://github.com/ja9fuchs) | 1 | 2 | 2024-09-03 |
 | [Markus Koch](https://github.com/rhmk) | 1 | 35 | 2024-08-27 |
 
@@ -53,8 +53,8 @@ For specific role maintainers, see the `README.md` file in the corresponding rol
 | Name | Commits | Lines Changed | Last Commit |
 | ---- | ------- | ------------- | ----------- |
 | [Sean Freeman](https://github.com/sean-freeman) | 85 | 22396 | 2025-05-26 |
-| [Marcel Mamula](https://github.com/marcelmamula) | 30 | 3264 | 2025-09-01 |
-| [Nils Koenig](https://github.com/newkit) | 14 | 1045 | 2025-09-22 |
+| [Marcel Mamula](https://github.com/marcelmamula) | 34 | 3496 | 2026-01-07 |
+| [Nils Koenig](https://github.com/newkit) | 23 | 1136 | 2026-01-12 |
 | [Bernd Finger](https://github.com/berndfinger) | 3 | 5 | 2025-02-19 |
 | [Janine Fuchs](https://github.com/ja9fuchs) | 1 | 2 | 2024-09-03 |
 | [Markus Koch](https://github.com/rhmk) | 1 | 35 | 2024-08-27 |
@@ -63,8 +63,8 @@ For specific role maintainers, see the `README.md` file in the corresponding rol
 
 | Name | Commits | Lines Changed | Last Commit |
 | ---- | ------- | ------------- | ----------- |
-| [Nils Koenig](https://github.com/newkit) | 26 | 1741 | 2025-09-22 |
-| [Geetika Kapoor](https://github.com/geetikakay) | 5 | 115 | 2024-12-06 |
+| [Nils Koenig](https://github.com/newkit) | 31 | 1847 | 2025-12-23 |
+| [Geetika Kapoor](https://github.com/geetikakay) | 6 | 123 | 2025-11-14 |
 | [Marcel Mamula](https://github.com/marcelmamula) | 3 | 455 | 2025-08-20 |
 | [Sean Freeman](https://github.com/sean-freeman) | 2 | 1870 | 2024-05-07 |
 
