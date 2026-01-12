@@ -168,6 +168,26 @@
     - sap_vm_provision_ssh_bastion_private_key_file_path is defined or not sap_vm_provision_ssh_bastion_private_key_file_path == ''
 
 
+- name: Wait for SSH port on provisioned host to become available
+  # This task runs a native ssh command from the execution host to check for connectivity before proceeding.
+  # It uses a retry loop and conditionally adds a ProxyCommand for bastion scenarios.
+  # Other modules and solutions are not suitable for this purpose, because:
+  # - 'wait_for' does not support ProxyCommand.
+  # - 'wait_for_connection' requires Python on the target, which may not be installed yet.
+  ansible.builtin.command: >
+    ssh
+    {{ delegate_ssh_args_bastion if delegate_ssh_args_bastion is defined else '' }}
+    -o ConnectTimeout=10 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null
+    -i {{ sap_vm_provision_ssh_host_private_key_file_path }}
+    admin@{{ provisioned_private_ip }} "exit"
+  vars:
+    delegate_ssh_args_bastion: -o ProxyCommand='ssh -W %h:%p {{ sap_vm_provision_bastion_user }}@{{ sap_vm_provision_bastion_public_ip }} -p {{ sap_vm_provision_bastion_ssh_port }} -i {{ sap_vm_provision_ssh_bastion_private_key_file_path }} -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null'
+  register: __sap_vm_provision_register_ssh_port_check
+  until: __sap_vm_provision_register_ssh_port_check.rc == 0
+  retries: 30
+  delay: 10
+  changed_when: false
+
 ### begin block, parameters will be applied to each task within the block
 - name: Allow login from root OS User
   remote_user: admin
@@ -179,6 +199,39 @@
     ansible_ssh_private_key_file: "{{ delegate_sap_vm_provision_ssh_host_private_key_file_path }}"
     ansible_ssh_common_args: -o ConnectTimeout=180 -o ControlMaster=auto -o ControlPersist=3600s -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ForwardX11=no {{ delegate_ssh_args_bastion if delegate_ssh_args_bastion is defined else '' }}
   block:
+
+    # SUSE Specific workaround to install Python 3.11 on SLES 15 images that do not have it pre-installed.
+    # This is required for Ansible modules to work. Using raw module as python is not yet available.
+    # PAYG images do not have it pre-installed, BYOS images do have it pre-installed.
+    - name: Check if provisioned host is SLES 15 SP5-SP7 without Python 3.11 installed
+      ansible.builtin.raw: >-
+        grep -q 'ID="sles"' /etc/os-release &&
+        grep -qE 'VERSION_ID="15\.[5-7]"' /etc/os-release &&
+        ! rpm -q python311
+      register: __sap_vm_provision_register_sles15_python311_check
+      changed_when: false
+      failed_when: false
+
+    - name: Inform that SLES 15 SP5-SP7 without Python 3.11 installed was detected
+      ansible.builtin.debug:
+        msg: |
+          INFO: Provisioned host is SLES 15 SP5-7 without Python 3.11 installed.
+          Some Google Cloud images do not have Python 3.11 pre-installed which is required for Ansible modules to work.
+          Proceeding to install Python 3.11...
+      when:
+        - __sap_vm_provision_register_sles15_python311_check.rc == 0
+
+    - name: Install required Python 3.11 on SLES 15 SP5-SP7 host
+      ansible.builtin.raw: "zypper -n install python311"
+      register: __sap_vm_provision_register_sles15_python311_install
+      # Retry loop in case package manager is locked after provisioning.
+      retries: 30
+      delay: 10
+      changed_when:
+        - __sap_vm_provision_register_sles15_python311_install.rc == 0
+        - "'nothing to do' not in __sap_vm_provision_register_sles15_python311_install.stdout"
+      when:
+        - __sap_vm_provision_register_sles15_python311_check.rc == 0
 
     # Required as state: present on Ansible Module gcp_compute_instance does not allow for waiting until VM has booted
     # wait_for_connection is used instead to ensure connection is available before proceeding.
@@ -199,12 +252,29 @@
         content: |
           {{ lookup('ansible.builtin.file', sap_vm_provision_ssh_host_public_key_file_path ) }}
 
+    # We cannot obtain these facts from delegate without registering them first.
+    # NOTE: Ansible 2.20 deprecation warning for ansible_facts does not seem to apply here.
+    - name: Get OS distribution facts on delegate host
+      ansible.builtin.setup:
+        gather_subset:
+          - 'distribution_major_version'
+          - 'os_family'
+      register: __sap_vm_provision_register_delegate_facts
+
     - name: Permit root login
       register: __sap_vm_provision_task_os_sshd_config
       ansible.builtin.replace:
-        path: /etc/ssh/sshd_config
+        path: "{{ __ssh_config }}"
         regexp: '(^PermitRootLogin no)'
         replace: 'PermitRootLogin yes'
+      vars:
+        # With SLES 16, the sshd_config file is located in /usr/etc/ssh/sshd_config.
+        # TODO: Move this conditional to vars/main.yml during refactoring of the role.
+        __ssh_config: >-
+          {{ '/usr/etc/ssh/sshd_config'
+             if __sap_vm_provision_register_delegate_facts.ansible_facts['ansible_os_family'] == 'Suse' and
+              (__sap_vm_provision_register_delegate_facts.ansible_facts['ansible_distribution_major_version'] | int) >= 16
+             else '/etc/ssh/sshd_config' }}
 
     - name: Reload sshd service
       ansible.builtin.service:

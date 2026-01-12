@@ -95,15 +95,11 @@
   delay: 60
   until: __sap_hypervisor_node_preconfigure_register_hco_webhook_pod.resources | selectattr('status.phase', 'equalto', 'Running') | list | length == __sap_hypervisor_node_preconfigure_register_hco_webhook_pod.resources | length
 
-- name: Wait and check if hco-webhook-service exists in the namespace "{{ sap_hypervisor_node_preconfigure_ocpv_namespace }}"
-  kubernetes.core.k8s_info:
-    kind: Service
-    namespace: "{{ sap_hypervisor_node_preconfigure_ocpv_namespace }}"
-    name: hco-webhook-service
-  register: webhook_service
-  retries: 2
-  delay: 60
-  until: webhook_service.resources
+- name: Check if hco-webhook-service webhook endpoint is available
+  ansible.builtin.include_tasks: wait_for_webhook_endpoints.yml
+  vars:
+    sap_hypervisor_node_preconfigure_webhook_service_name: hco-webhook-service
+    sap_hypervisor_node_preconfigure_webhook_namespace: "{{ sap_hypervisor_node_preconfigure_ocpv_namespace }}"
 
 - name: Create CNV HyperConverged
   kubernetes.core.k8s:

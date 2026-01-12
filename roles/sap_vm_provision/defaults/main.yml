@@ -347,6 +347,8 @@ sap_vm_provision_aws_ec2_vs_host_os_image_dictionary:
   sles-15-6-sap-ha: "*suse-sles-sap-15-sp6-v202*-hvm-ssd-x86_64*"
   sles-15-7: "*suse-sles-15-sp7-v202*-hvm-ssd-x86_64*"
   sles-15-7-sap-ha: "*suse-sles-sap-15-sp7-v202*-hvm-ssd-x86_64*"
+  sles-16-0: "*suse-sles-16-0-v202*-hvm-ssd-x86_64*"
+  sles-16-0-sap-ha: "*suse-sles-sap-16-0-v202*-hvm-ssd-x86_64*"
 
   # SUSE - Bring-your-own-subscription (BYOS)
   sles-15-5-byos: "*suse-sles-15-sp5-byos-v202*-hvm-ssd-x86_64*"
@@ -355,6 +357,8 @@ sap_vm_provision_aws_ec2_vs_host_os_image_dictionary:
   sles-15-6-sap-ha-byos: "*suse-sles-sap-15-sp6-byos-v202*-hvm-ssd-x86_64*"
   sles-15-7-byos: "*suse-sles-15-sp7-byos-v202*-hvm-ssd-x86_64*"
   sles-15-7-sap-ha-byos: "*suse-sles-sap-15-sp7-byos-v202*-hvm-ssd-x86_64*"
+  sles-16-0-byos: "*suse-sles-16-0-byos-v202*-hvm-ssd-x86_64*"
+  sles-16-0-sap-ha-byos: "*suse-sles-sap-16-0-byos-v202*-hvm-ssd-x86_64*"
 
 
 # OS Images - Google Cloud
@@ -401,6 +405,12 @@ sap_vm_provision_gcp_ce_vm_host_os_image_dictionary:
   sles-15-7-sap-ha:
     project: "suse-sap-cloud"
     family: "sles-15-sp7-sap"
+  sles-16-0:
+    project: "suse-cloud"
+    family: "sles-16-0-x86-64"
+  sles-16-0-sap-ha:
+    project: "suse-sap-cloud"
+    family: "sles-sap-16-0-x86-64"
 
   # SUSE - Bring-your-own-subscription (BYOS)
   sles-15-5-byos:
@@ -421,6 +431,12 @@ sap_vm_provision_gcp_ce_vm_host_os_image_dictionary:
   sles-15-7-sap-byos:
     project: "suse-byos-cloud"
     family: "sles-15-sp7-sap-byos"
+  sles-16-0-byos:
+    project: "suse-byos-cloud"
+    family: "sles-16-0-byos-x86-64"
+  sles-16-0-sap-byos:
+    project: "suse-byos-cloud"
+    family: "sles-sap-16-0-byos-x86-64"
 
 
 # OS Images - IBM Cloud
@@ -606,6 +622,14 @@ sap_vm_provision_msazure_vm_host_os_image_dictionary:
     publisher: "SUSE"
     offer: "sles-sap-15-sp7"
     sku: "gen2"
+  sles-16-0:
+    publisher: "SUSE"
+    offer: "sles-16-0-x86-64"
+    sku: "gen2"
+  sles-16-0-sap-ha:
+    publisher: "SUSE"
+    offer: "sles-sap-16-0-x86-64"
+    sku: "gen2"
 
   # SUSE - Bring-your-own-subscription (BYOS)
   sles-15-5-byos:
@@ -631,6 +655,14 @@ sap_vm_provision_msazure_vm_host_os_image_dictionary:
   sles-15-7-sap-byos:
     publisher: "SUSE"
     offer: "sles-sap-15-sp7-byos"
+    sku: "gen2"
+  sles-16-0-byos:
+    publisher: "SUSE"
+    offer: "sles-16-0-byos-x86-64"
+    sku: "gen2"
+  sles-16-0-sap-byos:
+    publisher: "SUSE"
+    offer: "sles-sap-16-0-byos-x86-64"
     sku: "gen2"
 
 
@@ -782,6 +814,10 @@ sap_vm_provision_kubevirt_vm_host_specifications_dictionary:
       kubevirt_vm_cpu_smt: 2
       kubevirt_vm_cpu_cores: 2
       kubevirt_vm_memory_gib: 24
+      # Defines size of huge pages for kubervirt hypervisor (e.g. '2Mi' or '1Gi')
+      # This can be disabled by setting value to false. The default value is '1Gi'.
+      # When set to false, remove NUMA and dedicatedCpuPlacement from sap_vm_provision_kubevirt_vm_performance_cpu_settings
+      kubevirt_vm_memory_hypervisor_hugepages: '1Gi'
       sap_system_type: project_dev # project_dev, project_tst, project_prd
       sap_host_type: hana_primary # hana_primary, hana_secondary, anydb_primary, anydb_secondary, nwas_ascs, nwas_ers, nwas_pas, nwas_aas
       # Provide either an existing PVC or a URL for an OS image

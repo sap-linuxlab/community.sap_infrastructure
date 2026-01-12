@@ -4,6 +4,33 @@ community.sap\_infrastructure Release Notes
 
 .. contents:: Topics
 
+v1.3.1
+======
+
+Release Summary
+---------------
+
+Various minor enhancements and compatibility fixes for ansible-core 2.20.
+
+Minor Changes
+--------
+
+- collection - Update workflows with dedicated github actions (https://github.com/sap-linuxlab/community.sap_infrastructure/pull/127)
+- collection - Add contributors list and sanity ignore files for future-proofing (https://github.com/sap-linuxlab/community.sap_infrastructure/pull/130)
+- collection - Add linting rule to ignore stricter var naming rule in 2.20 (https://github.com/sap-linuxlab/community.sap_infrastructure/pull/136)
+- collection - Add kubernetes.core 5.3.0 to requirements (https://github.com/sap-linuxlab/community.sap_infrastructure/pull/138)
+- sap_vm_provision - Remove ansible.posix dependency for issue 126 (https://github.com/sap-linuxlab/community.sap_infrastructure/pull/135)
+- sap_vm_provision - Add SLES 16 images, fix sshd_config and add python311 workaround (https://github.com/sap-linuxlab/community.sap_infrastructure/pull/149)
+- sap_vm_provision/kubevirt_vm - Make usage of hugepages configurable (https://github.com/sap-linuxlab/community.sap_infrastructure/pull/147)
+- sap_hypervisor_node_preconfigure - Update until conditional for ansible-core 2.19 (https://github.com/sap-linuxlab/community.sap_infrastructure/pull/133)
+- sap_hypervisor_node_preconfigure - Add check for webhook endpoint availability (https://github.com/sap-linuxlab/community.sap_infrastructure/pull/142)
+
+Bugfixes
+--------
+
+- sap_hypervisor_node_preconfigure/kubevirt_vm - Fix installation of CNV operator (https://github.com/sap-linuxlab/community.sap_infrastructure/pull/148)
+
+
 v1.3.0
 ======
 
