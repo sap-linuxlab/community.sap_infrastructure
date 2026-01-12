@@ -132,4 +132,3 @@ releases:
         - sap_hypervisor_node_preconfigure - Add check for webhook endpoint availability (https://github.com/sap-linuxlab/community.sap_infrastructure/pull/142)
       bugfixes:
         - sap_hypervisor_node_preconfigure/kubevirt_vm - Fix installation of CNV operator (https://github.com/sap-linuxlab/community.sap_infrastructure/pull/148)
-
