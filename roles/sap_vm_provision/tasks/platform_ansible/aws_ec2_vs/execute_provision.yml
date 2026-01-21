@@ -34,9 +34,14 @@
 #        http_put_response_hop_limit: 8
       http_tokens: optional # IMDSv1 = optional, IMDSv2 = required
 #        instance_metadata_tags: disabled
-    network:
-      assign_public_ip: false
-      source_dest_check: "{{ not target_provision_host_spec.disable_ip_anti_spoofing }}" # Disable the Anti IP Spoofing by setting Source/Destination Check to false
+    # Added in amazon.aws 8.2.0 and replaced deprecated parameter 'network'.
+    # This is list parameter, but we define only single NIC here.
+    network_interfaces:
+      - assign_public_ip: false
+    # Disable the Anti IP Spoofing by setting Source/Destination Check to false.
+    # AWS has moved this parameter on top level, applying to all network interfaces.
+    # Additional logic would be required if multi-NIC setup is needed in future.
+    source_dest_check: "{{ not target_provision_host_spec.disable_ip_anti_spoofing }}"
     # availability_zone: "{{ sap_vm_provision_aws_vpc_availability_zone }}" # Conflict with vpc_subnet_id
     placement: "{{ placement_dict if sap_vm_provision_aws_placement_strategy_spread else omit }}"
     access_key: "{{ sap_vm_provision_aws_access_key }}"
