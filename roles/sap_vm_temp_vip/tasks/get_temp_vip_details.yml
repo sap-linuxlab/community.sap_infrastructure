@@ -84,6 +84,8 @@
   when:
     - sap_vm_temp_vip_default_broadcast == ''
     - __sap_vm_temp_vip_get_ips.stdout is defined and __sap_vm_temp_vip_get_ips.stdout | length > 0
+    # regex_search is 'NoneType' when string is not found, therefore we have to skip it.
+    - __sap_vm_temp_vip_brd is not none
   changed_when: false
 
 # Combine final broadcast IP based on decision below:
