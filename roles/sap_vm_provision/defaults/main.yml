@@ -42,7 +42,8 @@ sap_vm_provision_bastion_user: ""
 
 sap_vm_provision_ssh_bastion_private_key_file_path: ""
 sap_vm_provision_ssh_host_private_key_file_path: ""
-sap_vm_provision_ssh_host_public_key_file_path: "{{ sap_vm_provision_ssh_host_private_key_file_path + '.pub' }}" # used for gcp_ce_vm, ibmpowervm_vm, kubevirt_vm, vmware_vm
+sap_vm_provision_ssh_host_public_key_file_path:
+  "{{ sap_vm_provision_ssh_host_private_key_file_path + '.pub' }}" # used for gcp_ce_vm, ibmpowervm_vm, kubevirt_vm, vmware_vm
 
 
 ####
@@ -123,7 +124,8 @@ sap_vm_provision_nfs_mount_point_opts: ""
 ####
 # VM Provision - dynamic inventory variables
 # Cannot be given a value by end user, the Ansible Role populates the variable
-# After sap_vm_provision has executed successfully, these variables can easily be used to populate other Ansible Role variables (e.g. sap_swpm_db_host)
+# After sap_vm_provision has executed successfully,
+# these variables can easily be used to populate other Ansible Role variables (e.g. sap_swpm_db_host)
 ####
 
 # sap_vm_provision_dynamic_inventory_anydb_primary_hostname: "{{ None }}"
@@ -247,6 +249,14 @@ sap_vm_provision_ha_vip_nwas_abap_ers: "" # e.g. 192.168.2.11/32
 # sap_vm_provision_ha_vip_nwas_abap_pas: # not implemented
 # sap_vm_provision_ha_vip_nwas_abap_aas: # not implemented
 
+# Virtual Hostname to add to /etc/hosts for corresponding host type.
+# # Defaults to variable in comments or first hostname in group and suffix '-ha'.
+# Example: 'h01hana0' host in 'hana_primary' results in 'h01hana0-ha'.
+# sap_vm_provision_ha_hostname_hana_primary: "{{ sap_swpm_db_host }}"
+# sap_vm_provision_ha_hostname_anydb_primary: "{{ sap_swpm_db_host }}"
+# sap_vm_provision_ha_hostname_nwas_abap_ascs: "{{ sap_swpm_ascs_instance_hostname }}"
+# sap_vm_provision_ha_hostname_nwas_abap_ers: "{{ sap_swpm_ers_instance_hostname }}"
+
 
 ####
 # Infrastructure Platform - Hypervisor - Credentials and Configuration
@@ -315,6 +325,11 @@ sap_vm_provision_msazure_vm_host_os_image: ""
 
 # IBM PowerVM Virtual Machine (see IBM PowerVC Web GUI for list)
 sap_vm_provision_ibmpowervm_vm_host_os_image: ""
+
+
+### SSH Arguments
+sap_vm_provision_ssh_host_ssh_ars: "-o ConnectTimeout=180 -o ControlMaster=auto -o ControlPersist=3600s -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ForwardX11=no"
+sap_vm_provision_ssh_bastion_ssh_ars: "-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
 
 
 # OS Images - AWS AMI

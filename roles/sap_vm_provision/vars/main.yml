@@ -1,0 +1,28 @@
+# SPDX-License-Identifier: Apache-2.0
+---
+# Internal role variables
+
+# Host dictionary name for simplified lookups.
+__sap_vm_provision_host_spec_dict_name:
+  "{{ 'sap_vm_provision_' ~ sap_vm_provision_iac_platform ~ '_host_specifications_dictionary' }}"
+
+__sap_vm_provision_host_image_dict_name:
+  "{{ 'sap_vm_provision_' ~ sap_vm_provision_iac_platform ~ '_host_os_image_dictionary' }}"
+
+# Plan dictionary for simplified lookups.
+__sap_vm_provision_host_dict_plan:
+  "{{ lookup('ansible.builtin.vars', __sap_vm_provision_host_spec_dict_name)[sap_vm_provision_host_specification_plan] }}"
+
+# Hostname specification dictionary for simplified lookups, with optional Scaleout.
+__sap_vm_provision_host_dict_spec:
+  "{{ __sap_vm_provision_host_dict_plan[__sap_vm_provision_fact_scaleout_origin_hostname | d(inventory_hostname)] }}"
+
+# Path to platform task file.
+__sap_vm_provision_task_file:
+  "{{ 'platform_' + sap_vm_provision_iac_type }}/{{ sap_vm_provision_iac_platform }}"
+
+# Letters for calculating storage volume device names. max 25 volumes.
+__sap_vm_provision_storage_vol_letters: "bcdefghijklmnopqrstuvwxyz"
+
+# List of provisioning results for all hosts combined into one list.
+__sap_vm_provision_provisioned_hosts: []

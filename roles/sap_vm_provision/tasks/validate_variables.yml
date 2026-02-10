@@ -1,4 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
 ---
+
 #### Validate required variables ####
 # This file servers starting point for validation of all required variables. Validation order:
 # 1. Mandatory shared variables.
@@ -24,25 +26,24 @@
     that:
       - sap_vm_provision_iac_platform is defined
       - sap_vm_provision_iac_platform is string
-      - sap_vm_provision_iac_platform in ['aws_ec2_vs', 'gcp_ce_vm', 'msazure_vm', 'ibmcloud_powervs', 'ibmcloud_vs', 'ibmpowervm_vm', 'kubevirt_vm', 'ovirt_vm', 'vmware_vm']
+      - sap_vm_provision_iac_platform in
+        ['aws_ec2_vs', 'gcp_ce_vm', 'msazure_vm', 'ibmcloud_powervs', 'ibmcloud_vs', 'ibmpowervm_vm', 'kubevirt_vm', 'ovirt_vm', 'vmware_vm']
     fail_msg: |
       The variable 'sap_vm_provision_iac_platform' is undefined or invalid.
       Available options: aws_ec2_vs, gcp_ce_vm, msazure_vm, ibmcloud_powervs, ibmcloud_vs, ibmpowervm_vm, kubevirt_vm, ovirt_vm, vmware_vm
 
 
 - name: Block to validate host_specifications_dictionary
-  vars:
-    __sap_vm_provision_host_dictionary_name: "{{ 'sap_vm_provision_' ~ sap_vm_provision_iac_platform ~ '_host_specifications_dictionary' }}"
   # no_log: true
   block:
-    - name: Assert that the variable {{ __sap_vm_provision_host_dictionary_name }} is defined and valid
+    - name: Assert that the variable {{ __sap_vm_provision_host_spec_dict_name }} is defined and valid
       ansible.builtin.assert:
         that:
-          - lookup('ansible.builtin.vars', __sap_vm_provision_host_dictionary_name) is defined
-          - lookup('ansible.builtin.vars', __sap_vm_provision_host_dictionary_name) is mapping
-          - lookup('ansible.builtin.vars', __sap_vm_provision_host_dictionary_name) | length > 0
+          - lookup('ansible.builtin.vars', __sap_vm_provision_host_spec_dict_name) is defined
+          - lookup('ansible.builtin.vars', __sap_vm_provision_host_spec_dict_name) is mapping
+          - lookup('ansible.builtin.vars', __sap_vm_provision_host_spec_dict_name) | length > 0
         fail_msg: |
-          The variable {{ __sap_vm_provision_host_dictionary_name }} is undefined or invalid.
+          The variable {{ __sap_vm_provision_host_spec_dict_name }} is undefined or invalid.
           It must be a non-empty dictionary.
 
     - name: Assert that the variable 'sap_vm_provision_host_specification_plan' is defined and valid
@@ -58,16 +59,43 @@
     - name: Assert that the value of variable 'sap_vm_provision_host_specification_plan' is present in a dictionary
       ansible.builtin.assert:
         that:
-          - lookup('ansible.builtin.vars', __sap_vm_provision_host_dictionary_name)[sap_vm_provision_host_specification_plan] is defined
-          - lookup('ansible.builtin.vars', __sap_vm_provision_host_dictionary_name)[sap_vm_provision_host_specification_plan] is mapping
-          - lookup('ansible.builtin.vars', __sap_vm_provision_host_dictionary_name)[sap_vm_provision_host_specification_plan] | length > 0
+          - lookup('ansible.builtin.vars', __sap_vm_provision_host_spec_dict_name)[sap_vm_provision_host_specification_plan] is defined
+          - lookup('ansible.builtin.vars', __sap_vm_provision_host_spec_dict_name)[sap_vm_provision_host_specification_plan] is mapping
+          - lookup('ansible.builtin.vars', __sap_vm_provision_host_spec_dict_name)[sap_vm_provision_host_specification_plan] | length > 0
         fail_msg: |
-          The value of variable 'sap_vm_provision_host_specification_plan' is not present in a dictionary {{ __sap_vm_provision_host_dictionary_name }}.
+          The value of variable 'sap_vm_provision_host_specification_plan' is not present in a dictionary {{ __sap_vm_provision_host_spec_dict_name }}.
 
-    - name: Set fact with content of the key 'sap_vm_provision_host_specification_plan'
-      ansible.builtin.set_fact:
-        __sap_vm_provision_host_dictionary_name:
-          "{{ lookup('ansible.builtin.vars', __sap_vm_provision_host_dictionary_name)[sap_vm_provision_host_specification_plan] }}"
+
+- name: Assert that the length of short hostname is not longer than 13 characters
+  ansible.builtin.assert:
+    that: (inventory_hostname | length) <= 13
+    fail_msg: |
+      The length of the hostname is {{ inventory_hostname | length }} but must be less or equal to 13 characters!"
+      See SAP Note 611361 for more details.
+
+# SAP HANA Scale-Out variables
+- name: Assert that the value of variable 'sap_vm_provision_calculate_sap_hana_scaleout_active_coordinator' is integer
+  ansible.builtin.assert:
+    that: sap_vm_provision_calculate_sap_hana_scaleout_active_coordinator is integer
+    fail_msg: |
+      The variable 'sap_vm_provision_calculate_sap_hana_scaleout_active_coordinator' is not a Integer.
+  when: sap_vm_provision_calculate_sap_hana_scaleout_active_coordinator is defined
+
+- name: Assert that the value of variable 'sap_vm_provision_calculate_sap_hana_scaleout_active_worker' is integer
+  ansible.builtin.assert:
+    that: sap_vm_provision_calculate_sap_hana_scaleout_active_worker is integer
+    fail_msg: |
+      The variable 'sap_vm_provision_calculate_sap_hana_scaleout_active_worker' is not a Integer.
+  when: sap_vm_provision_calculate_sap_hana_scaleout_active_worker is defined
+
+- name: Assert that the value of variable 'sap_vm_provision_calculate_sap_hana_scaleout_standby' is integer
+  ansible.builtin.assert:
+    that:
+      - sap_vm_provision_calculate_sap_hana_scaleout_standby is integer
+      - sap_vm_provision_calculate_sap_hana_scaleout_standby in [0, 1]
+    fail_msg: |
+      The variable 'sap_vm_provision_calculate_sap_hana_scaleout_standby' is not a Integer or values other than 0 or 1.
+  when: sap_vm_provision_calculate_sap_hana_scaleout_standby is defined
 
 
 # Validation specific to 'sap_vm_provision_iac_type'

@@ -10,12 +10,12 @@
     - name: Set var for non-interactive login shell on RHEL
       ansible.builtin.set_fact:
         non_interactive_login_shell_config_file: /root/.bashrc
-      when: ansible_os_family == "RedHat"
+      when: ansible_facts['os_family'] == "RedHat"
 
     - name: Set var for non-interactive login shell on SLES
       ansible.builtin.set_fact:
         non_interactive_login_shell_config_file: /root/bash.bashrc
-      when: ansible_os_family == "Suse"
+      when: ansible_facts['os_family'] == "Suse"
 
     # Linux Pacemaker uses 'https_proxy' or 'HTTPS_PROXY' for proxy, and 'no_proxy' or 'NO_PROXY' for comma-separated exclusions list.
     # The insecure HTTP env var 'http_proxy' and 'HTTP_PROXY' are not used.
@@ -32,7 +32,7 @@
 
     - name: Web Forward Proxy - Append all short hostnames to string for no_proxy exclusions list
       ansible.builtin.set_fact:
-        sap_vm_provision_proxy_web_forward_exclusions_dynamic: "{{ groups_merged_list | join(',') }},{{ groups_merged_list | map('extract', hostvars, ['ansible_default_ipv4', 'address']) | join(',') }}"
+        sap_vm_provision_proxy_web_forward_exclusions_dynamic: "{{ __sap_vm_provision_fact_merged_hosts_list | join(',') }},{{ __sap_vm_provision_fact_merged_hosts_list | map('extract', hostvars, ['ansible_default_ipv4', 'address']) | join(',') }}"
 
     - name: Web Forward Proxy - Ensure non-interactive login shell config file exists
       ansible.builtin.copy:
@@ -74,6 +74,6 @@
         block: |
           proxy=http://{{ sap_vm_provision_proxy_web_forward_proxy_ip }}
       when:
-        - ansible_os_family == "RedHat"
+        - ansible_facts['os_family'] == "RedHat"
         - not __sap_vm_provision_task_ibmcloud_pi_workspace_capabilities.resource.pi_workspace_capabilities['power-edge-router']
         - __sap_vm_provision_task_proxy_platform_exclude is undefined

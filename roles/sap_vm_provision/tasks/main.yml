@@ -1,35 +1,31 @@
+# SPDX-License-Identifier: Apache-2.0
 ---
+
+# General guidance:
+# Using environment, no_log is ineffective and log will show 'EXEC /bin/sh -c 'ENV_VAR=value python3 /AnsiballZ_ansible_module_name.py && sleep 0'
+# Therefore do not use environment for secrets, use only for non-sensitive values as this will reduce Ansible Task parameters.
+
 # Block is required for 'delegate_facts'.
 - name: Main Block
   delegate_to: "{{ sap_vm_provision_execution_host }}"
   delegate_facts: false # keep facts with the original play hosts, not the delegated host
   block:
 
-    - name: Block with simplified task file variable
-      vars:
-        __sap_vm_provision_task_file: "{{ 'platform_' + sap_vm_provision_iac_type }}/{{ sap_vm_provision_iac_platform }}"
-      block:
+    - name: SAP VM Provision - Validate required variables for {{ sap_vm_provision_iac_type ~ ' on ' ~ sap_vm_provision_iac_platform }}
+      ansible.builtin.include_tasks:
+        file: validate_variables.yml
 
-        #### Validate required variables ####
-        - name: Validate required variables for platform {{ sap_vm_provision_iac_platform }} using {{ sap_vm_provision_iac_type }}
-          ansible.builtin.include_tasks:
-            file: validate_variables.yml
+    - name: SAP VM Provision - Provision hosts for {{ sap_vm_provision_iac_type ~ ' on ' ~ sap_vm_provision_iac_platform }}
+      ansible.builtin.include_tasks:
+        file: "{{ __sap_vm_provision_task_file }}/execute_main.yml"
+      when:
+        - sap_vm_provision_iac_post_deployment is not defined or not sap_vm_provision_iac_post_deployment
 
-
-        #### Provision host/s for Deployment of SAP Software (as part of an SAP Software Solution Scenario e.g. SAP S/4HANA Distributed HA) ####
-        - name: Provision hosts to platform {{ sap_vm_provision_iac_platform }} using {{ sap_vm_provision_iac_type }}
-          ansible.builtin.include_tasks:
-            file: "{{ __sap_vm_provision_task_file }}/execute_main.yml"
-          when:
-            - sap_vm_provision_iac_post_deployment is not defined or not sap_vm_provision_iac_post_deployment
-
-
-        #### Post Deployment of SAP - tasks for GCP, IBM Cloud, MS Azure ####
-        - name: Execute Post Deployment tasks on platform {{ sap_vm_provision_iac_platform }} using {{ sap_vm_provision_iac_type }}
-          ansible.builtin.include_tasks:
-            file: "{{ 'platform_' + sap_vm_provision_iac_type }}/{{ sap_vm_provision_iac_platform }}/post_deployment_execute.yml"
-          when:
-            - sap_vm_provision_iac_post_deployment is defined
-            - sap_vm_provision_iac_post_deployment
-            # Execute only for files that are present
-            - (role_path ~ '/tasks/' ~ __sap_vm_provision_task_file ~ '/post_deployment_execute.yml') is file
+    - name: SAP VM Provision - Post Deployment tasks for {{ sap_vm_provision_iac_type ~ ' on ' ~ sap_vm_provision_iac_platform }}
+      ansible.builtin.include_tasks:
+        file: "{{ __sap_vm_provision_task_file }}/post_deployment_execute.yml"
+      when:
+        - sap_vm_provision_iac_post_deployment is defined
+        - sap_vm_provision_iac_post_deployment
+        # Execute only for files that are present
+        - (role_path ~ '/tasks/' ~ __sap_vm_provision_task_file ~ '/post_deployment_execute.yml') is file

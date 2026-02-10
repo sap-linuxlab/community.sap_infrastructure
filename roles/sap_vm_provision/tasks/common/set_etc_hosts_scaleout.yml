@@ -1,62 +1,37 @@
+# SPDX-License-Identifier: Apache-2.0
 ---
 
-# Ensure SAP AnyDB, SAP HANA or SAP NetWeaver hostname is not localhost in /etc/hosts. See SAP Note 1054467 - Local host name refers to loopback address
+# ansible.builtin.setup is already gathered in 'set_etc_hosts' so it is not needed again.
 
-- name: Ansible Play for controlling execution to an Infrastructure Platform when SAP HANA Scale-Out is used
+- name: SAP VM Provision - Hosts - Update /etc/hosts file for SAP HANA Scale-Out Active Coordinator
+  ansible.builtin.lineinfile:
+    dest: /etc/hosts
+    line: "{{ hostvars[__coordinator]['ansible_host'] }}\t{{
+          hostvars[__coordinator]['ansible_facts']['fqdn'] }}\t{{
+          hostvars[__coordinator]['inventory_hostname_short'] }}
+          # SAP HANA Scale-Out Coordinator"
+    state: present
+  vars:
+    __coordinator: "{{ groups[sap_vm_provision_group_hana_primary] | first }}"
+  when: not inventory_hostname_short == hostvars[__coordinator]['inventory_hostname_short']
+
+- name: SAP VM Provision - Hosts - Update /etc/hosts file for SAP HANA Scale-Out Active Workers
+  ansible.builtin.lineinfile:
+    dest: /etc/hosts
+    line: "{{ hostvars[host_item]['ansible_host'] }}\t{{
+          hostvars[host_item]['ansible_facts']['fqdn'] }}\t{{
+          hostvars[host_item]['inventory_hostname_short'] }}
+          # SAP HANA Scale-Out {{ __role }}"
+    state: present
+  # Loop all except first one, which is assumed to be Master
+  loop: "{{ groups[sap_vm_provision_group_hana_primary][1:] }}"
+  loop_control:
+    label: "{{ inventory_hostname_short }}"
+    loop_var: host_item
+  vars:
+    __last: "{{ groups[sap_vm_provision_group_hana_primary] | last }}"
+    __role: "{{ 'Standby'
+      if sap_vm_provision_calculate_sap_hana_scaleout_standby | d(0) == 1 and host_item == hostvars[__last]['inventory_hostname_short']
+      else 'Worker' }}"
   when:
-    - (groups[sap_vm_provision_group_hana_primary] is defined and (groups[sap_vm_provision_group_hana_primary] | length>0)) and (sap_vm_provision_calculate_sap_hana_scaleout_active_coordinator is defined or sap_vm_provision_calculate_sap_hana_scaleout_active_worker is defined or sap_vm_provision_calculate_sap_hana_scaleout_standby is defined)
-  block:
-
-    # Required to collect the remote host's facts for further processing
-    # in the following steps and activate Ansible Special Variables
-    # such as ansible_domain and ansible_fqdn
-    - name: Gather host facts
-      ansible.builtin.setup:
-
-
-    - name: Update /etc/hosts file for SAP HANA Scale-Out Active Parent
-      ansible.builtin.lineinfile:
-        dest: /etc/hosts
-        line: "{{ item }}"
-        state: present
-      loop:
-        - "# SAP HANA scale-out parent\n{{ hostvars[(groups[sap_vm_provision_group_hana_primary] | first)]['ansible_host'] }}\t{{ hostvars[(groups[sap_vm_provision_group_hana_primary] | first)]['ansible_fqdn'] }}\t{{ hostvars[(groups[sap_vm_provision_group_hana_primary] | first)]['inventory_hostname_short'] }}"
-      loop_control:
-        label: "{{ inventory_hostname_short }}"
-      when: not inventory_hostname_short == hostvars[(groups[sap_vm_provision_group_hana_primary] | first)]['inventory_hostname_short']
-
-    - name: Update /etc/hosts file for SAP HANA Scale-Out Active Workers (no Standby)
-      ansible.builtin.lineinfile:
-        dest: /etc/hosts
-        line: "{{ item }}"
-        state: present
-      loop:
-        - "# SAP HANA scale-out workers\n{% for host in (groups[sap_vm_provision_group_hana_primary] | reject('regex', '0$') | list) %}{% if (host != inventory_hostname_short) %}{{ hostvars[host]['ansible_host'] }}\t{{ hostvars[host]['ansible_fqdn'] }}\t{{ hostvars[host]['inventory_hostname_short'] }}\n{% endif %}{% endfor %}"
-      loop_control:
-        label: "{{ inventory_hostname_short }}"
-      when:
-        - (sap_vm_provision_calculate_sap_hana_scaleout_standby == 0) or (not sap_vm_provision_calculate_sap_hana_scaleout_standby is defined)
-
-    - name: Update /etc/hosts file for SAP HANA Scale-Out Active Workers (with Standby)
-      ansible.builtin.lineinfile:
-        dest: /etc/hosts
-        line: "{{ item }}"
-        state: present
-      loop:
-        - "# SAP HANA scale-out workers\n{% for host in (groups[sap_vm_provision_group_hana_primary] | reject('regex', '0$') | list)[:-1] %}{% if (host != inventory_hostname_short) %}{{ hostvars[host]['ansible_host'] }}\t{{ hostvars[host]['ansible_fqdn'] }}\t{{ hostvars[host]['inventory_hostname_short'] }}\n{% endif %}{% endfor %}"
-      loop_control:
-        label: "{{ inventory_hostname_short }}"
-      when: sap_vm_provision_calculate_sap_hana_scaleout_standby > 0
-
-    - name: Update /etc/hosts file for SAP HANA Scale-Out Standby
-      ansible.builtin.lineinfile:
-        dest: /etc/hosts
-        line: "{{ item }}"
-        state: present
-      loop:
-        - "# SAP HANA scale-out standby\n{{ hostvars[(groups[sap_vm_provision_group_hana_primary][-1])]['ansible_host'] }}\t{{ hostvars[(groups[sap_vm_provision_group_hana_primary][-1])]['ansible_fqdn'] }}\t{{ hostvars[(groups[sap_vm_provision_group_hana_primary][-1])]['inventory_hostname_short'] }}"
-      loop_control:
-        label: "{{ inventory_hostname_short }}"
-      when:
-        - sap_vm_provision_calculate_sap_hana_scaleout_standby > 0
-        - not inventory_hostname_short == hostvars[(groups[sap_vm_provision_group_hana_primary] | last)]['inventory_hostname_short']
+    - not inventory_hostname_short == hostvars[host_item]['inventory_hostname_short']
