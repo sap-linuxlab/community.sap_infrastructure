@@ -1,97 +1,63 @@
+# SPDX-License-Identifier: Apache-2.0
 ---
 
-# Ensure SAP AnyDB, SAP HANA or SAP NetWeaver hostname is not localhost in /etc/hosts. See SAP Note 1054467 - Local host name refers to loopback address
+# Ensure SAP AnyDB, SAP HANA or SAP NetWeaver hostname is not localhost in /etc/hosts.
+# See SAP Note 1054467 - Local host name refers to loopback address
 
-- name: Ansible Play for updating /etc/hosts file before SAP software installations
-  block:
+# First remove entries of the host
+# The separate removal task allows cleanup of multiple lines
+- name: SAP VM Provision - Hosts - Clean old host information from /etc/hosts
+  ansible.builtin.lineinfile:
+    path: /etc/hosts
+    regexp: '^({{ ansible_host }}\s+)'
+    state: absent
 
-    # First remove entries of the host
-    # The separate removal task allows cleanup of multiple lines
-    - name: Clean old host information from /etc/hosts
-      ansible.builtin.lineinfile:
-        path: /etc/hosts
-        regexp: '^({{ ansible_host }}\s+)'
-        state: absent
+- name: SAP VM Provision - Hosts - Add new entry to /etc/hosts and use /etc/hosts to set domain name of host
+  ansible.builtin.lineinfile:
+    path: /etc/hosts
+    line: "{{ ansible_host }}\t{{ inventory_hostname_short }}.{{ sap_vm_provision_dns_root_domain }}\t{{ inventory_hostname_short }}"
 
-    - name: Add new entry to /etc/hosts and use /etc/hosts to set domain name of host
-      ansible.builtin.lineinfile:
-        path: /etc/hosts
-        line: "{{ ansible_host }}\t{{ inventory_hostname_short }}.{{ sap_vm_provision_dns_root_domain }}\t{{ inventory_hostname_short }}"
-
-    - name: Add new entry to /etc/hosts and use /etc/hosts to set domain name of host - IBM Power
-      ansible.builtin.lineinfile:
-        path: /etc/hosts
-        line: "{{ ansible_default_ipv4.address }}\t{{ inventory_hostname_short }}.{{ sap_vm_provision_dns_root_domain }}\t{{ inventory_hostname_short }}"
-      when: sap_vm_provision_iac_platform == "ibmpowervm_vm" or sap_vm_provision_iac_platform == "ovirt"
-
-    # Required to collect the remote host's facts for further processing
-    # in the following steps and activate Ansible Special Variables
-    # such as ansible_domain and ansible_fqdn
-    - name: Gather host facts
-      ansible.builtin.setup:
+- name: SAP VM Provision - Hosts - Add new entry to /etc/hosts and use /etc/hosts to set domain name of host - IBM Power
+  ansible.builtin.lineinfile:
+    path: /etc/hosts
+    line: "{{ ansible_default_ipv4.address }}\t{{ inventory_hostname_short }}.{{ sap_vm_provision_dns_root_domain }}\t{{ inventory_hostname_short }}"
+  when:
+    - sap_vm_provision_iac_platform == "ibmpowervm_vm"
+      or sap_vm_provision_iac_platform == "ovirt"
 
 
-    - name: Update /etc/hosts file when single sandbox host (hana_primary)
-      ansible.builtin.lineinfile:
-        dest: /etc/hosts
-        line: "{{ sap_vm_provision_dynamic_inventory_hana_primary_ip }}\t{{ sap_vm_provision_dynamic_inventory_hana_primary_hostname }}.{{ sap_vm_provision_dns_root_domain }}\t{{ sap_vm_provision_dynamic_inventory_hana_primary_hostname }}"
-        state: present
-      when:
-        - groups[sap_vm_provision_group_hana_primary] is defined and inventory_hostname_short in groups[sap_vm_provision_group_hana_primary]
-        - not (ansible_play_hosts_all | length) > 1
+# Required to collect the remote host's facts for further processing
+# in the following steps and activate Ansible Special Variables
+# such as ansible_domain and ansible_fqdn
+- name: SAP VM Provision - Hosts - Gather host facts
+  ansible.builtin.setup:
 
-    - name: Update /etc/hosts file when single sandbox host (nwas_pas)
-      ansible.builtin.lineinfile:
-        dest: /etc/hosts
-        line: "{{ sap_vm_provision_dynamic_inventory_nw_pas_ip }}\t{{ sap_vm_provision_dynamic_inventory_nw_pas_hostname }}.{{ sap_vm_provision_dns_root_domain }}\t{{ sap_vm_provision_dynamic_inventory_nw_pas_hostname }}"
-      when:
-        - groups[sap_vm_provision_group_nwas_pas] is defined and inventory_hostname_short in groups[sap_vm_provision_group_nwas_pas]
-        - not (ansible_play_hosts_all | length) > 1
+# Dynamic loading of /etc/hosts using conditional loop.
+# This is used in order to shorten line length because we cannot use '>-'
+# as it adds empty space, invaliding TAB character '\t'.
+- name: SAP VM Provision - Hosts - Update /etc/hosts file
+  ansible.builtin.lineinfile:
+    dest: /etc/hosts
+    line: "{{ hosts_item[0] }}\t{{ hosts_item[1] }}.{{ sap_vm_provision_dns_root_domain }}\t{{ hosts_item[1] }}"
+    state: present
+  loop:
+    # Since scaleout hosts are in same group, we have to skip it as it has separate file
+    - "{{ [sap_vm_provision_dynamic_inventory_hana_primary_ip, sap_vm_provision_dynamic_inventory_hana_primary_hostname]
+        if __sap_vm_provision_fact_is_hana_primary and not __sap_vm_provision_fact_is_hana_scaleout else '' }}"
 
+    - "{{ [sap_vm_provision_dynamic_inventory_anydb_primary_ip, sap_vm_provision_dynamic_inventory_anydb_primary_hostname]
+        if __sap_vm_provision_fact_is_anydb_primary else '' }}"
 
-    - name: Update /etc/hosts file for SAP HANA
-      ansible.builtin.lineinfile:
-        dest: /etc/hosts
-        line: "{{ sap_vm_provision_dynamic_inventory_hana_primary_ip }}\t{{ sap_vm_provision_dynamic_inventory_hana_primary_hostname }}.{{ sap_vm_provision_dns_root_domain }}\t{{ sap_vm_provision_dynamic_inventory_hana_primary_hostname }}"
-        state: present
-      when:
-        - (groups[sap_vm_provision_group_hana_primary] is defined and (groups[sap_vm_provision_group_hana_primary] | length>0))
-        - (ansible_play_hosts_all | length) > 1
+    - "{{ [sap_vm_provision_dynamic_inventory_nw_ascs_ip, sap_vm_provision_dynamic_inventory_nw_ascs_hostname]
+        if __sap_vm_provision_fact_is_nwas_ascs and (ansible_play_hosts_all | length) > 1 else '' }}"
 
+    - "{{ [sap_vm_provision_dynamic_inventory_nw_pas_ip, sap_vm_provision_dynamic_inventory_nw_pas_hostname]
+        if __sap_vm_provision_fact_is_nwas_pas else '' }}"
 
-    - name: Update /etc/hosts file for SAP AnyDB
-      ansible.builtin.lineinfile:
-        dest: /etc/hosts
-        line: "{{ sap_vm_provision_dynamic_inventory_anydb_primary_ip }}\t{{ sap_vm_provision_dynamic_inventory_anydb_primary_hostname }}.{{ sap_vm_provision_dns_root_domain }}\t{{ sap_vm_provision_dynamic_inventory_anydb_primary_hostname }}"
-        state: present
-      when:
-        - (groups[sap_vm_provision_group_anydb_primary] is defined and (groups[sap_vm_provision_group_anydb_primary] | length>0))
-        - (ansible_play_hosts_all | length) > 1
+    - "{{ [sap_vm_provision_dynamic_inventory_nw_aas_ip, sap_vm_provision_dynamic_inventory_nw_aas_hostname]
+        if __sap_vm_provision_fact_is_nwas_aas and (ansible_play_hosts_all | length) > 1 else '' }}"
 
-
-    - name: Update /etc/hosts file for SAP NetWeaver ASCS
-      ansible.builtin.lineinfile:
-        dest: /etc/hosts
-        line: "{{ sap_vm_provision_dynamic_inventory_nw_ascs_ip }}\t{{ sap_vm_provision_dynamic_inventory_nw_ascs_hostname }}.{{ sap_vm_provision_dns_root_domain }}\t{{ sap_vm_provision_dynamic_inventory_nw_ascs_hostname }}"
-        state: present
-      when:
-        - (groups[sap_vm_provision_group_nwas_ascs] is defined and (groups[sap_vm_provision_group_nwas_ascs] | length>0))
-        - (ansible_play_hosts_all | length) > 1
-
-    - name: Update /etc/hosts file for SAP NetWeaver PAS
-      ansible.builtin.lineinfile:
-        dest: /etc/hosts
-        line: "{{ sap_vm_provision_dynamic_inventory_nw_pas_ip }}\t{{ sap_vm_provision_dynamic_inventory_nw_pas_hostname }}.{{ sap_vm_provision_dns_root_domain }}\t{{ sap_vm_provision_dynamic_inventory_nw_pas_hostname }}"
-        state: present
-      when:
-        - (groups[sap_vm_provision_group_nwas_pas] is defined and (groups[sap_vm_provision_group_nwas_pas] | length>0))
-        - (ansible_play_hosts_all | length) > 1
-
-    - name: Update /etc/hosts file for SAP NetWeaver AAS
-      ansible.builtin.lineinfile:
-        dest: /etc/hosts
-        line: "{{ sap_vm_provision_dynamic_inventory_nw_aas_ip }}\t{{ sap_vm_provision_dynamic_inventory_nw_aas_hostname }}.{{ sap_vm_provision_dns_root_domain }}\t{{ sap_vm_provision_dynamic_inventory_nw_aas_hostname }}"
-        state: present
-      when:
-        - (groups[sap_vm_provision_group_nwas_aas] is defined and (groups[sap_vm_provision_group_nwas_aas] | length>0))
-        - (ansible_play_hosts_all | length) > 1
+  loop_control:
+    loop_var: hosts_item
+    label: "{{ hosts_item[1] | d('N/A') }}"
+  when: hosts_item != ''

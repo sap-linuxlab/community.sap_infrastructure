@@ -1,0 +1,41 @@
+# SPDX-License-Identifier: Apache-2.0
+---
+
+# Prepare flags to identify host group and role for simplified conditions in further tasks.
+- name: SAP VM Provision - Set facts for all hosts - Identify hosts
+  ansible.builtin.set_fact:
+    __sap_vm_provision_fact_is_hana_primary:
+      "{{ true if inventory_hostname_short in groups[sap_vm_provision_group_hana_primary] | d([]) else false }}"
+    __sap_vm_provision_fact_is_hana_secondary:
+      "{{ true if inventory_hostname_short in groups[sap_vm_provision_group_hana_secondary] | d([]) else false }}"
+
+    __sap_vm_provision_fact_is_nwas_ascs:
+      "{{ true if inventory_hostname_short in groups[sap_vm_provision_group_nwas_ascs] | d([]) else false }}"
+    __sap_vm_provision_fact_is_nwas_scs:
+      "{{ true if inventory_hostname_short in groups[sap_vm_provision_group_nwas_scs] | d([]) else false }}"
+    __sap_vm_provision_fact_is_nwas_ers:
+      "{{ true if inventory_hostname_short in groups[sap_vm_provision_group_nwas_ers] | d([]) else false }}"
+    __sap_vm_provision_fact_is_nwas_pas:
+      "{{ true if inventory_hostname_short in groups[sap_vm_provision_group_nwas_pas] | d([]) else false }}"
+    __sap_vm_provision_fact_is_nwas_aas:
+      "{{ true if inventory_hostname_short in groups[sap_vm_provision_group_nwas_aas] | d([]) else false }}"
+
+    __sap_vm_provision_fact_is_anydb_primary:
+      "{{ true if inventory_hostname_short in groups[sap_vm_provision_group_anydb_primary] | d([]) else false }}"
+    __sap_vm_provision_fact_is_anydb_secondary:
+      "{{ true if inventory_hostname_short in groups[sap_vm_provision_group_anydb_secondary] | d([]) else false }}"
+
+    __sap_vm_provision_fact_is_ha_hana:
+      "{{ true if groups[sap_vm_provision_group_hana_secondary] | d([]) | length > 0 else false }}"
+    __sap_vm_provision_fact_is_ha_anydb:
+      "{{ true if groups[sap_vm_provision_group_anydb_secondary] | d([]) | length > 0 else false }}"
+    __sap_vm_provision_fact_is_ha_nwas_ers:
+      "{{ true if groups[sap_vm_provision_group_nwas_ers] | d([]) | length > 0 else false }}"
+
+    __sap_vm_provision_fact_is_hana_scaleout:
+      "{{ true
+        if groups[sap_vm_provision_group_hana_primary] | d([]) | length > 0
+          and (sap_vm_provision_calculate_sap_hana_scaleout_active_coordinator is defined
+            or sap_vm_provision_calculate_sap_hana_scaleout_active_worker is defined
+            or sap_vm_provision_calculate_sap_hana_scaleout_standby is defined)
+        else false }}"

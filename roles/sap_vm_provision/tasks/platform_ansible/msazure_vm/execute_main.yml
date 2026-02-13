@@ -1,11 +1,11 @@
+# SPDX-License-Identifier: Apache-2.0
 ---
 
 - name: Ansible Task block for looped provisioning of MS Azure VMs
   any_errors_fatal: true
-  # Using environment, no_log is ineffective and log will show 'EXEC /bin/sh -c 'ENV_VAR=value python3 /AnsiballZ_ansible_module_name.py && sleep 0'
-  # Therefore do not use environment for secrets, use only for non-sensitive values as this will reduce Ansible Task parameters.
   environment:
     ANSIBLE_AZURE_AUTH_SOURCE: "auto" # Set to auto to use module parameters
+    # Sensitive variables are used by module parameters, not environment variables.
     # AZURE_SUBSCRIPTION_ID: "{{ sap_vm_provision_msazure_subscription_id }}"
     # AZURE_TENANT: "{{ sap_vm_provision_msazure_tenant_id }}"
     # AZURE_CLIENT_ID: "{{ sap_vm_provision_msazure_app_client_id }}"
@@ -15,155 +15,172 @@
     # Ansible Module name parameter, requires resource_group parameter
     # We cannot assume Resource Group if the SSH Public Key is managed by Administrators
     # Therefore use without any parameter to retrieve list of all SSH Public Keys and filter in Ansible
-    - name: Get all SSH Public Keys in MS Azure
-      no_log: "{{ __sap_vm_provision_no_log }}"
-      register: __sap_vm_provision_task_msazure_key_pair_name_ssh_host_public_keys
+    - name: SAP VM Provision - Azure - Get all SSH Public Keys in MS Azure
       azure.azcollection.azure_rm_sshpublickey_info:
         # Azure credentials
         subscription_id: "{{ sap_vm_provision_msazure_subscription_id }}"
         tenant: "{{ sap_vm_provision_msazure_tenant_id }}"
         client_id: "{{ sap_vm_provision_msazure_app_client_id }}"
         secret: "{{ sap_vm_provision_msazure_app_client_secret }}"
-
-    - name: Set fact for selected SSH Public Key in MS Azure
-      ansible.builtin.set_fact:
-        __sap_vm_provision_task_msazure_key_pair_name_ssh_host_public_key_value: "{{ (__sap_vm_provision_task_msazure_key_pair_name_ssh_host_public_keys.ssh_keys | selectattr('name', '==', sap_vm_provision_msazure_key_pair_name_ssh_host_public_key))[0].public_key }}"
-
-    - name: Get Private DNS Zone Virtual Network Links
+      register: __sap_vm_provision_register_msazure_key_pair_name_ssh_host_public_keys
       no_log: "{{ __sap_vm_provision_no_log }}"
-      register: __sap_vm_provision_task_msazure_private_dns_virtual_network_links
+
+    - name: SAP VM Provision - Azure - Set fact for selected SSH Public Key in MS Azure
+      ansible.builtin.set_fact:
+        __sap_vm_provision_register_msazure_key_pair_name_ssh_host_public_key_value:
+          "{{ (__sap_vm_provision_register_msazure_key_pair_name_ssh_host_public_keys.ssh_keys
+            | selectattr('name', '==', sap_vm_provision_msazure_key_pair_name_ssh_host_public_key))[0].public_key }}"
+
+    - name: SAP VM Provision - Azure - Get Private DNS Zone Virtual Network Links
       azure.azcollection.azure_rm_privatednszonelink_info:
-        # DNS may exist in separate Resource Group. Use empty string var (or default false if undefined) to evaluate to false boolean, and use Python or logic operator
-        resource_group: "{{ (sap_vm_provision_msazure_private_dns_resource_group_name | default(false)) or sap_vm_provision_msazure_resource_group_name }}"
+        # DNS may exist in separate Resource Group.
+        # Use empty string var (or default false if undefined) to evaluate to false boolean,and use Python or logic operator
+        resource_group: "{{ (sap_vm_provision_msazure_private_dns_resource_group_name | d(sap_vm_provision_msazure_resource_group_name)) }}"
         zone_name: "{{ sap_vm_provision_dns_root_domain }}"
-        # Azure credentials
         subscription_id: "{{ sap_vm_provision_msazure_subscription_id }}"
         tenant: "{{ sap_vm_provision_msazure_tenant_id }}"
         client_id: "{{ sap_vm_provision_msazure_app_client_id }}"
         secret: "{{ sap_vm_provision_msazure_app_client_secret }}"
-
-    - name: Set boolean fact for Auto Registration of DNS Records from Private DNS Zone Virtual Network Link
-      ansible.builtin.set_fact:
-        __sap_vm_provision_task_msazure_private_dns_auto_register_records: "{{ (__sap_vm_provision_task_msazure_private_dns_virtual_network_links.virtualnetworklinks | selectattr('virtual_network.id', 'search', sap_vm_provision_msazure_vnet_name))[0].registration_enabled }}"
+      register: __sap_vm_provision_register_msazure_private_dns_virtual_network_links
+      no_log: "{{ __sap_vm_provision_no_log }}"
 
     # Alternative to MS Azure Availability Set, is MS Azure VM Scale Set using azure.azcollection.azure_rm_virtualmachinescaleset
-    - name: Create Placement Sets when High Availability
-      no_log: "{{ __sap_vm_provision_no_log }}"
-      register: __sap_vm_provision_task_msazure_availability_set
+    - name: SAP VM Provision - Azure - Create Placement Sets when High Availability
       run_once: true
       azure.azcollection.azure_rm_availabilityset:
         resource_group: "{{ sap_vm_provision_msazure_resource_group_name }}"
         location: "{{ sap_vm_provision_msazure_location_region }}"
-        name: "{{ sap_vm_provision_aws_placement_resource_name }}-{{ item }}"
+        name: "{{ sap_vm_provision_msazure_placement_resource_name }}-{{ item }}"
         # VM instances (HA Pairs) in the Availability Set spread across up to 3 Fault Domains (different racks)
         platform_fault_domain_count: 3
         sku: Aligned # do not use Classic/ASM
-        # Azure credentials
         subscription_id: "{{ sap_vm_provision_msazure_subscription_id }}"
         tenant: "{{ sap_vm_provision_msazure_tenant_id }}"
         client_id: "{{ sap_vm_provision_msazure_app_client_id }}"
         secret: "{{ sap_vm_provision_msazure_app_client_secret }}"
       loop:
-        - "{{ 'hana'  if sap_vm_provision_group_hana_secondary in lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan] | json_query('*') | map(attribute='sap_host_type') else '' }}"
-        - "{{ 'anydb' if sap_vm_provision_group_anydb_secondary in lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan] | json_query('*') | map(attribute='sap_host_type') else '' }}"
-        - "{{ 'nwas'  if sap_vm_provision_group_nwas_ers in lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan] | json_query('*') | map(attribute='sap_host_type') else '' }}"
+        - "{{ 'hana'
+          if sap_vm_provision_group_hana_secondary in __sap_vm_provision_host_dict_plan | json_query('*') | map(attribute='sap_host_type')
+          else '' }}"
+        - "{{ 'anydb'
+          if sap_vm_provision_group_anydb_secondary in __sap_vm_provision_host_dict_plan | json_query('*') | map(attribute='sap_host_type')
+          else '' }}"
+        - "{{ 'nwas'
+          if sap_vm_provision_group_nwas_ers in __sap_vm_provision_host_dict_plan | json_query('*') | map(attribute='sap_host_type')
+          else '' }}"
+      loop_control:
+        loop_var: placement_item
       when:
-        - sap_vm_provision_aws_placement_resource_name is defined
-        - sap_vm_provision_aws_placement_strategy_spread
-        - not item == ''
+        - sap_vm_provision_msazure_placement_resource_name | d('') | length > 0
+        - sap_vm_provision_msazure_placement_strategy_spread
+        - not placement_item == ''
+      register: __sap_vm_provision_register_msazure_availability_set
+      no_log: "{{ __sap_vm_provision_no_log }}"
 
-    - name: Set fact to hold loop variables from include_tasks
-      ansible.builtin.set_fact:
-        register_provisioned_host_all: []
 
-    - name: Provision hosts to MS Azure
-      register: __sap_vm_provision_task_provision_host_all_run
+    - name: SAP VM Provision - Azure - Provision hosts to MS Azure
       ansible.builtin.include_tasks:
-        file: "{{ 'platform_' + sap_vm_provision_iac_type }}/{{ sap_vm_provision_iac_platform }}/execute_provision.yml"
+        file: "{{ __sap_vm_provision_task_file }}/execute_provision.yml"
         apply:
           environment:
             ANSIBLE_AZURE_AUTH_SOURCE: "auto" # Set to auto to use module parameters
-        #     AZURE_SUBSCRIPTION_ID: "{{ sap_vm_provision_msazure_subscription_id }}"
-        #     AZURE_TENANT: "{{ sap_vm_provision_msazure_tenant_id }}"
-        #     AZURE_CLIENT_ID: "{{ sap_vm_provision_msazure_app_client_id }}"
-        #     AZURE_SECRET: "{{ sap_vm_provision_msazure_app_client_secret }}"
 
-    - name: Set fact when using Bastion SSH Proxy connection from Ansible control node to target node/s
+
+    - name: SAP VM Provision - Azure - Set fact when using Bastion SSH Proxy connection from Ansible control node to target node/s
       ansible.builtin.set_fact:
-        __ssh_args_bastion: -o ProxyCommand='ssh -W %h:%p {{ sap_vm_provision_bastion_user }}@{{ sap_vm_provision_bastion_public_ip }} -p {{ sap_vm_provision_bastion_ssh_port }} -i {{ sap_vm_provision_ssh_bastion_private_key_file_path }} -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null'
+        __sap_vm_provision_fact_ssh_args_bastion: >-
+          -o ProxyCommand='ssh -W %h:%p {{ sap_vm_provision_bastion_user }}@{{ sap_vm_provision_bastion_public_ip }}
+          -p {{ sap_vm_provision_bastion_ssh_port }}
+          -i {{ sap_vm_provision_ssh_bastion_private_key_file_path }}
+          {{ sap_vm_provision_ssh_bastion_ssh_args }}'
       when:
         - sap_vm_provision_bastion_execution
-        - sap_vm_provision_bastion_user is defined or not sap_vm_provision_bastion_user == ''
-        - sap_vm_provision_bastion_public_ip is defined or not sap_vm_provision_bastion_public_ip == ''
-        - sap_vm_provision_bastion_ssh_port is defined or not sap_vm_provision_bastion_ssh_port == ''
-        - sap_vm_provision_ssh_bastion_private_key_file_path is defined or not sap_vm_provision_ssh_bastion_private_key_file_path == ''
+        - sap_vm_provision_bastion_user | d('') != ''
+        - sap_vm_provision_bastion_public_ip | d('') != ''
+        - sap_vm_provision_bastion_ssh_port | d('') != ''
+        - sap_vm_provision_ssh_bastion_private_key_file_path | d('') != ''
 
-    - name: Add hosts provisioned to the Ansible Inventory
-      register: __sap_vm_provision_task_provision_host_all_add
+
+    - name: SAP VM Provision - Azure - Add hosts provisioned to the Ansible Inventory
       ansible.builtin.add_host:
         name: "{{ add_item[0].host_node }}"
         groups: "{{ add_item[0].sap_system_type + '_' if (add_item[0].sap_system_type != '') }}{{ add_item[0].sap_host_type }}"
         ansible_host: "{{ add_item[0].ansible_facts.azure_vm.network_profile.network_interfaces[0].properties.ip_configurations[0].private_ip_address }}"
         ansible_user: "root"
         ansible_ssh_private_key_file: "{{ sap_vm_provision_ssh_host_private_key_file_path }}"
-        ansible_ssh_common_args: -o ConnectTimeout=180 -o ControlMaster=auto -o ControlPersist=3600s -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ForwardX11=no {{ __ssh_args_bastion if __ssh_args_bastion is defined else '' }}
-      loop: "{{ ansible_play_hosts | map('extract', hostvars, 'register_provisioned_host_all')  }}"
+        ansible_ssh_common_args: "{{ sap_vm_provision_ssh_host_ssh_args }} {{ __sap_vm_provision_fact_ssh_args_bastion | d('') }}"
+      loop: "{{ ansible_play_hosts | map('extract', hostvars, '__sap_vm_provision_fact_provisioned_hosts') }}"
       loop_control:
         label: "{{ add_item[0].host_node }}"
         loop_var: add_item
+      register: __sap_vm_provision_register_add_hosts
+      no_log: "{{ __sap_vm_provision_no_log }}"
 
-
-# Cannot override any variables from extravars input, see https://docs.ansible.com/ansible/latest/playbook_guide/playbooks_variables.html#understanding-variable-precedence
-# Ensure no default value exists for any prompted variable before execution of Ansible Playbook
-
-    - name: Set fact to hold all inventory hosts in all groups
+    - name: SAP VM Provision - Azure - Set fact to hold all inventory hosts in all groups
       ansible.builtin.set_fact:
-        groups_merged_list: "{{ [ [ groups[sap_vm_provision_group_hana_primary] | default([]) ] , [ groups[sap_vm_provision_group_hana_secondary] | default([]) ] , [ groups[sap_vm_provision_group_anydb_primary] | default([]) ] , [ groups[sap_vm_provision_group_anydb_secondary] | default([]) ] , [ groups[sap_vm_provision_group_nwas_ascs] | default([]) ] , [ groups[sap_vm_provision_group_nwas_ers] | default([]) ] , [ groups[sap_vm_provision_group_nwas_pas] | default([]) ] , [ groups[sap_vm_provision_group_nwas_aas] | default([]) ] ] | flatten | select() }}"
+        __sap_vm_provision_fact_merged_hosts_list: "{{
+            [[groups[sap_vm_provision_group_hana_primary] | d([])],
+            [groups[sap_vm_provision_group_hana_secondary] | d([])],
+            [groups[sap_vm_provision_group_anydb_primary] | d([])],
+            [groups[sap_vm_provision_group_anydb_secondary] | d([])],
+            [groups[sap_vm_provision_group_nwas_ascs] | d([])],
+            [groups[sap_vm_provision_group_nwas_ers] | d([])],
+            [groups[sap_vm_provision_group_nwas_pas] | d([])],
+            [groups[sap_vm_provision_group_nwas_aas] | d([])]] | flatten | select() }}"
 
-    - name: Set Ansible Vars
-      register: __sap_vm_provision_task_ansible_vars_set
+    - name: SAP VM Provision - Azure - Identify hosts
+      ansible.builtin.include_tasks:
+        file: common/identify_hosts.yml
+
+    - name: SAP VM Provision - Azure - Set Ansible Vars
       ansible.builtin.include_tasks:
         file: common/set_ansible_vars.yml
 
     # Create "A" (IPv4 Address) Resource Record to map IPv4 address as hostname / subdomain of the root domain name
-    - name: Ansible MS Azure Private DNS Records for hosts
-      no_log: "{{ __sap_vm_provision_no_log }}"
+    - name: SAP VM Provision - Azure - Ansible MS Azure Private DNS Records for hosts
       azure.azcollection.azure_rm_privatednsrecordset:
-        # DNS may exist in separate Resource Group. Use empty string var (or default false if undefined) to evaluate to false boolean, and use Python or logic operator
-        resource_group: "{{ (sap_vm_provision_msazure_private_dns_resource_group_name | default(false)) or sap_vm_provision_msazure_resource_group_name }}"
+        # DNS may exist in separate Resource Group.
+        # Use empty string var (or default false if undefined) to evaluate to false boolean, and use Python or logic operator
+        resource_group: "{{ sap_vm_provision_msazure_private_dns_resource_group_name | d(sap_vm_provision_msazure_resource_group_name) }}"
         zone_name: "{{ hostvars[inventory_hostname].sap_vm_provision_dns_root_domain }}"
         relative_name: "{{ inventory_hostname }}"
         record_type: A
         records:
           - entry: "{{ hostvars[inventory_hostname].ansible_host }}"
-        # Azure credentials
         subscription_id: "{{ sap_vm_provision_msazure_subscription_id }}"
         tenant: "{{ sap_vm_provision_msazure_tenant_id }}"
         client_id: "{{ sap_vm_provision_msazure_app_client_id }}"
         secret: "{{ sap_vm_provision_msazure_app_client_secret }}"
-      when: not __sap_vm_provision_task_msazure_private_dns_auto_register_records
-
-  #  - ansible.builtin.debug:
-  #      var: __sap_vm_provision_task_provision_host_all_add.results
+      when:
+        - not (__sap_vm_provision_register_msazure_private_dns_virtual_network_links.virtualnetworklinks
+          | selectattr('virtual_network.id', 'search', sap_vm_provision_msazure_vnet_name))[0].registration_enabled
+      register: __sap_vm_provision_register_msazure_dns
+      no_log: "{{ __sap_vm_provision_no_log }}"
 
   rescue:
     # This requires no_log set on each Ansible Task, and not set on the Ansible Task Block
     # This requires an Ansible Task Block containing the Ansible Tasks for calling
     # Infrastructure Platform APIs (via Ansible Modules)
-    - name: Show errors in task outputs
+    - name: SAP VM Provision - Azure - Show errors in task outputs
       ansible.builtin.fail:
         msg: "{{ lookup('ansible.builtin.vars', loop_item) }}"
       loop:
-        - __sap_vm_provision_task_msazure_key_pair_name_ssh_host_public_keys
-        - __sap_vm_provision_task_msazure_private_dns_virtual_network_links
-        - __sap_vm_provision_task_provision_host_all_run
-        - __sap_vm_provision_task_provision_host_single_vnic_info
-        - __sap_vm_provision_task_provision_host_single_vnic
-        - __sap_vm_provision_task_provision_host_single
-        - __sap_vm_provision_task_provision_host_single_info
-        - __sap_vm_provision_task_ansible_facts_host_disks_info
-        - __sap_vm_provision_task_provision_host_single_volumes
-        - __sap_vm_provision_task_provision_host_all_add
+        # Main
+        - __sap_vm_provision_register_msazure_key_pair_name_ssh_host_public_keys
+        - __sap_vm_provision_register_msazure_private_dns_virtual_network_links
+        - __sap_vm_provision_register_msazure_availability_set
+        - __sap_vm_provision_register_add_hosts
+        - __sap_vm_provision_register_msazure_dns
+        # Provision
+        - __sap_vm_provision_register_provision_host_single_vnic_info
+        - __sap_vm_provision_register_provision_host_single_vnic
+        - __sap_vm_provision_register_provision_host_single
+        - __sap_vm_provision_register_provision_host_single_info
+        - __sap_vm_provision_register_ansible_facts_host_disks_info
+        - __sap_vm_provision_register_gather_subset_hardware
+        - __sap_vm_provision_register_gather_subset
+        - __sap_vm_provision_register_volume_results
+        - __sap_vm_provision_register_update_sshd_config
       loop_control:
         loop_var: loop_item
         index_var: loop_item_index
@@ -173,48 +190,52 @@
         - not lookup('ansible.builtin.vars', loop_item, default='') is skipped
         - lookup('ansible.builtin.vars', loop_item, default='') is failed
 
+    - name: SAP VM Provision - Azure - Fail if provisioning failed
+      ansible.builtin.fail:
+        msg: |
+          FAIL: Provisioning has failed during one of tasks not producing registered output.
+          You can investigate failure in tasks above or by:
+          - Increasing verbosity
+          - Setting the variable '__sap_vm_provision_no_log' to 'false'
 
+
+# New inventory hosts were created and they can be used without IP delegation.
 - name: Ansible Task block to execute on target inventory hosts
   delegate_to: "{{ inventory_hostname }}"
   block:
 
     # Required to collect the remote host's facts for further processing
     # in the following steps
-    - name: Gather host facts
+    - name: SAP VM Provision - Azure - Gather host facts
       ansible.builtin.setup:
 
     # Must be set to short hostname,
     # so that command 'hostname' and 'hostname -s' return the short hostname only;
     # otherwise may cause error with SAP SWPM using name.domain.com.domain.com
-    - name: Change system hostname (must be set to short name and not FQDN, as required by SAP)
+    - name: SAP VM Provision - Azure - Change system hostname (must be set to short name and not FQDN, as required by SAP)
       ansible.builtin.hostname:
         name: "{{ inventory_hostname_short }}"
 
-    - name: Set /etc/hosts
-      register: __sap_vm_provision_task_os_etc_hosts
+    - name: SAP VM Provision - Azure - Set /etc/hosts
       ansible.builtin.include_tasks:
         file: common/set_etc_hosts.yml
 
-    - name: Set /etc/hosts for HA
-      register: __sap_vm_provision_task_os_etc_hosts_ha
+    - name: SAP VM Provision - Azure - Set /etc/hosts for HA
       ansible.builtin.include_tasks:
         file: common/set_etc_hosts_ha.yml
       when:
-        - (groups[sap_vm_provision_group_hana_secondary] is defined and (groups[sap_vm_provision_group_hana_secondary] | length>0)) or (groups[sap_vm_provision_group_nwas_ers] is defined and (groups[sap_vm_provision_group_nwas_ers] | length>0)) or (groups[sap_vm_provision_group_anydb_secondary] is defined and (groups[sap_vm_provision_group_anydb_secondary] | length>0))
+        - __sap_vm_provision_fact_is_ha_hana or __sap_vm_provision_fact_is_ha_anydb or __sap_vm_provision_fact_is_ha_nwas_ers
 
-    - name: Set /etc/hosts for Scale-Out
-      register: __sap_vm_provision_task_os_etc_hosts_scaleout
+    - name: SAP VM Provision - Azure - Set /etc/hosts for Scale-Out
       ansible.builtin.include_tasks:
         file: common/set_etc_hosts_scaleout.yml
-      when:
-        - (groups[sap_vm_provision_group_hana_primary] is defined and (groups[sap_vm_provision_group_hana_primary] | length>0)) and (sap_vm_provision_calculate_sap_hana_scaleout_active_coordinator is defined or sap_vm_provision_calculate_sap_hana_scaleout_active_worker is defined or sap_vm_provision_calculate_sap_hana_scaleout_standby is defined)
+      when: __sap_vm_provision_fact_is_hana_scaleout
 
-    - name: Set vars for sap_storage_setup Ansible Role
-      register: __sap_vm_provision_task_ansible_vars_storage
+    - name: SAP VM Provision - Azure - Set vars for sap_storage_setup Ansible Role
       ansible.builtin.include_tasks:
         file: common/set_ansible_vars_storage.yml
 
-    - name: Register Package Repositories for OS Images with Bring-Your-Own-Subscription (BYOS)
+    - name: SAP VM Provision - Azure - Register Package Repositories for OS Images with Bring-Your-Own-Subscription (BYOS)
       ansible.builtin.include_tasks:
         file: common/register_os.yml
 
@@ -222,28 +243,28 @@
 - name: Ansible Task block to execute on target inventory hosts - High Availability
   delegate_to: "{{ inventory_hostname }}"
   when:
-    - sap_ha_pacemaker_cluster_msazure_resource_group is defined
-    - (groups[sap_vm_provision_group_hana_secondary] is defined and (groups[sap_vm_provision_group_hana_secondary] | length>0)) or (groups[sap_vm_provision_group_nwas_ers] is defined and (groups[sap_vm_provision_group_nwas_ers] | length>0)) or (groups[sap_vm_provision_group_anydb_secondary] is defined and (groups[sap_vm_provision_group_anydb_secondary] | length>0))
+    - __sap_vm_provision_fact_is_ha_hana or __sap_vm_provision_fact_is_ha_anydb or __sap_vm_provision_fact_is_ha_nwas_ers
   block:
 
     # Do not enable TCP timestamps on Azure VMs placed behind Azure Load Balancer.
     # Enabling TCP timestamps will cause the health probes to fail.
     # Set parameter net.ipv4.tcp_timestamps to 0. For details see Load Balancer health probes:
     # https://learn.microsoft.com/en-us/azure/load-balancer/load-balancer-custom-probe-overview
-    - name: Check current net.ipv4.tcp_timestamps value
+    - name: SAP VM Provision - Azure - Check current net.ipv4.tcp_timestamps value
       ansible.builtin.command:
         cmd: sysctl -n net.ipv4.tcp_timestamps
       register: __sap_vm_provision_register_tcp_timestamps
       changed_when: false
       become: true
 
-    - name: Adjust system net.ipv4.tcp_timestamps - Set immediately
+    - name: SAP VM Provision - Azure - Adjust system net.ipv4.tcp_timestamps - Set immediately
       ansible.builtin.command:
         cmd: sysctl -w net.ipv4.tcp_timestamps=0
       when: __sap_vm_provision_register_tcp_timestamps.stdout != "0"
+      changed_when: true
       become: true
 
-    - name: Adjust system net.ipv4.tcp_timestamps - Ensure persistence in sysctl.d
+    - name: SAP VM Provision - Azure - Adjust system net.ipv4.tcp_timestamps - Ensure persistence in sysctl.d
       ansible.builtin.copy:
         dest: /etc/sysctl.d/99-ansible-disable-tcp-timestamps.conf
         content: |
@@ -254,74 +275,69 @@
         mode: '0644'
       become: true
 
-    - name: Stop firewalld on all hosts before setup of Azure Load Balancer
+    - name: SAP VM Provision - Azure - Stop firewalld on all hosts before setup of Azure Load Balancer
       ansible.builtin.systemd:
         name: firewalld
         state: stopped
         enabled: false
 
     # Ensure Primary Active Network Interface is used for Linux Pacemaker configuration (e.g. eth0), see documentation for Accelerated Networking
-    - name: Identify Primary Active Network Interface
-      register: __sap_vm_provision_task_os_primary_active_vnic
-      ansible.builtin.shell: |
-        set -o pipefail && ip route show default 0.0.0.0/0 | awk '/default/ {print $5}'
+    - name: SAP VM Provision - Azure - Identify Primary Active Network Interface
+      ansible.builtin.shell:
+        cmd: set -o pipefail && ip route show default 0.0.0.0/0 | awk '/default/ {print $5}'
+      register: __sap_vm_provision_register_os_primary_active_vnic
+      changed_when: false
 
-    - name: Set facts on each host - Primary Active Network Interface for HA/DR
+    - name: SAP VM Provision - Azure - Set facts on each host - Primary Active Network Interface for HA/DR  # noqa var-naming[no-role-prefix]
       ansible.builtin.set_fact:
-        sap_ha_pacemaker_cluster_vip_client_interface: "{{ __sap_vm_provision_task_os_primary_active_vnic.stdout }}"
-      when: __sap_vm_provision_task_os_primary_active_vnic is defined
+        sap_ha_pacemaker_cluster_vip_client_interface:
+          "{{ __sap_vm_provision_register_os_primary_active_vnic.stdout }}"
+      when: __sap_vm_provision_register_os_primary_active_vnic is defined
 
 
 - name: Ansible Task block for provisioning of High Availability resources for MS Azure VMs
-  delegate_to: localhost
+  delegate_to: "{{ sap_vm_provision_execution_host }}"
   any_errors_fatal: true
   run_once: true
-  # Using environment, no_log is ineffective and log will show 'EXEC /bin/sh -c 'ENV_VAR=value python3 /AnsiballZ_ansible_module_name.py && sleep 0'
-  # Therefore do not use environment for secrets, use only for non-sensitive values as this will reduce Ansible Task parameters.
   environment:
     ANSIBLE_AZURE_AUTH_SOURCE: "auto" # Set to auto to use module parameters
-    # AZURE_SUBSCRIPTION_ID: "{{ sap_vm_provision_msazure_subscription_id }}"
-    # AZURE_TENANT: "{{ sap_vm_provision_msazure_tenant_id }}"
-    # AZURE_CLIENT_ID: "{{ sap_vm_provision_msazure_app_client_id }}"
-    # AZURE_SECRET: "{{ sap_vm_provision_msazure_app_client_secret }}"
   when:
-    - sap_ha_pacemaker_cluster_msazure_resource_group is defined
-    - (groups[sap_vm_provision_group_hana_secondary] is defined and (groups[sap_vm_provision_group_hana_secondary] | length>0)) or (groups[sap_vm_provision_group_nwas_ers] is defined and (groups[sap_vm_provision_group_nwas_ers] | length>0)) or (groups[sap_vm_provision_group_anydb_secondary] is defined and (groups[sap_vm_provision_group_anydb_secondary] | length>0))
+    - __sap_vm_provision_fact_is_ha_hana or __sap_vm_provision_fact_is_ha_anydb or __sap_vm_provision_fact_is_ha_nwas_ers
   block:
 
-    - name: Provision High Availability resources for MS Azure VM hosts
+    - name: SAP VM Provision - Azure - Provision High Availability resources for MS Azure VM hosts
       ansible.builtin.include_tasks:
-        file: "{{ 'platform_' + sap_vm_provision_iac_type }}/{{ sap_vm_provision_iac_platform }}/execute_setup_ha.yml"
+        file: "{{ __sap_vm_provision_task_file }}/execute_setup_ha.yml"
         apply:
           environment:
             ANSIBLE_AZURE_AUTH_SOURCE: "auto" # Set to auto to use module parameters
-            # AZURE_SUBSCRIPTION_ID: "{{ sap_vm_provision_msazure_subscription_id }}"
-            # AZURE_TENANT: "{{ sap_vm_provision_msazure_tenant_id }}"
-            # AZURE_CLIENT_ID: "{{ sap_vm_provision_msazure_app_client_id }}"
-            # AZURE_SECRET: "{{ sap_vm_provision_msazure_app_client_secret }}"
 
   rescue:
     # This requires no_log set on each Ansible Task, and not set on the Ansible Task Block
     # This requires an Ansible Task Block containing the Ansible Tasks for calling
     # Infrastructure Platform APIs (via Ansible Modules)
-    - name: Show errors in task outputs
+    - name: SAP VM Provision - Azure - Show errors in task outputs
       ansible.builtin.fail:
         msg: "{{ lookup('ansible.builtin.vars', loop_item) }}"
       loop:
-        - __sap_vm_provision_task_msazure_vnet_subnet_rt_info
-        - __sap_vm_provision_task_msazure_vnet_subnet_rt_route_sap_hana
-        - __sap_vm_provision_task_msazure_vnet_subnet_rt_route_sap_netweaver_ascs
-        - __sap_vm_provision_task_msazure_vnet_subnet_rt_route_sap_netweaver_ers
-        - __sap_vm_provision_task_msazure_vnet_subnet_rt_route_sap_netweaver_pas
-        - __sap_vm_provision_task_msazure_vnet_subnet_rt_route_sap_netweaver_aas
-        - __sap_vm_provision_task_msazure_iam_role_fencing
-        - __sap_vm_provision_task_msazure_vm_info_collect
-        - __sap_vm_provision_task_msazure_vnet_subnet_info
-        - __sap_vm_provision_task_msazure_lb1a_info
-        - __sap_vm_provision_task_msazure_lb1b_info
-        - __sap_vm_provision_task_msazure_lb2_info
-        - __sap_vm_provision_task_provision_host_single_vnic1
-        - __sap_vm_provision_task_provision_host_single_vnic2
+        - __sap_vm_provision_register_msazure_iam_role_fencing
+        - __sap_vm_provision_register_msazure_vnet_subnet_info
+        - __sap_vm_provision_register_msazure_vm_info_collect
+        - __sap_vm_provision_register_msazure_iam_role_assignment
+        - __sap_vm_provision_register_msazure_vnet_subnet_info
+        # HANA
+        - __sap_vm_provision_register_msazure_dns_vip_hana
+        - __sap_vm_provision_register_msazure_lb_create_hana
+        - __sap_vm_provision_register_msazure_update_vnic_hana
+        # AnyDB
+        - __sap_vm_provision_register_msazure_dns_vip_anydb
+        - __sap_vm_provision_register_msazure_lb_create_anydb
+        - __sap_vm_provision_register_msazure_update_vnic_anydb
+        # ASCS/ERS
+        - __sap_vm_provision_register_msazure_dns_vip_ascs
+        - __sap_vm_provision_register_msazure_dns_vip_ers
+        - __sap_vm_provision_register_msazure_lb_create_ascs_ers
+        - __sap_vm_provision_register_msazure_update_vnic_ascs_ers
       loop_control:
         loop_var: loop_item
         index_var: loop_item_index
@@ -330,3 +346,11 @@
         - lookup('ansible.builtin.vars', loop_item, default='') | length > 0
         - not lookup('ansible.builtin.vars', loop_item, default='') is skipped
         - lookup('ansible.builtin.vars', loop_item, default='') is failed
+
+    - name: SAP VM Provision - Azure - Fail if provisioning failed
+      ansible.builtin.fail:
+        msg: |
+          FAIL: Provisioning has failed during one of tasks not producing registered output.
+          You can investigate failure in tasks above or by:
+          - Increasing verbosity
+          - Setting the variable '__sap_vm_provision_no_log' to 'false'

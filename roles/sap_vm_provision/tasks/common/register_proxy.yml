@@ -1,21 +1,25 @@
+# SPDX-License-Identifier: Apache-2.0
 ---
 
 #### For On-Premise hosts which use Web Forward Proxy instead of SNAT ####
 
 - name: Ansible Task block for Web Forward Proxy setup
-  when:
-    - (sap_vm_provision_proxy_web_forward_proxy_ip is defined) and (sap_vm_provision_proxy_web_forward_proxy_ip | length > 0)
+  when: sap_vm_provision_proxy_web_forward_proxy_ip | d('') | length > 0
   block:
 
-    - name: Set var for non-interactive login shell on RHEL
+    # Non-interactive files are in multiple locations:
+    # /root/.bashrc - RHEL - Root User Config
+    # /etc/bashrc - RHEL - System-wide Config
+    # /root/bash.bashrc - SLES - Root User Config
+    # /etc/bash.bashrc - SLES - System-wide Config
+    - name: SAP VM Provision - Proxy - Set fact with path to non-interactive login shell
       ansible.builtin.set_fact:
-        non_interactive_login_shell_config_file: /root/.bashrc
-      when: ansible_os_family == "RedHat"
+        __sap_vm_provision_fact_shell_config_file:
+          "{{ '/root/.bashrc'
+            if ansible_facts['os_family'] == 'RedHat'
+            else '/root/bash.bashrc' }}"
+      when: ansible_facts['os_family'] == "RedHat"
 
-    - name: Set var for non-interactive login shell on SLES
-      ansible.builtin.set_fact:
-        non_interactive_login_shell_config_file: /root/bash.bashrc
-      when: ansible_os_family == "Suse"
 
     # Linux Pacemaker uses 'https_proxy' or 'HTTPS_PROXY' for proxy, and 'no_proxy' or 'NO_PROXY' for comma-separated exclusions list.
     # The insecure HTTP env var 'http_proxy' and 'HTTP_PROXY' are not used.
@@ -30,29 +34,34 @@
     ## localhost,127.0.0.1,SUBNET_RANGE_BLOCK
     ## localhost,127.0.0.1,IP_ADDRESS_HANA_PRIMARY,IP_ADDRESS_HANA_SECONDARY
 
-    - name: Web Forward Proxy - Append all short hostnames to string for no_proxy exclusions list
+    - name: SAP VM Provision - Proxy - Append all short hostnames to string for no_proxy exclusions list
       ansible.builtin.set_fact:
-        sap_vm_provision_proxy_web_forward_exclusions_dynamic: "{{ groups_merged_list | join(',') }},{{ groups_merged_list | map('extract', hostvars, ['ansible_default_ipv4', 'address']) | join(',') }}"
+        __sap_vm_provision_fact_web_forward_exclusions_dynamic:
+          "{{ __sap_vm_provision_fact_merged_hosts_list | join(',') }},{{ __sap_vm_provision_fact_merged_hosts_list
+            | map('extract', hostvars, ['ansible_default_ipv4', 'address']) | join(',') }}"
 
-    - name: Web Forward Proxy - Ensure non-interactive login shell config file exists
-      ansible.builtin.copy:
-        content: ""
-        dest: "{{ non_interactive_login_shell_config_file }}"
+
+    - name: SAP VM Provision - Proxy - Ensure shell config file exists
+      ansible.builtin.file:
+        path: "{{ __sap_vm_provision_fact_shell_config_file }}"
+        state: touch
         mode: '0644'
-        force: false
+        modification_time: preserve
+        access_time: preserve
+
 
     # Ignore domains within the Cloud Platform's internal backbone, to access Cloud Services when a Proxy is enabled
-    - name: Web Forward Proxy - Cloud Platform specific exclusions - IBM Cloud, IBM Power Virtual Server
+    - name: SAP VM Provision - Proxy - Cloud Platform specific exclusions - IBM Cloud, IBM Power Virtual Server
       ansible.builtin.set_fact:
-        __sap_vm_provision_task_proxy_platform_exclude: ',cloud.ibm.com,networklayer.com'
+        __sap_vm_provision_fact_proxy_platform_exclude: ',cloud.ibm.com,networklayer.com'
       when:
         - sap_vm_provision_iac_platform == "ibmcloud_powervs"
         - __sap_vm_provision_task_ibmcloud_pi_workspace_capabilities.resource.pi_workspace_capabilities['power-edge-router']
 
     # For non-interactive login shell, append proxy env var to /root/.bashrc (proxy will not work if using /etc/bashrc or script stored in /etc/profile.d/)
-    - name: Web Forward Proxy - Append Proxy env var to non-interactive login shell config file
+    - name: SAP VM Provision - Proxy - Append Proxy env var to non-interactive login shell config file
       ansible.builtin.blockinfile:
-        path: "{{ non_interactive_login_shell_config_file }}"
+        path: "{{ __sap_vm_provision_fact_shell_config_file }}"
         marker: "#-- {mark} ANSIBLE MANAGED BLOCK --#" # must have {mark} otherwise block will repeat append on re-run
         block: |
           export http_proxy="http://{{ sap_vm_provision_proxy_web_forward_proxy_ip }}"
@@ -61,19 +70,22 @@
           export HTTPS_PROXY="http://{{ sap_vm_provision_proxy_web_forward_proxy_ip }}"
           #export ftp_proxy
           #export FTP_PROXY
-          export no_proxy="{{ sap_vm_provision_proxy_web_forward_exclusions }},{{ sap_vm_provision_proxy_web_forward_exclusions_dynamic }}{{ __sap_vm_provision_task_proxy_platform_exclude if __sap_vm_provision_task_proxy_platform_exclude is defined }}"
-          export NO_PROXY="{{ sap_vm_provision_proxy_web_forward_exclusions }},{{ sap_vm_provision_proxy_web_forward_exclusions_dynamic }}{{ __sap_vm_provision_task_proxy_platform_exclude if __sap_vm_provision_task_proxy_platform_exclude is defined }}"
+          export no_proxy="{{ sap_vm_provision_proxy_web_forward_exclusions | d('') }},{{ __sap_vm_provision_fact_web_forward_exclusions_dynamic }}
+            {{ __sap_vm_provision_fact_proxy_platform_exclude | d('') }}"
+          export NO_PROXY="{{ sap_vm_provision_proxy_web_forward_exclusions | d('') }},{{ __sap_vm_provision_fact_web_forward_exclusions_dynamic }}
+            {{ __sap_vm_provision_fact_proxy_platform_exclude | d('') }}"
 
     # dnf/yum will first use proxy var from config file, followed by environment variables of the login shell
-    # When dnf/yum is set to empty string in config file, it will ignore proxy. However, "The curl environment variables (such as http_proxy) are effective if this option is unset" and
+    # When dnf/yum is set to empty string in config file, it will ignore proxy.
+    # However, "The curl environment variables (such as http_proxy) are effective if this option is unset" and
     # therefore dnf/yum has no method to enable Proxy for Public Internet connectivity in combination with no Proxy for OS Package Repositories.
     # Using no_proxy/NO_PROXY env var with domain suffix for mirror OS Package Repositories inside the Cloud Service Provider will force no Proxy usage.
-    - name: Web Forward Proxy - Edit /etc/dnf/dnf.conf to add proxy
+    - name: SAP VM Provision - Proxy - Edit /etc/dnf/dnf.conf to add proxy on RHEL
       ansible.builtin.blockinfile:
         path: /etc/dnf/dnf.conf
         block: |
           proxy=http://{{ sap_vm_provision_proxy_web_forward_proxy_ip }}
       when:
-        - ansible_os_family == "RedHat"
+        - ansible_facts['os_family'] == "RedHat"
         - not __sap_vm_provision_task_ibmcloud_pi_workspace_capabilities.resource.pi_workspace_capabilities['power-edge-router']
-        - __sap_vm_provision_task_proxy_platform_exclude is undefined
+        - __sap_vm_provision_fact_proxy_platform_exclude | d('') | length == 0

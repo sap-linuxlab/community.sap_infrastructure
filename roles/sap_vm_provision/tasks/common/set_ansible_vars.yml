@@ -1,225 +1,192 @@
+# SPDX-License-Identifier: Apache-2.0
 ---
 
+# Reason for noqa: Because we are setting helper variables for subsequent roles from sap-linuxlab collection.
+
 # Required when defining Ansible Role variables within the host_specifications_dictionary for multiple SAP Systems / SAP Landscapes
-- name: Set facts for all hosts - use facts from localhost - SAP Variables from host_specifications_dictionary
+- name: SAP VM Provision - Set facts for all hosts - SAP Variables from host_specifications_dictionary
   ansible.builtin.set_fact:
-    "{{ host_spec_sap_item }}": "{{ lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan][scaleout_origin_host_spec | default(inventory_hostname)][host_spec_sap_item] }}"
-  loop: "{{ lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary')[sap_vm_provision_host_specification_plan][scaleout_origin_host_spec | default(inventory_hostname)].keys() | map('regex_findall', '^sap_.*') | flatten | select() | list }}"
+    "{{ host_spec_sap_item }}": "{{ __sap_vm_provision_host_dict_spec[host_spec_sap_item] }}"
+  loop: "{{ __sap_vm_provision_host_dict_spec.keys() | map('regex_findall', '^sap_.*') | flatten | select() | list }}"
   loop_control:
     loop_var: host_spec_sap_item
 
-- name: Set facts for all hosts - use facts from localhost - Host Specifications Dictionary
-  ansible.builtin.set_fact:
-    host_specifications_dictionary: "{{ lookup('ansible.builtin.vars', 'sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary') }}"
 
-
-- name: Set facts for all hosts - use facts from localhost - Generic
+- name: SAP VM Provision - Set facts for all hosts - Generic  # noqa var-naming[no-role-prefix]
   ansible.builtin.set_fact:
     sap_vm_provision_dns_root_domain: "{{ sap_vm_provision_dns_root_domain }}"
     sap_vm_provision_host_specification_plan: "{{ sap_vm_provision_host_specification_plan }}"
-    sap_vm_provision_nfs_mount_point: "{{ sap_vm_provision_nfs_mount_point | default('') }}"
-    sap_vm_provision_nfs_mount_point_separate_sap_transport_dir: "{{ sap_vm_provision_nfs_mount_point_separate_sap_transport_dir | default('') }}"
-    sap_install_media_detect_source_directory: "{{ sap_install_media_detect_source_directory | default('/software') }}"
+    sap_vm_provision_nfs_mount_point: "{{ sap_vm_provision_nfs_mount_point | d('') }}"
+    sap_vm_provision_nfs_mount_point_separate_sap_transport_dir: "{{ sap_vm_provision_nfs_mount_point_separate_sap_transport_dir | d('') }}"
+    sap_install_media_detect_source_directory: "{{ sap_install_media_detect_source_directory | d('/software') }}"
 
-- name: Set facts for all hosts - use facts from localhost - Generic - SAP ID
+
+- name: SAP VM Provision - Set facts for all hosts - SAP HANA  # noqa var-naming[no-role-prefix]
   ansible.builtin.set_fact:
-    sap_id_user: "{{ sap_id_user | default('') }}"
-    sap_id_user_password: "{{ sap_id_user_password | default('') }}"
-  no_log: "{{ __sap_vm_provision_no_log }}"
-
-# - name: Set facts for all hosts - use facts from localhost - Ansible only
-#   ansible.builtin.set_fact:
-#   when:
-#     - sap_vm_provision_iac_type == "ansible"
-
-- name: Set facts for all hosts - use facts from localhost - SAP HANA
-  ansible.builtin.set_fact:
-    sap_hana_install_sid: "{{ sap_hana_install_sid | default(sap_system_hana_db_sid) }}"
-    sap_hana_install_instance_nr: "{{ sap_hana_install_instance_nr | default(sap_system_hana_db_instance_nr) }}"
-    sap_hana_install_use_master_password: "{{ sap_hana_install_use_master_password | default('y') }}"
-    sap_hana_install_master_password: "{{ sap_hana_install_master_password | default('') }}"
+    sap_hana_install_sid: "{{ sap_hana_install_sid | d(sap_system_hana_db_sid) }}"
+    sap_hana_install_instance_nr: "{{ sap_hana_install_instance_nr | d(sap_system_hana_db_instance_nr) }}"
+    sap_hana_install_use_master_password: "{{ sap_hana_install_use_master_password | d('y') }}"
+    sap_hana_install_master_password: "{{ sap_hana_install_master_password | d('') }}"
   when:
-    - (sap_hana_install_sid is defined or sap_system_hana_db_sid is defined) or (hostvars[inventory_hostname].vars['sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary'][sap_vm_provision_host_specification_plan][scaleout_origin_host_spec | default(inventory_hostname)].sap_system_hana_db_sid is defined)
+    - sap_hana_install_sid is defined
+      or sap_system_hana_db_sid is defined
+      or __sap_vm_provision_host_dict_spec['sap_system_hana_db_sid'] is defined
 
-
-- name: Set facts for all hosts - use facts from localhost - SAP SWPM
+- name: SAP VM Provision - Set facts for all hosts - SAP SWPM  # noqa var-naming[no-role-prefix]
   ansible.builtin.set_fact:
-    sap_swpm_sid: "{{ sap_swpm_sid | default(sap_system_sid) | default('') }}"
-    sap_maintenance_planner_transaction_name: "{{ sap_maintenance_planner_transaction_name | default('') }}"
-    sap_swpm_templates_product_input: "{{ sap_swpm_templates_product_input | default('') }}"
-    sap_swpm_templates_product_input_prefix: "{{ sap_swpm_templates_product_input_prefix | default('') }}"
-    sap_swpm_ascs_instance_nr: "{{ sap_swpm_ascs_instance_nr | default(sap_system_nwas_abap_ascs_instance_nr) | default('') }}"
-    sap_swpm_pas_instance_nr: "{{ sap_swpm_pas_instance_nr | default(sap_system_nwas_abap_pas_instance_nr) | default('') }}"
-    sap_swpm_db_sid: "{{ sap_swpm_db_sid | default(sap_system_hana_db_sid) | default('') }}"
-    sap_swpm_db_instance_nr: "{{ sap_swpm_db_instance_nr | default(sap_system_hana_db_instance_nr) | default('') }}"
+    sap_swpm_sid: "{{ sap_swpm_sid | d(sap_system_sid) | d('') }}"
+    sap_maintenance_planner_transaction_name: "{{ sap_maintenance_planner_transaction_name | d('') }}"
+    sap_swpm_templates_product_input: "{{ sap_swpm_templates_product_input | d('') }}"
+    sap_swpm_templates_product_input_prefix: "{{ sap_swpm_templates_product_input_prefix | d('') }}"
+    sap_swpm_ascs_instance_nr: "{{ sap_swpm_ascs_instance_nr | d(sap_system_nwas_abap_ascs_instance_nr) | d('') }}"
+    sap_swpm_pas_instance_nr: "{{ sap_swpm_pas_instance_nr | d(sap_system_nwas_abap_pas_instance_nr) | d('') }}"
+    sap_swpm_db_sid: "{{ sap_swpm_db_sid | d(sap_system_hana_db_sid) | d('') }}"
+    sap_swpm_db_instance_nr: "{{ sap_swpm_db_instance_nr | d(sap_system_hana_db_instance_nr) | d('') }}"
   when:
-    - (sap_swpm_sid is defined or sap_system_sid is defined) or (hostvars[inventory_hostname].vars['sap_vm_provision_' + sap_vm_provision_iac_platform + '_host_specifications_dictionary'][sap_vm_provision_host_specification_plan][scaleout_origin_host_spec | default(inventory_hostname)].sap_system_sid is defined)
-    - (sap_swpm_templates_install_dictionary is defined or sap_system_sid is defined) or hostvars[inventory_hostname].sap_swpm_templates_install_dictionary is defined
+    - sap_swpm_sid is defined
+      or sap_system_sid is defined
+      or __sap_vm_provision_host_dict_spec['sap_system_sid'] is defined
+    - sap_swpm_templates_install_dictionary is defined
+      or sap_system_sid is defined
+      or __sap_vm_provision_host_dict_spec['sap_swpm_templates_install_dictionary'] is defined
 
 
-- name: Set facts for all hosts - use facts from localhost - HA/DR - Virtual IP for SAP HANA Primary node
+- name: SAP VM Provision - Set facts for all hosts - HA/DR - Virtual IP for SAP HANA Primary node  # noqa var-naming[no-role-prefix]
   ansible.builtin.set_fact:
     sap_vm_temp_vip_hana_primary: "{{ sap_vm_provision_ha_vip_hana_primary }}"
     sap_ha_pacemaker_cluster_vip_hana_primary_ip_address: "{{ sap_vm_provision_ha_vip_hana_primary }}"
-  when:
-    - (sap_vm_provision_ha_vip_hana_primary | length) > 0
+  when: sap_vm_provision_ha_vip_hana_primary | d('') | length > 0
   no_log: "{{ __sap_vm_provision_no_log }}"
 
-- name: Set facts for all hosts - use facts from localhost - HA/DR - Virtual IP for SAP AnyDB Primary node
+- name: SAP VM Provision - Set facts for all hosts - HA/DR - Virtual IP for SAP AnyDB Primary node  # noqa var-naming[no-role-prefix]
   ansible.builtin.set_fact:
     sap_vm_temp_vip_anydb_primary: "{{ sap_vm_provision_ha_vip_anydb_primary }}"
     sap_ha_install_anydb_ibmdb2_vip_primary_ip_address: "{{ sap_vm_provision_ha_vip_anydb_primary }}"
-  when:
-    - (sap_vm_provision_ha_vip_anydb_primary | length) > 0
+  when: sap_vm_provision_ha_vip_anydb_primary | d('') | length > 0
   no_log: "{{ __sap_vm_provision_no_log }}"
 
-- name: Set facts for all hosts - use facts from localhost - HA/DR - Virtual IP for SAP NetWeaver ASCS
+- name: SAP VM Provision - Set facts for all hosts - HA/DR - Virtual IP for SAP NetWeaver ASCS  # noqa var-naming[no-role-prefix]
   ansible.builtin.set_fact:
     sap_vm_temp_vip_nwas_abap_ascs: "{{ sap_vm_provision_ha_vip_nwas_abap_ascs }}"
     sap_ha_pacemaker_cluster_vip_nwas_abap_ascs_ip_address: "{{ sap_vm_provision_ha_vip_nwas_abap_ascs }}"
-  when:
-    - (sap_vm_provision_ha_vip_nwas_abap_ascs | length) > 0
+  when: sap_vm_provision_ha_vip_nwas_abap_ascs | d('') | length > 0
   no_log: "{{ __sap_vm_provision_no_log }}"
 
-- name: Set facts for all hosts - use facts from localhost - HA/DR - Virtual IP for SAP NetWeaver ERS
+- name: SAP VM Provision - Set facts for all hosts - HA/DR - Virtual IP for SAP NetWeaver ERS  # noqa var-naming[no-role-prefix]
   ansible.builtin.set_fact:
     sap_vm_temp_vip_nwas_abap_ers: "{{ sap_vm_provision_ha_vip_nwas_abap_ers }}"
     sap_ha_pacemaker_cluster_vip_nwas_abap_ers_ip_address: "{{ sap_vm_provision_ha_vip_nwas_abap_ers }}"
-  when:
-    - (sap_vm_provision_ha_vip_nwas_abap_ers | length) > 0
+  when: sap_vm_provision_ha_vip_nwas_abap_ers | d('') | length > 0
   no_log: "{{ __sap_vm_provision_no_log }}"
 
-# - name: Set facts for all hosts - use facts from localhost - HA/DR - Virtual IP for SAP NetWeaver PAS
+# - name: SAP VM Provision - Set facts for all hosts - HA/DR - Virtual IP for SAP NetWeaver PAS
 #   ansible.builtin.set_fact:
 #     sap_vm_temp_vip_nwas_abap_pas: "{{ sap_vm_provision_ha_vip_nwas_abap_pas }}"
 #     sap_ha_pacemaker_cluster_vip_nwas_abap_pas_ip_address: "{{ sap_vm_provision_ha_vip_nwas_abap_pas }}"
-#   when:
-#     - (sap_vm_provision_ha_vip_nwas_abap_pas | length) > 0
+#   when: sap_vm_provision_ha_vip_nwas_abap_pas | d('') | length > 0
 #   no_log: "{{ __sap_vm_provision_no_log }}"
 
-# - name: Set facts for all hosts - use facts from localhost - HA/DR - Virtual IP for SAP NetWeaver AAS
+# - name: SAP VM Provision - Set facts for all hosts - HA/DR - Virtual IP for SAP NetWeaver AAS
 #   ansible.builtin.set_fact:
 #     sap_vm_temp_vip_nwas_abap_aas: "{{ sap_vm_provision_ha_vip_nwas_abap_aas }}"
 #     sap_ha_pacemaker_cluster_vip_nwas_abap_aas_ip_address: "{{ sap_vm_provision_ha_vip_nwas_abap_aas }}"
-#   when:
-#     - (sap_vm_provision_ha_vip_nwas_abap_aas | length) > 0
+#   when: sap_vm_provision_ha_vip_nwas_abap_aas | d('') | length > 0
 #   no_log: "{{ __sap_vm_provision_no_log }}"
 
 
-- name: Set facts for all hosts - use facts from localhost - HA/DR - AWS
+# Default to role variables since they are mandatory and validated.
+# More platform specific tasks can be added when required.
+- name: SAP VM Provision - Set facts for all hosts - HA/DR - AWS  # noqa var-naming[no-role-prefix]
   ansible.builtin.set_fact:
-    sap_ha_pacemaker_cluster_aws_region: "{{ sap_ha_pacemaker_cluster_aws_region }}"
-    sap_ha_pacemaker_cluster_aws_access_key_id: "{{ sap_ha_pacemaker_cluster_aws_access_key_id }}"
-    sap_ha_pacemaker_cluster_aws_secret_access_key: "{{ sap_ha_pacemaker_cluster_aws_secret_access_key }}"
-    sap_ha_pacemaker_cluster_aws_vip_update_rt: "{{ __sap_vm_provision_task_aws_vpc_subnet_rt_info.route_tables[0].route_table_id }}"
-  when:
-    - sap_ha_pacemaker_cluster_aws_region is defined
-    - sap_vm_provision_iac_platform == "aws_ec2_vs"
+    sap_ha_pacemaker_cluster_aws_region:
+      "{{ sap_ha_pacemaker_cluster_aws_region | d(sap_vm_provision_aws_region) }}"
+    sap_ha_pacemaker_cluster_aws_access_key_id:
+      "{{ sap_ha_pacemaker_cluster_aws_access_key_id | d(sap_vm_provision_aws_access_key) }}"
+    sap_ha_pacemaker_cluster_aws_secret_access_key:
+      "{{ sap_ha_pacemaker_cluster_aws_secret_access_key | d(sap_vm_provision_aws_secret_access_key) }}"
+    sap_ha_pacemaker_cluster_aws_vip_update_rt:
+      "{{ __sap_vm_provision_register_aws_vpc_subnet_rt_info.route_tables[0].route_table_id }}"
+  when: sap_vm_provision_iac_platform == "aws_ec2_vs"
   no_log: "{{ __sap_vm_provision_no_log }}"
 
-# - name: Set facts for all hosts - use facts from localhost - HA/DR - GCP
-#   ansible.builtin.set_fact:
-#   when:
-#     - sap_ha_pacemaker_cluster_gcp_region_zone is defined
-#     - sap_vm_provision_iac_type == "ansible"
-#     - sap_vm_provision_iac_platform == "gcp_ce_vm"
-#   no_log: "{{ __sap_vm_provision_no_log }}"
-
-- name: Set facts for all hosts - use facts from localhost - HA/DR - IBM Cloud, IBM Power VS
+- name: SAP VM Provision - Set facts for all hosts - HA/DR - IBM Cloud, IBM Power VS  # noqa var-naming[no-role-prefix]
   ansible.builtin.set_fact:
-    sap_ha_pacemaker_cluster_ibmcloud_powervs_workspace_crn: "{{ __sap_vm_provision_task_ibmcloud_pi_workspace_service_instance.resource.crn }}"
-    sap_ha_pacemaker_cluster_ibmcloud_api_key: "{{ sap_ha_pacemaker_cluster_ibmcloud_api_key }}"
-    sap_ha_pacemaker_cluster_ibmcloud_region: "{{ list_ibmcloud_powervs_location_to_powervs_region[sap_vm_provision_ibmcloud_powervs_location] }}" # Lookup IBM Power VS Region from the given IBM Power VS Location during sap_vm_provision execution
+    sap_ha_pacemaker_cluster_ibmcloud_powervs_workspace_crn:
+      "{{ __sap_vm_provision_task_ibmcloud_pi_workspace_service_instance.resource.crn }}"
+    sap_ha_pacemaker_cluster_ibmcloud_api_key:
+      "{{ sap_ha_pacemaker_cluster_ibmcloud_api_key | d(sap_vm_provision_ibmcloud_api_key) }}"
+    # Lookup IBM Power VS Region from the given IBM Power VS Location during sap_vm_provision execution
+    sap_ha_pacemaker_cluster_ibmcloud_region:
+      "{{ list_ibmcloud_powervs_location_to_powervs_region[sap_vm_provision_ibmcloud_powervs_location] }}"
   when:
     - sap_ha_pacemaker_cluster_ibmcloud_api_key is defined
     - sap_vm_provision_iac_platform == "ibmcloud_powervs"
   no_log: "{{ __sap_vm_provision_no_log }}"
 
-- name: Set facts for all hosts - use facts from localhost - HA/DR - IBM Cloud
+- name: SAP VM Provision - Set facts for all hosts - HA/DR - IBM Cloud  # noqa var-naming[no-role-prefix]
   ansible.builtin.set_fact:
-    sap_ha_pacemaker_cluster_ibmcloud_api_key: "{{ sap_ha_pacemaker_cluster_ibmcloud_api_key }}"
-    sap_ha_pacemaker_cluster_ibmcloud_region: "{{ sap_ha_pacemaker_cluster_ibmcloud_region }}"
+    sap_ha_pacemaker_cluster_ibmcloud_api_key:
+      "{{ sap_ha_pacemaker_cluster_ibmcloud_api_key | d(sap_vm_provision_ibmcloud_api_key) }}"
+    sap_ha_pacemaker_cluster_ibmcloud_region:
+      "{{ sap_ha_pacemaker_cluster_ibmcloud_region | d(sap_vm_provision_ibmcloud_region) }}"
   when:
     - sap_ha_pacemaker_cluster_ibmcloud_region is defined
     - sap_vm_provision_iac_platform == "ibmcloud_vs"
   no_log: "{{ __sap_vm_provision_no_log }}"
 
-# - name: Set facts for all hosts - use facts from localhost - HA/DR - MS Azure
-#   ansible.builtin.set_fact:
-#   when:
-#     - sap_ha_pacemaker_cluster_msazure_resource_group is defined
-#     - sap_vm_provision_iac_type == "ansible"
-#     - sap_vm_provision_iac_platform == "msazure_vm"
-#   no_log: "{{ __sap_vm_provision_no_log }}"
-
-# - name: Set facts for all hosts - use facts from localhost - HA/DR - IBM PowerVM
-#   ansible.builtin.set_fact:
-#   when:
-#     - sap_ha_pacemaker_cluster_ibmpower_vm_hmc_host is defined
-#     - sap_vm_provision_iac_type == "ansible"
-#     - sap_vm_provision_iac_platform == "ibmpowervm_vm"
-#   no_log: "{{ __sap_vm_provision_no_log }}"
-
-# - name: Set facts for all hosts - use facts from localhost - HA/DR - KubeVirt
-#   ansible.builtin.set_fact:
-#   when:
-#     - sap_ha_pacemaker_cluster___ is defined
-#     - sap_vm_provision_iac_type == "ansible"
-#     - sap_vm_provision_iac_platform == "kubevirt_vm"
-#   no_log: "{{ __sap_vm_provision_no_log }}"
-
-# - name: Set facts for all hosts - use facts from localhost - HA/DR - OVirt
-#   ansible.builtin.set_fact:
-#   when:
-#     - sap_ha_pacemaker_cluster_aws_region is defined
-#     - sap_vm_provision_iac_type == "ansible"
-#     - sap_vm_provision_iac_platform == "ovirt_vm"
-#   no_log: "{{ __sap_vm_provision_no_log }}"
-
-# - name: Set facts for all hosts - use facts from localhost - HA/DR - VMware
-#   ansible.builtin.set_fact:
-#   when:
-#     - sap_ha_pacemaker_cluster_aws_region is defined
-#     - sap_vm_provision_iac_type == "ansible"
-#     - sap_vm_provision_iac_platform == "vmware_vm"
-#   no_log: "{{ __sap_vm_provision_no_log }}"
-
-- name: Set facts for all hosts - IBM Power (ppc64le) only
+- name: SAP VM Provision - Set facts for all hosts - IBM Power (ppc64le) only  # noqa var-naming[no-role-prefix]
   ansible.builtin.set_fact:
     sap_storage_setup_multipath_enable_and_detect: true
   when:
-    - sap_vm_provision_iac_platform == "ibmpowervm_vm" or sap_vm_provision_iac_platform == "ibmcloud_powervs"
+    - sap_vm_provision_iac_platform == "ibmpowervm_vm"
+      or sap_vm_provision_iac_platform == "ibmcloud_powervs"
 
 
 # Set default to none, this will not set the var if the group does not exist
-- name: Set facts for all hosts - sap_vm_provision_dynamic_inventory_* hostname variables to identify hosts for other Ansible Roles
+- name: SAP VM Provision - Set facts for all hosts - Set sap_vm_provision_dynamic_inventory_* hostname variables to identify hosts
   ansible.builtin.set_fact:
-    sap_vm_provision_dynamic_inventory_anydb_primary_hostname: "{{ hostvars[inventory_hostname].groups.anydb_primary[0] | default(none) }}"
-    sap_vm_provision_dynamic_inventory_anydb_secondary_hostname: "{{ hostvars[inventory_hostname].groups.anydb_secondary[0] | default(none) }}"
+    sap_vm_provision_dynamic_inventory_anydb_primary_hostname:
+      "{{ hostvars[inventory_hostname].groups.anydb_primary[0] | d(none) }}"
+    sap_vm_provision_dynamic_inventory_anydb_secondary_hostname:
+      "{{ hostvars[inventory_hostname].groups.anydb_secondary[0] | d(none) }}"
 
-    sap_vm_provision_dynamic_inventory_hana_primary_hostname: "{{ hostvars[inventory_hostname].groups.hana_primary[0] | default(none) }}"
-    sap_vm_provision_dynamic_inventory_hana_secondary_hostname: "{{ hostvars[inventory_hostname].groups.hana_secondary[0] | default(none) }}"
+    sap_vm_provision_dynamic_inventory_hana_primary_hostname:
+      "{{ hostvars[inventory_hostname].groups.hana_primary[0] | d(none) }}"
+    sap_vm_provision_dynamic_inventory_hana_secondary_hostname:
+      "{{ hostvars[inventory_hostname].groups.hana_secondary[0] | d(none) }}"
 
-    sap_vm_provision_dynamic_inventory_nw_ascs_hostname: "{{ hostvars[inventory_hostname].groups.nwas_ascs[0] | default(none) }}"
-    sap_vm_provision_dynamic_inventory_nw_ers_hostname: "{{ hostvars[inventory_hostname].groups.nwas_ers[0] | default(none) }}"
+    sap_vm_provision_dynamic_inventory_nw_ascs_hostname:
+      "{{ hostvars[inventory_hostname].groups.nwas_ascs[0] | d(none) }}"
+    sap_vm_provision_dynamic_inventory_nw_ers_hostname:
+      "{{ hostvars[inventory_hostname].groups.nwas_ers[0] | d(none) }}"
 
-    sap_vm_provision_dynamic_inventory_nw_pas_hostname: "{{ hostvars[inventory_hostname].groups.nwas_pas[0] | default(none) }}"
+    sap_vm_provision_dynamic_inventory_nw_pas_hostname:
+      "{{ hostvars[inventory_hostname].groups.nwas_pas[0] | d(none) }}"
 
-    sap_vm_provision_dynamic_inventory_nw_aas_hostname: "{{ hostvars[inventory_hostname].groups.nwas_aas[0] | default(none) }}"
+    sap_vm_provision_dynamic_inventory_nw_aas_hostname:
+      "{{ hostvars[inventory_hostname].groups.nwas_aas[0] | d(none) }}"
 
 
 # Set default to none, this will not set the var if the group does not exist
-- name: Set facts for all hosts - sap_vm_provision_dynamic_inventory_* IP Address variables to identify hosts for other Ansible Roles
+- name: SAP VM Provision - Set facts for all hosts - sap_vm_provision_dynamic_inventory_* IP Address variables to identify hosts
   ansible.builtin.set_fact:
-    sap_vm_provision_dynamic_inventory_anydb_primary_ip: "{{ hostvars[sap_vm_provision_dynamic_inventory_anydb_primary_hostname].ansible_host | default(none) }}"
-    sap_vm_provision_dynamic_inventory_anydb_secondary_ip: "{{ hostvars[sap_vm_provision_dynamic_inventory_anydb_secondary_hostname].ansible_host | default(none) }}"
+    sap_vm_provision_dynamic_inventory_anydb_primary_ip:
+      "{{ hostvars[sap_vm_provision_dynamic_inventory_anydb_primary_hostname].ansible_host | d(none) }}"
+    sap_vm_provision_dynamic_inventory_anydb_secondary_ip:
+      "{{ hostvars[sap_vm_provision_dynamic_inventory_anydb_secondary_hostname].ansible_host | d(none) }}"
 
-    sap_vm_provision_dynamic_inventory_hana_primary_ip: "{{ hostvars[sap_vm_provision_dynamic_inventory_hana_primary_hostname].ansible_host | default(none) }}"
-    sap_vm_provision_dynamic_inventory_hana_secondary_ip: "{{ hostvars[sap_vm_provision_dynamic_inventory_hana_secondary_hostname].ansible_host | default(none) }}"
+    sap_vm_provision_dynamic_inventory_hana_primary_ip:
+      "{{ hostvars[sap_vm_provision_dynamic_inventory_hana_primary_hostname].ansible_host | d(none) }}"
+    sap_vm_provision_dynamic_inventory_hana_secondary_ip:
+      "{{ hostvars[sap_vm_provision_dynamic_inventory_hana_secondary_hostname].ansible_host | d(none) }}"
 
-    sap_vm_provision_dynamic_inventory_nw_ascs_ip: "{{ hostvars[sap_vm_provision_dynamic_inventory_nw_ascs_hostname].ansible_host | default(none) }}"
-    sap_vm_provision_dynamic_inventory_nw_ers_ip: "{{ hostvars[sap_vm_provision_dynamic_inventory_nw_ers_hostname].ansible_host | default(none) }}"
+    sap_vm_provision_dynamic_inventory_nw_ascs_ip:
+      "{{ hostvars[sap_vm_provision_dynamic_inventory_nw_ascs_hostname].ansible_host | d(none) }}"
+    sap_vm_provision_dynamic_inventory_nw_ers_ip:
+      "{{ hostvars[sap_vm_provision_dynamic_inventory_nw_ers_hostname].ansible_host | d(none) }}"
 
-    sap_vm_provision_dynamic_inventory_nw_pas_ip: "{{ hostvars[sap_vm_provision_dynamic_inventory_nw_pas_hostname].ansible_host | default(none) }}"
+    sap_vm_provision_dynamic_inventory_nw_pas_ip:
+      "{{ hostvars[sap_vm_provision_dynamic_inventory_nw_pas_hostname].ansible_host | d(none) }}"
 
-    sap_vm_provision_dynamic_inventory_nw_aas_ip: "{{ hostvars[sap_vm_provision_dynamic_inventory_nw_aas_hostname].ansible_host | default(none) }}"
+    sap_vm_provision_dynamic_inventory_nw_aas_ip:
+      "{{ hostvars[sap_vm_provision_dynamic_inventory_nw_aas_hostname].ansible_host | d(none) }}"

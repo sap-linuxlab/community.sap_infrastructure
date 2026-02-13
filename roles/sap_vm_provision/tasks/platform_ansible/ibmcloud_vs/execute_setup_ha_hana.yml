@@ -1,0 +1,352 @@
+# SPDX-License-Identifier: Apache-2.0
+---
+
+# Temporary ports are set now, then updated in post_deployment.
+
+- name: SAP VM Provision - IBM Cloud - Set fact with Load Balancers for SAP HANA
+  ansible.builtin.set_fact:
+    __sap_vm_provision_register_ibmcloud_lbs_hana_id: >-
+      {{ __sap_vm_provision_register_ibmcloud_lbs_all_info
+        | selectattr('name', 'equalto', sap_vm_provision_ha_load_balancer_name_hana)
+        | map(attribute='id') | first | d(none) }}
+    __sap_vm_provision_register_ibmcloud_lbs_pools: >-
+      {{ __sap_vm_provision_register_ibmcloud_lbs_all_info
+        | map(attribute='pools') | flatten }}
+
+
+- name: Block when pool ID exists
+  when: __sap_vm_provision_register_ibmcloud_lbs_hana_id is not none
+  no_log: "{{ __sap_vm_provision_no_log }}"
+  block:
+    - name: SAP VM Provision - IBM Cloud - Create Load Balancer Back-end Pool Health Check Port for SAP HANA - System DB SQL
+      ibm.cloudcollection.ibm_is_lb_pool:
+        name: "{{ sap_vm_provision_ha_load_balancer_name_hana + '-pool-sysdb-sql' }}"
+        lb: "{{ __sap_vm_provision_register_ibmcloud_lbs_hana_id }}"
+        algorithm: weighted_round_robin
+        protocol: tcp
+        health_delay: 20
+        health_retries: 2
+        health_timeout: 10
+        health_type: tcp
+        health_monitor_port: 55550
+        ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
+      register: __sap_vm_provision_register_ibmcloud_lb_pool_hana1
+
+    - name: SAP VM Provision - IBM Cloud - Create Load Balancer Back-end Pool Health Check Port for SAP HANA - MDC Tenant 1 SQL
+      ibm.cloudcollection.ibm_is_lb_pool:
+        name: "{{ sap_vm_provision_ha_load_balancer_name_hana + '-pool-mdc1-sql' }}"
+        lb: "{{ __sap_vm_provision_register_ibmcloud_lbs_hana_id }}"
+        algorithm: weighted_round_robin
+        protocol: tcp
+        health_delay: 20
+        health_retries: 2
+        health_timeout: 10
+        health_type: tcp
+        health_monitor_port: 55550
+        ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
+      register: __sap_vm_provision_register_ibmcloud_lb_pool_hana2
+
+    - name: SAP VM Provision - IBM Cloud - Create Load Balancer Back-end Pool Health Check Port for SAP HANA - startsrv HTTP
+      ibm.cloudcollection.ibm_is_lb_pool:
+        name: "{{ sap_vm_provision_ha_load_balancer_name_hana + '-pool-startsrv-http' }}"
+        lb: "{{ __sap_vm_provision_register_ibmcloud_lbs_hana_id }}"
+        algorithm: weighted_round_robin
+        protocol: tcp
+        health_delay: 20
+        health_retries: 2
+        health_timeout: 10
+        health_type: tcp
+        health_monitor_port: 55550
+        ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
+      register: __sap_vm_provision_register_ibmcloud_lb_pool_hana3
+
+    - name: SAP VM Provision - IBM Cloud - Create Load Balancer Back-end Pool Health Check Port for SAP HANA - startsrv HTTPS
+      ibm.cloudcollection.ibm_is_lb_pool:
+        name: "{{ sap_vm_provision_ha_load_balancer_name_hana + '-pool-startsrv-https' }}"
+        lb: "{{ __sap_vm_provision_register_ibmcloud_lbs_hana_id }}"
+        algorithm: weighted_round_robin
+        protocol: tcp
+        health_delay: 20
+        health_retries: 2
+        health_timeout: 10
+        health_type: tcp
+        health_monitor_port: 55550
+        ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
+      register: __sap_vm_provision_register_ibmcloud_lb_pool_hana4
+
+
+# Create IBM Cloud Load Balancer Front-end Listeners (open port for Virtual IPs)
+# Configure prior to Back-end Pool Server Members, as this will increase execution speed
+# by avoiding LB verification check/reload once the LB is active with Server Members
+
+# When IBM Cloud Load Balancer, Application Load Balancer Type:
+# - Important to increase the Front-end Listener Idle Connection Timeout (sec),
+#   if the received-and-forwarded request becomes idle (no data received/sent sent/received)
+#   then the idle connection is closed by default/minimum after 50 seconds and maximum 7200 seconds (2 hours).
+# - This can impact SAP SWPM waiting for SAP HANA Data Load to complete, and other long-running actions.
+
+# Block will be executed only if 'sap_system_hana_db_instance_nr' is defined and not empty.
+- name: Block when required instance numbers are defined
+  when:
+    - sap_system_hana_db_instance_nr | d('') | length > 0
+    - __sap_vm_provision_register_ibmcloud_lbs_hana_id is not none
+  no_log: "{{ __sap_vm_provision_no_log }}"
+  block:
+
+    # Identify the provisioned IBM Cloud Load Balancer Back-end Pools
+    - name: SAP VM Provision - IBM Cloud - Identify IBM Cloud Load Balancer Back-end Pools
+      ibm.cloudcollection.ibm_is_lb_pools_info:
+        lb: "{{ pool_item }}"
+        ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
+      loop: "{{ __sap_vm_provision_register_ibmcloud_lbs_all_info | map(attribute='id') }}"
+      loop_control:
+        loop_var: pool_item
+      register: __sap_vm_provision_register_ibmcloud_lb_pools
+
+    - name: SAP VM Provision - IBM Cloud - Create IBM Cloud Load Balancer Front-end Listener for SAP HANA - System DB SQL
+      ibm.cloudcollection.ibm_is_lb_listener:
+        lb: "{{ __sap_vm_provision_register_ibmcloud_lbs_hana_id }}"
+        default_pool: "{{ (__sap_vm_provision_register_ibmcloud_lb_pools.results | json_query('[*].resource.pools') | flatten
+          | selectattr('name', '==', sap_vm_provision_ha_load_balancer_name_hana + '-pool-sysdb-sql'))[0].id }}"
+        protocol: tcp
+        port: "{{ ('3' + sap_system_hana_db_instance_nr + '13') | int }}"
+        idle_connection_timeout: 600 # 10 minutes
+        ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
+      register: __sap_vm_provision_register_ibmcloud_lb_frontend_listener_hana1
+      failed_when:
+        - not __sap_vm_provision_register_ibmcloud_lb_frontend_listener_hana1.rc == 0
+        - not 'listener_duplicate_port' in __sap_vm_provision_register_ibmcloud_lb_frontend_listener_hana1.stderr
+
+    - name: SAP VM Provision - IBM Cloud - Create IBM Cloud Load Balancer Front-end Listener for SAP HANA - MDC Tenant 1 SQL
+      ibm.cloudcollection.ibm_is_lb_listener:
+        lb: "{{ __sap_vm_provision_register_ibmcloud_lbs_hana_id }}"
+        default_pool: "{{ (__sap_vm_provision_register_ibmcloud_lb_pools.results | json_query('[*].resource.pools') | flatten
+          | selectattr('name', '==', sap_vm_provision_ha_load_balancer_name_hana + '-pool-mdc1-sql'))[0].id }}"
+        protocol: tcp
+        port: "{{ ('3' + sap_system_hana_db_instance_nr + '15') | int }}"
+        idle_connection_timeout: 600 # 10 minutes
+        ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
+      register: __sap_vm_provision_register_ibmcloud_lb_frontend_listener_hana2
+      failed_when:
+        - not __sap_vm_provision_register_ibmcloud_lb_frontend_listener_hana2.rc == 0
+        - not 'listener_duplicate_port' in __sap_vm_provision_register_ibmcloud_lb_frontend_listener_hana2.stderr
+
+    - name: SAP VM Provision - IBM Cloud - Create IBM Cloud Load Balancer Front-end Listener for SAP HANA - startsrv HTTP
+      ibm.cloudcollection.ibm_is_lb_listener:
+        lb: "{{ __sap_vm_provision_register_ibmcloud_lbs_hana_id }}"
+        default_pool: "{{ (__sap_vm_provision_register_ibmcloud_lb_pools.results | json_query('[*].resource.pools') | flatten
+          | selectattr('name', '==', sap_vm_provision_ha_load_balancer_name_hana + '-pool-startsrv-http'))[0].id }}"
+        protocol: tcp
+        port: "{{ ('5' + sap_system_hana_db_instance_nr + '13') | int }}"
+        idle_connection_timeout: 600 # 10 minutes
+        ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
+      register: __sap_vm_provision_register_ibmcloud_lb_frontend_listener_hana3
+      failed_when:
+        - not __sap_vm_provision_register_ibmcloud_lb_frontend_listener_hana3.rc == 0
+        - not 'listener_duplicate_port' in __sap_vm_provision_register_ibmcloud_lb_frontend_listener_hana3.stderr
+
+    - name: SAP VM Provision - IBM Cloud - Create IBM Cloud Load Balancer Front-end Listener for SAP HANA - startsrv HTTPS
+      ibm.cloudcollection.ibm_is_lb_listener:
+        lb: "{{ __sap_vm_provision_register_ibmcloud_lbs_hana_id }}"
+        default_pool: "{{ (__sap_vm_provision_register_ibmcloud_lb_pools.results | json_query('[*].resource.pools') | flatten
+          | selectattr('name', '==', sap_vm_provision_ha_load_balancer_name_hana + '-pool-startsrv-https'))[0].id }}"
+        protocol: tcp
+        port: "{{ ('5' + sap_system_hana_db_instance_nr + '14') | int }}"
+        idle_connection_timeout: 600 # 10 minutes
+        ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
+      register: __sap_vm_provision_register_ibmcloud_lb_frontend_listener_hana4
+      failed_when:
+        - not __sap_vm_provision_register_ibmcloud_lb_frontend_listener_hana4.rc == 0
+        - not 'listener_duplicate_port' in __sap_vm_provision_register_ibmcloud_lb_frontend_listener_hana4.stderr
+
+
+    # Append Server Members to the IBM Cloud Load Balancer Back-end Pools
+
+    # Primary and Secondary for System DB SQL
+    - name: SAP VM Provision - IBM Cloud - Create IBM Cloud Load Balancer Back-end Pool Members for SAP HANA - System DB SQL - Member 1
+      ibm.cloudcollection.ibm_is_lb_pool_member:
+        lb: "{{ __sap_vm_provision_register_ibmcloud_lbs_hana_id }}"
+        pool: "{{ (__sap_vm_provision_register_ibmcloud_lb_pools.results | json_query('[*].resource.pools') | flatten
+          | selectattr('name', '==', sap_vm_provision_ha_load_balancer_name_hana + '-pool-sysdb-sql'))[0].id }}"
+        target_address: "{{ (__sap_vm_provision_register_ibmcloud_vs_all_info.resource.instances
+          | selectattr('name', '==', host_node))[0].primary_network_attachment[0].primary_ip[0].address }}"
+        port: "{{ ('3' + sap_system_hana_db_instance_nr + '13') | int }}"
+        weight: 100
+        ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
+      loop: "{{ (groups[sap_vm_provision_group_hana_primary] | d([])) }}"
+      loop_control:
+        loop_var: host_node
+      register: __sap_vm_provision_register_ibmcloud_lb_pool_members_hana1
+      failed_when:
+        - not __sap_vm_provision_register_ibmcloud_lb_pool_members_hana1.rc == 0
+        - not 'already exists in a pool' in __sap_vm_provision_register_ibmcloud_lb_pool_members_hana1.stderr
+
+    - name: SAP VM Provision - IBM Cloud - Create IBM Cloud Load Balancer Back-end Pool Members for SAP HANA - System DB SQL - Member 2 (Failover/Secondary)
+      ibm.cloudcollection.ibm_is_lb_pool_member:
+        lb: "{{ __sap_vm_provision_register_ibmcloud_lbs_hana_id }}"
+        pool: "{{ (__sap_vm_provision_register_ibmcloud_lb_pools.results | json_query('[*].resource.pools') | flatten
+          | selectattr('name', '==', sap_vm_provision_ha_load_balancer_name_hana + '-pool-sysdb-sql'))[0].id }}"
+        target_address: "{{ (__sap_vm_provision_register_ibmcloud_vs_all_info.resource.instances
+          | selectattr('name', '==', host_node))[0].primary_network_attachment[0].primary_ip[0].address }}"
+        port: "{{ ('3' + sap_system_hana_db_instance_nr + '13') | int }}"
+        weight: 1
+        ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
+      loop: "{{ (groups[sap_vm_provision_group_hana_secondary] | d([])) }}"
+      loop_control:
+        loop_var: host_node
+      register: __sap_vm_provision_register_ibmcloud_lb_pool_members_hana2
+      failed_when:
+        - not __sap_vm_provision_register_ibmcloud_lb_pool_members_hana2.rc == 0
+        - not 'already exists in a pool' in __sap_vm_provision_register_ibmcloud_lb_pool_members_hana2.stderr
+
+
+    # Primary and Secondary for MDC Tenant 1 SQL
+    - name: SAP VM Provision - IBM Cloud - Create IBM Cloud Load Balancer Back-end Pool Members for SAP HANA - MDC Tenant 1 SQL - Member 1
+      ibm.cloudcollection.ibm_is_lb_pool_member:
+        lb: "{{ __sap_vm_provision_register_ibmcloud_lbs_hana_id }}"
+        pool: "{{ (__sap_vm_provision_register_ibmcloud_lb_pools.results | json_query('[*].resource.pools') | flatten
+          | selectattr('name', '==', sap_vm_provision_ha_load_balancer_name_hana + '-pool-mdc1-sql'))[0].id }}"
+        target_address: "{{ (__sap_vm_provision_register_ibmcloud_vs_all_info.resource.instances
+          | selectattr('name', '==', host_node))[0].primary_network_attachment[0].primary_ip[0].address }}"
+        port: "{{ ('3' + sap_system_hana_db_instance_nr + '15') | int }}"
+        weight: 100
+        ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
+      loop: "{{ (groups[sap_vm_provision_group_hana_primary] | d([])) }}"
+      loop_control:
+        loop_var: host_node
+      register: __sap_vm_provision_register_ibmcloud_lb_pool_members_hana3
+      failed_when:
+        - not __sap_vm_provision_register_ibmcloud_lb_pool_members_hana3.rc == 0
+        - not 'already exists in a pool' in __sap_vm_provision_register_ibmcloud_lb_pool_members_hana3.stderr
+
+    - name: SAP VM Provision - IBM Cloud - Create IBM Cloud Load Balancer Back-end Pool Members for SAP HANA - MDC Tenant 1 SQL - Member 2 (Failover/Secondary)
+      ibm.cloudcollection.ibm_is_lb_pool_member:
+        lb: "{{ __sap_vm_provision_register_ibmcloud_lbs_hana_id }}"
+        pool: "{{ (__sap_vm_provision_register_ibmcloud_lb_pools.results | json_query('[*].resource.pools') | flatten
+          | selectattr('name', '==', sap_vm_provision_ha_load_balancer_name_hana + '-pool-mdc1-sql'))[0].id }}"
+        target_address: "{{ (__sap_vm_provision_register_ibmcloud_vs_all_info.resource.instances
+          | selectattr('name', '==', host_node))[0].primary_network_attachment[0].primary_ip[0].address }}"
+        port: "{{ ('3' + sap_system_hana_db_instance_nr + '15') | int }}"
+        weight: 1
+        ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
+      loop: "{{ (groups[sap_vm_provision_group_hana_secondary] | d([])) }}"
+      loop_control:
+        loop_var: host_node
+      register: __sap_vm_provision_register_ibmcloud_lb_pool_members_hana4
+      failed_when:
+        - not __sap_vm_provision_register_ibmcloud_lb_pool_members_hana4.rc == 0
+        - not 'already exists in a pool' in __sap_vm_provision_register_ibmcloud_lb_pool_members_hana4.stderr
+
+
+    # Primary and Secondary for startsrv HTTP
+    - name: SAP VM Provision - IBM Cloud - Create IBM Cloud Load Balancer Back-end Pool Members for SAP HANA - startsrv HTTP - Member 1
+      ibm.cloudcollection.ibm_is_lb_pool_member:
+        lb: "{{ __sap_vm_provision_register_ibmcloud_lbs_hana_id }}"
+        pool: "{{ (__sap_vm_provision_register_ibmcloud_lb_pools.results | json_query('[*].resource.pools') | flatten
+          | selectattr('name', '==', sap_vm_provision_ha_load_balancer_name_hana + '-pool-startsrv-http'))[0].id }}"
+        target_address: "{{ (__sap_vm_provision_register_ibmcloud_vs_all_info.resource.instances
+          | selectattr('name', '==', host_node))[0].primary_network_attachment[0].primary_ip[0].address }}"
+        port: "{{ ('5' + sap_system_hana_db_instance_nr + '13') | int }}"
+        weight: 100
+        ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
+      loop: "{{ (groups[sap_vm_provision_group_hana_primary] | d([])) }}"
+      loop_control:
+        loop_var: host_node
+      register: __sap_vm_provision_register_ibmcloud_lb_pool_members_hana5
+      failed_when:
+        - not __sap_vm_provision_register_ibmcloud_lb_pool_members_hana5.rc == 0
+        - not 'already exists in a pool' in __sap_vm_provision_register_ibmcloud_lb_pool_members_hana5.stderr
+
+    - name: SAP VM Provision - IBM Cloud - Create IBM Cloud Load Balancer Back-end Pool Members for SAP HANA - startsrv HTTP - Member 2 (Failover/Secondary)
+      ibm.cloudcollection.ibm_is_lb_pool_member:
+        lb: "{{ __sap_vm_provision_register_ibmcloud_lbs_hana_id }}"
+        pool: "{{ (__sap_vm_provision_register_ibmcloud_lb_pools.results | json_query('[*].resource.pools') | flatten
+          | selectattr('name', '==', sap_vm_provision_ha_load_balancer_name_hana + '-pool-startsrv-http'))[0].id }}"
+        target_address: "{{ (__sap_vm_provision_register_ibmcloud_vs_all_info.resource.instances
+          | selectattr('name', '==', host_node))[0].primary_network_attachment[0].primary_ip[0].address }}"
+        port: "{{ ('5' + sap_system_hana_db_instance_nr + '13') | int }}"
+        weight: 1
+        ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
+      loop: "{{ (groups[sap_vm_provision_group_hana_secondary] | d([])) }}"
+      loop_control:
+        loop_var: host_node
+      register: __sap_vm_provision_register_ibmcloud_lb_pool_members_hana6
+      failed_when:
+        - not __sap_vm_provision_register_ibmcloud_lb_pool_members_hana6.rc == 0
+        - not 'already exists in a pool' in __sap_vm_provision_register_ibmcloud_lb_pool_members_hana6.stderr
+
+
+    # Primary and Secondary for startsrv HTTPS
+    - name: SAP VM Provision - IBM Cloud - Create IBM Cloud Load Balancer Back-end Pool Members for SAP HANA - startsrv HTTPS - Member 1
+      ibm.cloudcollection.ibm_is_lb_pool_member:
+        lb: "{{ __sap_vm_provision_register_ibmcloud_lbs_hana_id }}"
+        pool: "{{ (__sap_vm_provision_register_ibmcloud_lb_pools.results | json_query('[*].resource.pools') | flatten
+          | selectattr('name', '==', sap_vm_provision_ha_load_balancer_name_hana + '-pool-startsrv-https'))[0].id }}"
+        target_address: "{{ (__sap_vm_provision_register_ibmcloud_vs_all_info.resource.instances
+          | selectattr('name', '==', host_node))[0].primary_network_attachment[0].primary_ip[0].address }}"
+        port: "{{ ('5' + sap_system_hana_db_instance_nr + '14') | int }}"
+        weight: 100
+        ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
+      loop: "{{ (groups[sap_vm_provision_group_hana_primary] | d([])) }}"
+      loop_control:
+        loop_var: host_node
+      register: __sap_vm_provision_register_ibmcloud_lb_pool_members_hana7
+      failed_when:
+        - not __sap_vm_provision_register_ibmcloud_lb_pool_members_hana7.rc == 0
+        - not 'already exists in a pool' in __sap_vm_provision_register_ibmcloud_lb_pool_members_hana7.stderr
+
+    - name: SAP VM Provision - IBM Cloud - Create IBM Cloud Load Balancer Back-end Pool Members for SAP HANA - startsrv HTTPS - Member 2 (Failover/Secondary)
+      ibm.cloudcollection.ibm_is_lb_pool_member:
+        lb: "{{ __sap_vm_provision_register_ibmcloud_lbs_hana_id }}"
+        pool: "{{ (__sap_vm_provision_register_ibmcloud_lb_pools.results | json_query('[*].resource.pools') | flatten
+          | selectattr('name', '==', sap_vm_provision_ha_load_balancer_name_hana + '-pool-startsrv-https'))[0].id }}"
+        target_address: "{{ (__sap_vm_provision_register_ibmcloud_vs_all_info.resource.instances
+          | selectattr('name', '==', host_node))[0].primary_network_attachment[0].primary_ip[0].address }}"
+        port: "{{ ('5' + sap_system_hana_db_instance_nr + '14') | int }}"
+        weight: 1
+        ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
+      loop: "{{ (groups[sap_vm_provision_group_hana_secondary] | d([])) }}"
+      loop_control:
+        loop_var: host_node
+      register: __sap_vm_provision_register_ibmcloud_lb_pool_members_hana8
+      failed_when:
+        - not __sap_vm_provision_register_ibmcloud_lb_pool_members_hana8.rc == 0
+        - not 'already exists in a pool' in __sap_vm_provision_register_ibmcloud_lb_pool_members_hana8.stderr
+
+
+# Set DNS A Record for Virtual IP (use the first of the IBM Cloud Load Balancer instance assigned Private IPs in the VPC Subnet Range)
+- name: SAP VM Provision - IBM Cloud - IBM Cloud Private DNS Record for SAP HANA HA Virtual Hostname
+  ibm.cloudcollection.ibm_dns_resource_record:
+    instance_id: "{{ __sap_vm_provision_register_ibmcloud_pdns_service_instance.resource.guid }}"
+    zone_id: "{{ (__sap_vm_provision_register_ibmcloud_pdns.resource.dns_zones
+      | selectattr('name', '==', sap_vm_provision_dns_root_domain) | first).zone_id }}"
+    name: "{{ __sap_vm_provision_fact_ha_hostname_hana_primary }}.{{ hostvars[host_node].sap_vm_provision_dns_root_domain }}" # Host FQDN
+    rdata: "{{ (__sap_vm_provision_register_ibmcloud_lbs_all_info
+      | selectattr('name', '==', sap_vm_provision_ha_load_balancer_name_hana))[0].private_ips[0].address }}" # IP Address
+    type: A
+    ttl: 7200
+    ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
+  loop: "{{ (groups[sap_vm_provision_group_hana_primary] | d([])) }}"
+  loop_control:
+    loop_var: host_node
+  register: __sap_vm_provision_register_ibmcloud_pdns_record_ha_hana
+  no_log: "{{ __sap_vm_provision_no_log }}"
+  failed_when:
+    - not __sap_vm_provision_register_ibmcloud_pdns_record_ha_hana.rc == 0
+    - not 'The record already exists' in __sap_vm_provision_register_ibmcloud_pdns_record_ha_hana.stderr
+
+
+# Reason for noqa: This is setting variables for usage in end to end playbooks.
+- name: SAP VM Provision - IBM Cloud - Set facts for all hosts - use facts from localhost - HA/DR - IBM Cloud Load Balancer - SAP HANA Primary node
+  ansible.builtin.set_fact:  # noqa var-naming[no-role-prefix]
+    sap_vm_provision_ha_vip_hana_primary: "{{ __vip_ip }}"
+    sap_vm_temp_vip_hana_primary: "{{ __vip_ip }}"
+    sap_ha_pacemaker_cluster_vip_hana_primary_ip_address: "{{ __vip_ip }}"
+  delegate_to: "{{ host_item }}"
+  delegate_facts: true
+  loop: "{{ __sap_vm_provision_fact_merged_hosts_list }}"
+  loop_control:
+    loop_var: host_item
+  vars:
+    __vip_ip: "{{ (__sap_vm_provision_register_ibmcloud_lbs_all_info
+      | selectattr('name', '==', sap_vm_provision_ha_load_balancer_name_hana))[0].private_ips[0].address }}"

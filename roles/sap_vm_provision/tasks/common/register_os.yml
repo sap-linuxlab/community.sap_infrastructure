@@ -1,89 +1,113 @@
+# SPDX-License-Identifier: Apache-2.0
 ---
 
 #### For On-Premise Package Repo Mirrors ####
 
 - name: Ansible Task block for RHEL Package Repositories setup with Registration Script
   when:
-    - ansible_os_family == 'RedHat'
-    - (sap_vm_provision_os_registration_script_command is defined) and (sap_vm_provision_os_registration_script_command | length > 0)
-    - (sap_vm_provision_os_online_registration_user is undefined) or (sap_vm_provision_os_online_registration_user | length == 0)
-    - (sap_vm_provision_os_online_registration_passcode is undefined) or (sap_vm_provision_os_online_registration_passcode | length == 0)
+    - ansible_facts['os_family'] == 'RedHat'
+    - sap_vm_provision_os_registration_script_command | d('') | length > 0
+    - sap_vm_provision_os_online_registration_user | d('') | length == 0
+    - sap_vm_provision_os_online_registration_passcode | d('') | length == 0
   block:
 
-    - name: Red Hat Package Repositories - Clean any existing Red Hat Subscription Manager data
-      ansible.builtin.command: /usr/sbin/subscription-manager clean
+    - name: SAP VM Provision - Register OS - Red Hat Package Repositories - Clean any existing Red Hat Subscription Manager data
+      ansible.builtin.command:
+        cmd: /usr/sbin/subscription-manager clean
+      changed_when: true
 
-    - name: Red Hat Package Repositories - Import CA file for Red Hat Satellite server
+    - name: SAP VM Provision - Register OS - Red Hat Package Repositories - Import CA file for Red Hat Satellite server
       ansible.builtin.copy:
         src: "{{ sap_vm_provision_os_registration_ca_file_path }}"
         dest: /etc/pki/ca-trust/source/anchors
         owner: root
         group: root
         mode: '0644'
-      when: (sap_vm_provision_os_registration_ca_file_path is defined) and (sap_vm_provision_os_registration_ca_file_path | length > 0)
+      when: sap_vm_provision_os_registration_ca_file_path | d('') | length > 0
 
-    - name: Red Hat Package Repositories - Update CA trust
-      ansible.builtin.command: update-ca-trust
-
-    - name: Red Hat Package Repositories - Execute Registration Script to connect host to Red Hat Satellite
-      ansible.builtin.shell: "{{ sap_vm_provision_os_registration_script_command }}"  # noqa: command-instead-of-shell
+    - name: SAP VM Provision - Register OS - Red Hat Package Repositories - Update CA trust
+      ansible.builtin.command:
+        cmd: update-ca-trust
       changed_when: true
-      # no_log: true
 
-    - name: Red Hat Package Repositories - Cleanup dnf repositories
-      ansible.builtin.command: dnf clean all
+    # Reason for noqa: Ensures that environment variables are used.
+    - name: SAP VM Provision - Register OS - Red Hat Package Repositories - Execute Registration Script to connect host to Red Hat Satellite
+      ansible.builtin.shell:  # noqa: command-instead-of-shell
+        cmd: "{{ sap_vm_provision_os_registration_script_command }}"
+      changed_when: true
+      no_log: "{{ __sap_vm_provision_no_log }}"
+
+    - name: SAP VM Provision - Register OS - Red Hat Package Repositories - Cleanup dnf repositories
+      ansible.builtin.command:
+        cmd: dnf clean all
+      changed_when: true
 
 
 - name: Ansible Task block for SLES Package Repositories setup with Registration Script
   when:
-    - ansible_os_family == 'Suse'
-    - (sap_vm_provision_os_registration_script_command is defined) and (sap_vm_provision_os_registration_script_command | length > 0)
-    - (sap_vm_provision_os_online_registration_user is undefined) or (sap_vm_provision_os_online_registration_user | length == 0)
-    - (sap_vm_provision_os_online_registration_passcode is undefined) or (sap_vm_provision_os_online_registration_passcode | length == 0)
+    - ansible_facts['os_family'] == 'Suse'
+    - sap_vm_provision_os_registration_script_command | d('') | length > 0
+    - sap_vm_provision_os_online_registration_user | d('') | length == 0
+    - sap_vm_provision_os_online_registration_passcode | d('') | length == 0
   block:
 
-    - name: SUSE Package Repositories - Import CA file for SUSE RMT server
+    - name: SAP VM Provision - Register OS - SUSE Package Repositories - Import CA file for SUSE RMT server
       ansible.builtin.copy:
         src: "{{ sap_vm_provision_os_registration_ca_file_path }}"
         dest: /etc/pki/trust/anchors
         owner: root
         group: root
         mode: '0644'
-      when: (sap_vm_provision_os_registration_ca_file_path is defined) and (sap_vm_provision_os_registration_ca_file_path | length > 0)
+      when: sap_vm_provision_os_registration_ca_file_path | d('') | length > 0
 
-    - name: SUSE Package Repositories - Update CA trust
-      ansible.builtin.command: update-ca-trust && update-ca-certificates
-
-    - name: SUSE Package Repositories - Execute Registration Script to connect host to SUSE RMT
-      ansible.builtin.shell: "{{ sap_vm_provision_os_registration_script_command }}"  # noqa: command-instead-of-shell
+    - name: SAP VM Provision - Register OS - SUSE Package Repositories - Update CA trust
+      ansible.builtin.command:
+        cmd: update-ca-trust && update-ca-certificates
       changed_when: true
-      no_log: true
+
+    # Reason for noqa: Ensures that environment variables are used.
+    - name: SAP VM Provision - Register OS - SUSE Package Repositories - Execute Registration Script to connect host to SUSE RMT
+      ansible.builtin.shell:  # noqa: command-instead-of-shell
+        cmd: "{{ sap_vm_provision_os_registration_script_command }}"
+      changed_when: true
+      no_log: "{{ __sap_vm_provision_no_log }}"
 
 
 #### For Online Registration via SNAT ####
 
 - name: Ansible Task block for RHEL Package Repositories setup via Public Internet
   when:
-    - ansible_os_family == 'RedHat'
-    - (sap_vm_provision_os_registration_script_command is undefined) or (sap_vm_provision_os_registration_script_command | length == 0)
-    - (sap_vm_provision_os_online_registration_user is defined) and (sap_vm_provision_os_online_registration_user | length > 0)
-    - (sap_vm_provision_os_online_registration_passcode is defined) and (sap_vm_provision_os_online_registration_passcode | length > 0)
+    - ansible_facts['os_family'] == 'RedHat'
+    - sap_vm_provision_os_registration_script_command | d('') | length == 0
+    - sap_vm_provision_os_online_registration_user | d('') | length > 0
+    - sap_vm_provision_os_online_registration_passcode | d('') | length > 0
   block:
 
-    - name: Red Hat Customer Portal (RHCP) Online Package Repositories - Execute
-      ansible.builtin.command: subscription-manager register --auto-attach --username '{{ sap_vm_provision_os_online_registration_user }}' --password '{{ sap_vm_provision_os_online_registration_passcode }}'
+    - name: SAP VM Provision - Register OS - Red Hat Customer Portal (RHCP) Online Package Repositories - Execute
+      ansible.builtin.command:
+        cmd: >-
+          subscription-manager register
+          --auto-attach
+          --username '{{ sap_vm_provision_os_online_registration_user }}'
+          --password '{{ sap_vm_provision_os_online_registration_passcode }}'
       ignore_errors: true
+      changed_when: true
 
 
 - name: Ansible Task block for SLES Package Repositories setup via Public Internet
   when:
-    - ansible_os_family == 'Suse'
-    - (sap_vm_provision_os_registration_script_command is undefined) or (sap_vm_provision_os_registration_script_command | length == 0)
-    - (sap_vm_provision_os_online_registration_user is defined) and (sap_vm_provision_os_online_registration_user | length > 0)
-    - (sap_vm_provision_os_online_registration_passcode is defined) and (sap_vm_provision_os_online_registration_passcode | length > 0)
+    - ansible_facts['os_family'] == 'Suse'
+    - sap_vm_provision_os_registration_script_command | d('') | length == 0
+    - sap_vm_provision_os_online_registration_user | d('') | length > 0
+    - sap_vm_provision_os_online_registration_passcode | d('') | length > 0
   block:
 
-    - name: SUSE Customer Center (SCC) Online Package Repositories - Execute
-      ansible.builtin.command: SUSEConnect --email '{{ sap_vm_provision_os_online_registration_user }}' --regcode '{{ sap_vm_provision_os_online_registration_passcode }}'
+    - name: SAP VM Provision - Register OS - SUSE Customer Center (SCC) Online Package Repositories - Execute
+      ansible.builtin.command:
+        cmd: >-
+          SUSEConnect
+          --email '{{ sap_vm_provision_os_online_registration_user }}'
+          --regcode '{{ sap_vm_provision_os_online_registration_passcode }}'
       ignore_errors: true
-      no_log: true
+      changed_when: true
+      no_log: "{{ __sap_vm_provision_no_log }}"

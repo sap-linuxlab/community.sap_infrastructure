@@ -1,0 +1,103 @@
+# SPDX-License-Identifier: Apache-2.0
+---
+
+- name: SAP VM Provision - AWS - Ansible AWS VPC Route Table append route for SAP AnyDB HA
+  amazon.aws.ec2_vpc_route_table:
+    lookup: id
+    vpc_id: "{{ __sap_vm_provision_register_aws_vpc_subnet_rt_info.route_tables[0].vpc_id }}"
+    route_table_id: "{{ __sap_vm_provision_register_aws_vpc_subnet_rt_info.route_tables[0].route_table_id }}"
+    purge_subnets: false
+    purge_routes: false
+    state: present
+    routes:
+      - dest: "{{ sap_vm_provision_ha_vip_anydb_primary }}"
+        instance_id: "{{ hostvars[host_node].ansible_facts['board_asset_tag'] }}"
+    access_key: "{{ sap_vm_provision_aws_access_key }}"
+    secret_key: "{{ sap_vm_provision_aws_secret_access_key }}"
+  loop: "{{ (groups[sap_vm_provision_group_anydb_primary] | d([])) }}"
+  loop_control:
+    loop_var: host_node
+  register: __sap_vm_provision_register_aws_vpc_subnet_rt_route_sap_anydb
+  no_log: "{{ __sap_vm_provision_no_log }}"
+
+- name: SAP VM Provision - AWS - Ansible AWS Route53 DNS Records for SAP AnyDB HA Virtual Hostname
+  amazon.aws.route53:
+    state: present
+    private_zone: true
+    zone: "{{ hostvars[host_node].sap_vm_provision_dns_root_domain }}"
+    record: "{{ __sap_vm_provision_fact_ha_hostname_anydb_primary }}.{{ hostvars[host_node].sap_vm_provision_dns_root_domain }}"
+    type: A
+    ttl: 7200
+    value: "{{ sap_vm_provision_ha_vip_anydb_primary | regex_replace('/.*', '') }}"
+    wait: true
+    overwrite: "{{ sap_vm_provision_aws_dns_overwrite if sap_vm_provision_aws_dns_overwrite | bool else false }}"
+    access_key: "{{ sap_vm_provision_aws_access_key }}"
+    secret_key: "{{ sap_vm_provision_aws_secret_access_key }}"
+  loop: "{{ (groups[sap_vm_provision_group_anydb_primary] | d([])) }}"
+  loop_control:
+    loop_var: host_node
+  register: __sap_vm_provision_register_aws_route53_sap_anydb
+  no_log: "{{ __sap_vm_provision_no_log }}"
+
+
+- name: SAP VM Provision - AWS - IAM Policy - HA-Policy-STONITH-SAPANYDB
+  amazon.aws.iam_policy:
+    state: present
+    iam_type: role
+    iam_name: "{{ __sap_vm_provision_aws_ha_iam_role }}"
+    policy_name: "HA-Policy-STONITH-SAPANYDB"
+    policy_json: |
+      {
+          "Version": "2012-10-17",
+          "Statement": [
+              {
+                  "Sid": "Stmt1424870324000",
+                  "Effect": "Allow",
+                  "Action": [
+                      "ec2:DescribeInstances",
+                      "ec2:DescribeInstanceAttribute",
+                      "ec2:DescribeTags"
+                  ],
+                  "Resource": "*"
+              },
+              {
+                  "Sid": "Stmt1424870324001",
+                  "Effect": "Allow",
+                  "Action": [
+                      "ec2:ModifyInstanceAttribute",
+                      "ec2:StartInstances",
+                      "ec2:StopInstances",
+                      "ec2:RebootInstances"
+                  ],
+                  "Resource": [
+                      "arn:aws:ec2:{{ sap_vm_provision_aws_region }}:{{ __sap_vm_provision_register_aws_account_info.account }}:instance/{{
+                       hostvars[groups[sap_vm_provision_group_anydb_primary][0]].__sap_vm_provision_register_instance_info.instances[0].instance_id }}",
+                      "arn:aws:ec2:{{ sap_vm_provision_aws_region }}:{{ __sap_vm_provision_register_aws_account_info.account }}:instance/{{
+                       hostvars[groups[sap_vm_provision_group_anydb_secondary][0]].__sap_vm_provision_register_instance_info.instances[0].instance_id }}"
+                  ]
+              }
+          ]
+      }
+    access_key: "{{ sap_vm_provision_aws_access_key }}"
+    secret_key: "{{ sap_vm_provision_aws_secret_access_key }}"
+  register: __sap_vm_provision_register_aws_iam_policy_stonith_sapanydb
+  no_log: "{{ __sap_vm_provision_no_log }}"
+  when: __sap_vm_provision_fact_is_ha_anydb
+
+
+# Equivalent to aws ec2 associate-iam-instance-profile
+# --iam-instance-profile "Name=HA-Instance-Profile-Pacemaker-Cluster"
+# --instance-id {{ hostvars[host_node].ansible_facts['board_asset_tag'] }}
+- name: SAP VM Provision - AWS - Associate AWS IAM Instance Profile for SAP ANYDB
+  amazon.aws.ec2_instance:
+    instance_ids: "{{ hostvars[host_node].ansible_facts['board_asset_tag'] }}"
+    iam_instance_profile: "{{ __sap_vm_provision_aws_ha_iam_instance_profile }}"
+    access_key: "{{ sap_vm_provision_aws_access_key }}"
+    secret_key: "{{ sap_vm_provision_aws_secret_access_key }}"
+  loop: "{{ [[groups[sap_vm_provision_group_anydb_primary] | d([])], [groups[sap_vm_provision_group_anydb_secondary] | d([])]] | flatten | select() }}"
+  loop_control:
+    loop_var: host_node
+  register: __sap_vm_provision_register_aws_iam_associate_instance_sapanydb
+  no_log: "{{ __sap_vm_provision_no_log }}"
+  when: __sap_vm_provision_fact_is_ha_anydb
+  ignore_errors: true

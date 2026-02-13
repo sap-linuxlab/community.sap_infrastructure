@@ -33,16 +33,17 @@ skip_list:
   - schema
   # Allow templating inside name because it creates more detailed output:
   - name[template]
-  # Allow command tasks without defining changed_when
-  - no-changed-when
-  # Allow tasks that could be replaced by handlers
-  - no-handler
-  # Disable jinja formatting check
-  - jinja[spacing]
-  # Removing these skips would require refactoring of most roles
-  - yaml[comments]
-  - yaml[line-length]
-  - no-tabs
-  # - var-naming[no-jinja]
-  # Rule for variable naming is required because of stricter linting requirements.
-  - var-naming[no-role-prefix]
+
+  # # Allow command tasks without defining changed_when
+  # - no-changed-when
+  # # Allow tasks that could be replaced by handlers
+  # - no-handler
+  # # Disable jinja formatting check
+  # - jinja[spacing]
+  # # Removing these skips would require refactoring of most roles
+  # - yaml[comments]
+  # - yaml[line-length]
+  # - no-tabs
+  # # - var-naming[no-jinja]
+  # # Rule for variable naming is required because of stricter linting requirements.
+  # - var-naming[no-role-prefix]

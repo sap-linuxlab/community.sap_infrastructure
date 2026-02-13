@@ -42,7 +42,8 @@ sap_vm_provision_bastion_user: ""
 
 sap_vm_provision_ssh_bastion_private_key_file_path: ""
 sap_vm_provision_ssh_host_private_key_file_path: ""
-sap_vm_provision_ssh_host_public_key_file_path: "{{ sap_vm_provision_ssh_host_private_key_file_path + '.pub' }}" # used for gcp_ce_vm, ibmpowervm_vm, kubevirt_vm, vmware_vm
+sap_vm_provision_ssh_host_public_key_file_path:
+  "{{ sap_vm_provision_ssh_host_private_key_file_path + '.pub' }}" # used for gcp_ce_vm, ibmpowervm_vm, kubevirt_vm, vmware_vm
 
 
 ####
@@ -123,7 +124,8 @@ sap_vm_provision_nfs_mount_point_opts: ""
 ####
 # VM Provision - dynamic inventory variables
 # Cannot be given a value by end user, the Ansible Role populates the variable
-# After sap_vm_provision has executed successfully, these variables can easily be used to populate other Ansible Role variables (e.g. sap_swpm_db_host)
+# After sap_vm_provision has executed successfully,
+# these variables can easily be used to populate other Ansible Role variables (e.g. sap_swpm_db_host)
 ####
 
 # sap_vm_provision_dynamic_inventory_anydb_primary_hostname: "{{ None }}"
@@ -223,7 +225,7 @@ sap_vm_provision_msazure_ha_iam_role: "Linux Fence Agent Role"
 # Default names for Load Balancer resources on Google Cloud, IBM Cloud, Microsoft Azure
 sap_vm_provision_ha_load_balancer_name_hana: "lb-sap-ha-hana"
 sap_vm_provision_ha_load_balancer_name_anydb: "lb-sap-ha-anydb"
-sap_vm_provision_ha_load_balancer_name_nwas: "lb-sap-ha-nwas"
+sap_vm_provision_ha_load_balancer_name_nwas: "lb-sap-ha-nwas"  # '-ascs' and '-ers' will be appended for ASCS and ERS resources
 
 
 ####
@@ -247,6 +249,21 @@ sap_vm_provision_ha_vip_nwas_abap_ers: "" # e.g. 192.168.2.11/32
 # sap_vm_provision_ha_vip_nwas_abap_pas: # not implemented
 # sap_vm_provision_ha_vip_nwas_abap_aas: # not implemented
 
+# Virtual Hostname to add to /etc/hosts for corresponding host type.
+# # Defaults to variable in comments or first hostname in group and suffix '-ha'.
+# Example: 'h01hana0' host in 'hana_primary' results in 'h01hana0-ha'.
+# sap_vm_provision_ha_hostname_hana_primary: "{{ sap_swpm_db_host }}"
+# sap_vm_provision_ha_hostname_anydb_primary: "{{ sap_swpm_db_host }}"
+# sap_vm_provision_ha_hostname_nwas_abap_ascs: "{{ sap_swpm_ascs_instance_hostname }}"
+# sap_vm_provision_ha_hostname_nwas_abap_ers: "{{ sap_swpm_ers_instance_hostname }}"
+
+# Specific platforms require Load Balancing ports for VIP.
+# Required for: GCP, IBM Cloud, MS Azure.
+# NOTE: These ports are not required if related variables are defined!
+# sap_vm_provision_ha_lb_hana_primary_port: ""  # sap_ha_pacemaker_cluster_healthcheck_hana_primary_port or sap_system_hana_db_instance_nr
+# sap_vm_provision_ha_lb_anydb_primary_port: ""  # Defaults to 62700
+# sap_vm_provision_ha_lb_nwas_abap_ascs_port: ""  # sap_ha_pacemaker_cluster_healthcheck_nwas_abap_ascs_port or sap_system_nwas_abap_ascs_instance_nr
+# sap_vm_provision_ha_lb_nwas_abap_ers_port: ""  # sap_ha_pacemaker_cluster_healthcheck_nwas_abap_ers_port or sap_system_nwas_abap_ers_instance_nr
 
 ####
 # Infrastructure Platform - Hypervisor - Credentials and Configuration
@@ -315,6 +332,13 @@ sap_vm_provision_msazure_vm_host_os_image: ""
 
 # IBM PowerVM Virtual Machine (see IBM PowerVC Web GUI for list)
 sap_vm_provision_ibmpowervm_vm_host_os_image: ""
+
+
+### SSH Arguments
+sap_vm_provision_ssh_host_ssh_args: >-
+  -o ConnectTimeout=180 -o ControlMaster=auto -o ControlPersist=3600s
+  -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ForwardX11=no
+sap_vm_provision_ssh_bastion_ssh_args: "-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
 
 
 # OS Images - AWS AMI
@@ -677,7 +701,7 @@ sap_vm_provision_aws_ec2_vs_host_specifications_dictionary:
     host1: # Hostname, must be 13 characters or less
       virtual_machine_profile: r5.8xlarge
       disable_ip_anti_spoofing: false
-      #sap_system_type: project_dev # project_dev, project_tst, project_prd
+      # sap_system_type: project_dev # project_dev, project_tst, project_prd
       sap_host_type: hana_primary # hana_primary, hana_secondary, anydb_primary, anydb_secondary, nwas_ascs, nwas_ers, nwas_pas, nwas_aas
       storage_definition:
         - name: data_0
@@ -685,7 +709,7 @@ sap_vm_provision_aws_ec2_vs_host_specifications_dictionary:
           disk_count: 1                  # default: 1
           disk_size: 512                 # size in GB, integer
           disk_type: gp3                 # default: gp3, for AWS EBS disk type
-          #disk_iops:                    # default: null
+          # disk_iops:                    # default: null
 
 
 # Google Cloud
@@ -694,7 +718,7 @@ sap_vm_provision_gcp_ce_vm_host_specifications_dictionary:
     host1: # Hostname, must be 13 characters or less
       virtual_machine_profile: n2-highmem-32
       disable_ip_anti_spoofing: true
-      #sap_system_type: project_dev # project_dev, project_tst, project_prd
+      # sap_system_type: project_dev # project_dev, project_tst, project_prd
       sap_host_type: hana_primary # hana_primary, hana_secondary, anydb_primary, anydb_secondary, nwas_ascs, nwas_ers, nwas_pas, nwas_aas
       storage_definition:
         - name: data_0
@@ -702,7 +726,7 @@ sap_vm_provision_gcp_ce_vm_host_specifications_dictionary:
           disk_count: 1                  # default: 1, if more then then LVM logical volume will be striped across the defined disks
           disk_size: 512                 # size in GB, integer
           disk_type: pd-ssd              # default: gp3, for AWS EBS disk type
-          #disk_iops:                    # default: null
+          # disk_iops:                    # default: null
 
 
 # IBM Cloud
@@ -711,7 +735,7 @@ sap_vm_provision_ibmcloud_vs_host_specifications_dictionary:
     host1: # Hostname, must be 13 characters or less
       virtual_machine_profile: mx2-32x256
       disable_ip_anti_spoofing: true
-      #sap_system_type: project_dev # project_dev, project_tst, project_prd
+      # sap_system_type: project_dev # project_dev, project_tst, project_prd
       sap_host_type: hana_primary # hana_primary, hana_secondary, anydb_primary, anydb_secondary, nwas_ascs, nwas_ers, nwas_pas, nwas_aas
       storage_definition:
         - name: data_0
@@ -719,7 +743,7 @@ sap_vm_provision_ibmcloud_vs_host_specifications_dictionary:
           disk_count: 1                  # default: 1, if more then then LVM logical volume will be striped across the defined disks
           disk_size: 512                 # size in GB, integer
           disk_type: 10iops-tier         # default: gp3, for AWS EBS disk type
-          #disk_iops:                    # default: null
+          # disk_iops:                    # default: null
 
 
 # IBM Cloud, IBM Power VS
@@ -729,7 +753,7 @@ sap_vm_provision_ibmcloud_powervs_host_specifications_dictionary:
       virtual_machine_profile: ush1-4x256 # alt: use custom SAP instance profile sizes using cnp-2x16 (2 Power Cores [16 vCPU] x 16GB) and above
       ibmcloud_powervs_hardware_machine_type: e980 # IBM Power hardware machine type (MT) used to host the Virtual Machine
       disable_ip_anti_spoofing: true
-      #sap_system_type: project_dev # project_dev, project_tst, project_prd
+      # sap_system_type: project_dev # project_dev, project_tst, project_prd
       sap_host_type: hana_primary # hana_primary, hana_secondary, anydb_primary, anydb_secondary, nwas_ascs, nwas_ers, nwas_pas, nwas_aas
       storage_definition:
         - name: data_0
@@ -745,7 +769,7 @@ sap_vm_provision_msazure_vm_host_specifications_dictionary:
     host1: # Hostname, must be 13 characters or less
       virtual_machine_profile: Standard_M32ls
       disable_ip_anti_spoofing: true
-      #sap_system_type: project_dev # project_dev, project_tst, project_prd
+      # sap_system_type: project_dev # project_dev, project_tst, project_prd
       sap_host_type: hana_primary # hana_primary, hana_secondary, anydb_primary, anydb_secondary, nwas_ascs, nwas_ers, nwas_pas, nwas_aas
       storage_definition:
         - name: data_0
@@ -753,7 +777,7 @@ sap_vm_provision_msazure_vm_host_specifications_dictionary:
           disk_count: 1                  # default: 1, if more then then LVM logical volume will be striped across the defined disks
           disk_size: 512                 # size in GB, integer
           disk_type: P20                 # default: gp3, for AWS EBS disk type
-          #disk_iops:                    # default: null
+          # disk_iops:                    # default: null
 
 
 # IBM PowerVM
@@ -764,7 +788,7 @@ sap_vm_provision_ibmpowervm_vm_host_specifications_dictionary:
       ibmpowervm_vm_cpu_smt: 8
       ibmpowervm_vm_cpu_threads: 32
       ibmpowervm_vm_memory_gib: 256
-      #sap_system_type: project_dev # project_dev, project_tst, project_prd
+      # sap_system_type: project_dev # project_dev, project_tst, project_prd
       sap_host_type: hana_primary # hana_primary, hana_secondary, anydb_primary, anydb_secondary, nwas_ascs, nwas_ers, nwas_pas, nwas_aas
       storage_definition:
         - name: data_0
@@ -824,11 +848,11 @@ sap_vm_provision_kubevirt_vm_host_specifications_dictionary:
       # Provide either an existing PVC or a URL for an OS image
       os_image: # either url or source_pvc_name have to be provided
         # URL for an image to be used
-        #url: "docker://registry.redhat.io/rhel8/rhel-guest-image:8.8.0"
-        #url: "docker://registry.redhat.io/rhel8/rhel-guest-image:8.10.0"
-        #url: "docker://registry.redhat.io/rhel9/rhel-guest-image:9.4"
+        # url: "docker://registry.redhat.io/rhel8/rhel-guest-image:8.8.0"
+        # url: "docker://registry.redhat.io/rhel8/rhel-guest-image:8.10.0"
+        # url: "docker://registry.redhat.io/rhel9/rhel-guest-image:9.4"
         url: "docker://registry.redhat.io/rhel9/rhel-guest-image:9.6"
-        #url: "docker://registry.redhat.io/rhel10/rhel-guest-image:10.0"
+        # url: "docker://registry.redhat.io/rhel10/rhel-guest-image:10.0"
         # Name for a PVC to be cloned
         # source_pvc_name: "rhel-8.8"
         namespace: openshift-virtualization-os-images
@@ -881,12 +905,12 @@ sap_vm_provision_ovirt_vm_host_specifications_dictionary:
       ovirt_vm_placement_policy: pinned
 
       ## optional, needed for kickstart installations when no DHCP is used
-      #ovirt_vm_ip:
-      #ovirt_vm_gw:
-      #ovirt_vm_netmask: 255.255.255.0
-      #ovirt_vm_interface: enp1s0
+      # ovirt_vm_ip:
+      # ovirt_vm_gw:
+      # ovirt_vm_netmask: 255.255.255.0
+      # ovirt_vm_interface: enp1s0
 
-      #sap_system_type: project_dev # project_dev, project_tst, project_prd
+      # sap_system_type: project_dev # project_dev, project_tst, project_prd
       sap_host_type: hana_primary # hana_primary, hana_secondary, anydb_primary, anydb_secondary, nwas_ascs, nwas_ers, nwas_pas, nwas_aas
       storage_definition:
         - name: data_0
@@ -906,7 +930,15 @@ sap_vm_provision_ovirt_vm_template_name: ""
 #   initrd_path: /pxeboot/rhel-9.2/initrd.img
 #   kernel_path: /pxeboot/rhel-9.2/vmlinuz
 #   # see RHEL release documentations for kickstart installation kernel parameters
-#   kernel_params: "inst.ks=http://{{ sap_vm_provision_ovirt_kickstart_host }}/kickstart/{{ sap_vm_provision_ovirt_kickstart_config_file_name }} ip={{ sap_vm_provision_ovirt_vm_host_specifications_dictionary[sap_vm_provision_host_specification_plan][inventory_hostname_short].ovirt_vm_ip }}::{{ sap_vm_provision_ovirt_vm_host_specifications_dictionary[sap_vm_provision_host_specification_plan][inventory_hostname_short].ovirt_vm_gw }}:{{ sap_vm_provision_ovirt_vm_host_specifications_dictionary[sap_vm_provision_host_specification_plan][inventory_hostname_short].ovirt_vm_netmask }}:{{ inventory_hostname }}:{{ sap_vm_provision_ovirt_vm_host_specifications_dictionary[sap_vm_provision_host_specification_plan][inventory_hostname_short].ovirt_vm_interface }}:none inst.nompath ipv6.disable=1 inst.repo=cdrom kpti=0"
+#   kernel_params: >-
+#     inst.ks=http://{{ sap_vm_provision_ovirt_kickstart_host }}/kickstart/{{ sap_vm_provision_ovirt_kickstart_config_file_name }}
+#     ip={{ sap_vm_provision_ovirt_vm_host_specifications_dictionary[sap_vm_provision_host_specification_plan][inventory_hostname_short].ovirt_vm_ip
+#     }}::{{ sap_vm_provision_ovirt_vm_host_specifications_dictionary[sap_vm_provision_host_specification_plan][inventory_hostname_short].ovirt_vm_gw
+#     }}:{{ sap_vm_provision_ovirt_vm_host_specifications_dictionary[sap_vm_provision_host_specification_plan][inventory_hostname_short].ovirt_vm_netmask
+#     }}:{{ inventory_hostname
+#     }}:{{ sap_vm_provision_ovirt_vm_host_specifications_dictionary[sap_vm_provision_host_specification_plan][inventory_hostname_short].ovirt_vm_interface
+#     }}:none
+#     inst.nompath ipv6.disable=1 inst.repo=cdrom kpti=0"
 #   boot_disk:
 #     activate: true
 #     bootable: true
@@ -922,10 +954,13 @@ sap_vm_provision_ovirt_vm_template_name: ""
 
 # OVirt VM - cloud-init
 # sap_vm_provision_ovirt_vm_cloud_init:
-#   authorized_ssh_keys: "{{ lookup('file', ( sap_vm_provision_ssh_host_public_key_file_path | default(sap_vm_provision_ssh_host_private_key_file_path + '.pub') ) ) }}"
+#   authorized_ssh_keys:
+#     "{{ lookup('file', ( sap_vm_provision_ssh_host_public_key_file_path | default(sap_vm_provision_ssh_host_private_key_file_path + '.pub') ) ) }}"
 #   regenerate_ssh_keys: false
 #   host_name: "{{ ansible_hostname }}" # Must use short name for SAP Systems, not FQDN
-#   custom_script: | # Cloud-init script which will be executed on Virtual Machine when deployed. This is appended to the end of the cloud-init script generated by any other options.
+#   # Cloud-init script which will be executed on Virtual Machine when deployed.
+#   # This is appended to the end of the cloud-init script generated by any other options.
+#   custom_script: |
 #     write_files:
 #     - content: |
 #         Hello, world!
@@ -946,7 +981,7 @@ sap_vm_provision_vmware_vm_host_specifications_dictionary:
       vmware_vm_cpu_smt: 2
       vmware_vm_cpu_threads: 32
       vmware_vm_memory_gib: 256
-      #sap_system_type: project_dev # project_dev, project_tst, project_prd
+      # sap_system_type: project_dev # project_dev, project_tst, project_prd
       sap_host_type: hana_primary # hana_primary, hana_secondary, anydb_primary, anydb_secondary, nwas_ascs, nwas_ers, nwas_pas, nwas_aas
       storage_definition:
         - name: data_0

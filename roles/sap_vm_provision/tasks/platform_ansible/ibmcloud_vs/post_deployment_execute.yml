@@ -1,378 +1,591 @@
+# SPDX-License-Identifier: Apache-2.0
 ---
 
-# The IBM Cloud Load Balancer is provisioned before Linux Pacemaker and requires a temporary Health Check Probe port to be used with an an active OS service listening.
-# During initial installation, the Health Check Port probe will use Port 55550/55551/55552 with netcat listening, and be switched after the SAP Installation and Linux Pacemaker installation to the correct port number.
+# The IBM Cloud Load Balancer is provisioned before Linux Pacemaker
+# and requires a temporary Health Check Probe port to be used with an an active OS service listening.
+# During initial installation, the Health Check Port probe will use Port 55550/55551/55552 with netcat listening,
+# and be switched after the SAP Installation and Linux Pacemaker installation to the correct port number.
 #
-# This is because an IBM Cloud Load Balancer Backend Pool Health Check probe is executed to all Backend Pool Members (Server instances) ,
+# This is because an IBM Cloud Load Balancer Backend Pool Health Check probe is executed to all Backend Pool Members (Server instances),
 # and if the host is not listening on the port it will fail, which will mark the resource as unhealthy,
 # the traffic will not be routed to the host and if all hosts fail then the IBM Cloud Load Balancer Frontend IP will also fail causing SAP software failures.
 #
-# NOTE - use of weighted round-robin is to mitigate any potential risk of misconfiguration (both primary and secondary nodes showing as active), by using logic 'for every 100 connections send 1 connection to secondary' when both are hosts are active.
+# NOTE - use of weighted round-robin is to mitigate any potential risk of misconfiguration
+# (both primary and secondary nodes showing as active), by using logic '
+# for every 100 connections send 1 connection to secondary' when both are hosts are active.
 
-- name: Ansible Task block for amending Load Balancer ports for High Availability - after provisioning IBM Cloud VS instances
-  delegate_to: localhost
+
+- name: SAP VM Provision - IBM Cloud - Identify hosts
+  ansible.builtin.include_tasks:
+    file: common/identify_hosts.yml
+
+# Ansible Task block for amending Load Balancer ports for High Availability - after provisioning IBM Cloud VS instances
+- name: Block for High Availability tasks
+  delegate_to: "{{ sap_vm_provision_execution_host }}"
   run_once: true
   environment:
     # IC_API_KEY: "{{ sap_vm_provision_ibmcloud_api_key }}" # For legacy Ansible Collection
     # IBMCLOUD_API_KEY: "{{ sap_vm_provision_ibmcloud_api_key }}" # For IBM Cloud CLI quiet login
     IC_REGION: "{{ sap_vm_provision_ibmcloud_region }}"
   when:
-    - sap_ha_pacemaker_cluster_ibmcloud_region is defined
-    - (groups[sap_vm_provision_group_hana_secondary] is defined and (groups[sap_vm_provision_group_hana_secondary] | length>0)) or (groups[sap_vm_provision_group_nwas_ers] is defined and (groups[sap_vm_provision_group_nwas_ers] | length>0)) or (groups[sap_vm_provision_group_anydb_secondary] is defined and (groups[sap_vm_provision_group_anydb_secondary] | length>0))
+    - __sap_vm_provision_fact_is_ha_hana or __sap_vm_provision_fact_is_ha_anydb or __sap_vm_provision_fact_is_ha_nwas_ers
   block:
 
-    - name: Inherit variable - set fact for IBM Cloud Load Balancer Pool Health Check - SAP HANA
-      ansible.builtin.set_fact:
-        ibmcloud_lb_pool_healthcheck_hana: "{{ sap_ha_pacemaker_cluster_healthcheck_hana_primary_port | default('') }}"
-      when: sap_ha_pacemaker_cluster_healthcheck_hana_primary_port is defined
-
-    - name: Inherit variable - set fact for IBM Cloud Load Balancer Pool Health Check - SAP NWAS ASCS
-      ansible.builtin.set_fact:
-        ibmcloud_lb_pool_healthcheck_nwas_ascs: "{{ sap_ha_pacemaker_cluster_healthcheck_nwas_abap_ascs_port | default('') }}"
-      when: sap_ha_pacemaker_cluster_healthcheck_nwas_abap_ascs_port is defined
-
-    - name: Inherit variable - set fact for IBM Cloud Load Balancer Pool Health Check - SAP NWAS ERS
-      ansible.builtin.set_fact:
-        ibmcloud_lb_pool_healthcheck_nwas_ers: "{{ sap_ha_pacemaker_cluster_healthcheck_nwas_abap_ers_port | default('') }}"
-      when: sap_ha_pacemaker_cluster_healthcheck_nwas_abap_ers_port is defined
-
-    - name: Default variable - Set fact for IBM Cloud Load Balancer Pool Health Check - SAP HANA
-      ansible.builtin.set_fact:
-        ibmcloud_lb_pool_healthcheck_hana: "{{ ('620' + (sap_system_hana_db_instance_nr | default('')) | string) | int }}"
-      when: not sap_ha_pacemaker_cluster_healthcheck_hana_primary_port is defined
-
-    - name: Default variable - Set fact for IBM Cloud Load Balancer Pool Health Check - SAP NWAS ASCS
-      ansible.builtin.set_fact:
-        ibmcloud_lb_pool_healthcheck_nwas_ascs: "{{ ('620' + (sap_system_nwas_abap_ascs_instance_nr | default('')) | string) | int }}"
-      when: not sap_ha_pacemaker_cluster_healthcheck_nwas_abap_ascs_port is defined
-
-    - name: Default variable - Set fact for IBM Cloud Load Balancer Pool Health Check - SAP NWAS ERS
-      ansible.builtin.set_fact:
-        ibmcloud_lb_pool_healthcheck_nwas_ers: "{{ ('620' + (sap_system_nwas_abap_ers_instance_nr | default('')) | string) | int }}"
-      when: not sap_ha_pacemaker_cluster_healthcheck_nwas_abap_ers_port is defined
-
-
     # Workaround for bug which populates region and ibmcloud_api_key as TF arguments for ibm_is_lbs_info Ansible Module in legacy Ansible Collection
-    - name: IBM Cloud CLI execution to list Load Balancer/s info
+    # ibmcloud plugin install infrastructure-service -f --quiet
+    - name: SAP VM Provision - IBM Cloud - IBM Cloud CLI execution to list Load Balancer/s info
+      ansible.builtin.shell:
+        cmd: |
+          ibmcloud config --quiet --check-version false && \
+          ibmcloud login --apikey="{{ sap_vm_provision_ibmcloud_api_key }}" \
+            -g {{ sap_vm_provision_ibmcloud_resource_group_name }} \
+            -r {{ sap_vm_provision_ibmcloud_region }} --quiet
+          ibmcloud is load-balancers --quiet --output json
+      register: __sap_vm_provision_register_ibmcloud_lb_all_info_shell
       no_log: "{{ __sap_vm_provision_no_log }}"
-      register: __sap_vm_provision_task_ibmcloud_lb_all_info_shell
-      ansible.builtin.shell: |
-        ibmcloud config --quiet --check-version false && ibmcloud login --apikey="{{ sap_vm_provision_ibmcloud_api_key }}" -g {{ sap_vm_provision_ibmcloud_resource_group_name }} -r {{ sap_vm_provision_ibmcloud_region }} --quiet
-        #ibmcloud plugin install infrastructure-service -f --quiet
-        ibmcloud is load-balancers --quiet --output json
+      changed_when: false
 
-    - name: Set fact for IBM Cloud Load Balancer/s info
+    - name: SAP VM Provision - IBM Cloud - Set fact for IBM Cloud Load Balancer/s info
       ansible.builtin.set_fact:
-        ibmcloud_lbs_all_info: "{{ ('[' + (__sap_vm_provision_task_ibmcloud_lb_all_info_shell.stdout | split('[',1) | last)) | trim | from_json }}"
+        __sap_vm_provision_register_ibmcloud_lbs_all_info:
+          "{{ ('[' + (__sap_vm_provision_register_ibmcloud_lb_all_info_shell.stdout | split('[', 1) | last)) | trim | from_json }}"
 
-    - name: Set fact for IBM Cloud Load Balancer Back-end Pools to target
-      ansible.builtin.set_fact:
-        ibmcloud_lbs_target_pools: []
-
-    - name: Update fact for IBM Cloud Load Balancer Back-end Pools to target
-      ansible.builtin.set_fact:
-        ibmcloud_lbs_target_pools: "{{ ibmcloud_lbs_target_pools + [{ item.id : [( item.pools | json_query('[*].id') )] }] }}"
-      loop: "{{ ibmcloud_lbs_all_info }}"
-      loop_control:
-        label: "{{ item.name }}"
-      when: "(sap_vm_provision_ha_load_balancer_name_hana in item.name) or (sap_vm_provision_ha_load_balancer_name_anydb in item.name) or (sap_vm_provision_ha_load_balancer_name_nwas + '-ascs' in item.name) or (sap_vm_provision_ha_load_balancer_name_nwas + '-ers' in item.name)"
-
-    # - name: Identify IBM Cloud Load Balancer Back-end Pools
-    #   no_log: "{{ __sap_vm_provision_no_log }}"
-    #   register: __sap_vm_provision_task_ibmcloud_lb_pools
-    #   ibm.cloudcollection.ibm_is_lb_pools_info:
-    #     lb: "{{ item.id }}"
-    #     ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
-    #   loop: "{{ ibmcloud_lbs_all_info }}"
+    # - name: SAP VM Provision - IBM Cloud - Update fact for IBM Cloud Load Balancer Back-end Pools to target
+    #   ansible.builtin.set_fact:
+    #     ibmcloud_lbs_target_pools: "{{ ibmcloud_lbs_target_pools + [{ item.id : [( item.pools | json_query('[*].id') )] }] }}"
+    #   loop: "{{ __sap_vm_provision_register_ibmcloud_lbs_all_info }}"
     #   loop_control:
     #     label: "{{ item.name }}"
-    #   when: "(sap_vm_provision_ha_load_balancer_name_hana in item.name) or (sap_vm_provision_ha_load_balancer_name_anydb in item.name) or (sap_vm_provision_ha_load_balancer_name_nwas + '-ascs' in item.name) or (sap_vm_provision_ha_load_balancer_name_nwas + '-ers' in item.name)"
+    #   when: "(sap_vm_provision_ha_load_balancer_name_hana in item.name)
+    #     or (sap_vm_provision_ha_load_balancer_name_anydb in item.name) or (sap_vm_provision_ha_load_balancer_name_nwas + '-ascs' in item.name)
+    #     or (sap_vm_provision_ha_load_balancer_name_nwas + '-ers' in item.name)"
 
 
-    - name: Update IBM Cloud Load Balancer Back-end Pool Health Check Port to Linux Pacemaker controlled listening port for SAP HANA - System DB SQL
-      no_log: "{{ __sap_vm_provision_no_log }}"
-      register: __sap_vm_provision_task_ibmcloud_lb_pool_hana1
-      ibm.cloudcollection.ibm_is_lb_pool:
-        id: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', sap_vm_provision_ha_load_balancer_name_hana))[0].id }}/{{ ((ibmcloud_lbs_all_info | json_query('[*].pools') | flatten) | selectattr('name', '==', sap_vm_provision_ha_load_balancer_name_hana + '-pool-sysdb-sql') | first).id }}"
-        name: "{{ sap_vm_provision_ha_load_balancer_name_hana + '-pool-sysdb-sql' }}"
-        # lb: # Do not use, will force create new resource
-        algorithm: weighted_round_robin
-        protocol: tcp
-        health_delay: 20
-        health_retries: 2
-        health_timeout: 10
-        health_type: tcp
-        health_monitor_port: "{{ ibmcloud_lb_pool_healthcheck_hana }}"
-        ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
-      when: (groups[sap_vm_provision_group_hana_secondary] is defined and (groups[sap_vm_provision_group_hana_secondary] | length>0))
+    - name: Block for HANA HA
+      when: __sap_vm_provision_fact_is_ha_hana
+      vars:
+        __sap_vm_provision_register_ibmcloud_lbs_hana_id: >-
+          {{ __sap_vm_provision_register_ibmcloud_lbs_all_info
+            | selectattr('name', 'equalto', sap_vm_provision_ha_load_balancer_name_hana)
+            | map(attribute='id') | first | d(none) }}
+        __sap_vm_provision_register_ibmcloud_lbs_pools: >-
+          {{ __sap_vm_provision_register_ibmcloud_lbs_all_info
+            | map(attribute='pools') | flatten }}
+      block:
 
-    - name: Update IBM Cloud Load Balancer Back-end Pool Health Check Port to Linux Pacemaker controlled listening port for SAP HANA - MDC Tenant 1 SQL
-      no_log: "{{ __sap_vm_provision_no_log }}"
-      register: __sap_vm_provision_task_ibmcloud_lb_pool_hana2
-      ibm.cloudcollection.ibm_is_lb_pool:
-        id: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', sap_vm_provision_ha_load_balancer_name_hana))[0].id }}/{{ ((ibmcloud_lbs_all_info | json_query('[*].pools') | flatten) | selectattr('name', '==', sap_vm_provision_ha_load_balancer_name_hana + '-pool-mdc1-sql') | first).id }}"
-        name: "{{ sap_vm_provision_ha_load_balancer_name_hana + '-pool-mdc1-sql' }}"
-        # lb: # Do not use, will force create new resource
-        algorithm: weighted_round_robin
-        protocol: tcp
-        health_delay: 20
-        health_retries: 2
-        health_timeout: 10
-        health_type: tcp
-        health_monitor_port: "{{ ibmcloud_lb_pool_healthcheck_hana }}"
-        ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
-      when: (groups[sap_vm_provision_group_hana_secondary] is defined and (groups[sap_vm_provision_group_hana_secondary] | length>0))
+        - name: SAP VM Provision - IBM Cloud - Update Load Balancer Back-end Pool Health Check Port for SAP HANA - System DB SQL
+          ibm.cloudcollection.ibm_is_lb_pool:
+            id: "{{ __sap_vm_provision_register_ibmcloud_lbs_hana_id }}/{{ __pool_id }}"
+            name: "{{ __pool_name }}"
+            # lb: # Do not use, will force create new resource
+            algorithm: weighted_round_robin
+            protocol: tcp
+            health_delay: 20
+            health_retries: 2
+            health_timeout: 10
+            health_type: tcp
+            health_monitor_port: "{{ __sap_vm_provision_fact_ha_lb_hana_primary_port }}"
+            ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
+          register: __sap_vm_provision_register_ibmcloud_lb_pool_hana1
+          no_log: "{{ __sap_vm_provision_no_log }}"
+          vars:
+            __pool_name: "{{ sap_vm_provision_ha_load_balancer_name_hana + '-pool-sysdb-sql' }}"
+            __pool_id: >-
+              {{ __sap_vm_provision_register_ibmcloud_lbs_pools
+                | selectattr('name', 'equalto', __pool_name)
+                | map(attribute='id') | first | d(none) }}
+          when:
+            - __sap_vm_provision_register_ibmcloud_lbs_hana_id is not none
+            - __pool_id is not none
 
-    - name: Update IBM Cloud Load Balancer Back-end Pool Health Check Port to Linux Pacemaker controlled listening port for SAP HANA - startsrv HTTP
-      no_log: "{{ __sap_vm_provision_no_log }}"
-      register: __sap_vm_provision_task_ibmcloud_lb_pool_hana3
-      ibm.cloudcollection.ibm_is_lb_pool:
-        id: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', sap_vm_provision_ha_load_balancer_name_hana))[0].id }}/{{ ((ibmcloud_lbs_all_info | json_query('[*].pools') | flatten) | selectattr('name', '==', sap_vm_provision_ha_load_balancer_name_hana + '-pool-startsrv-http') | first).id }}"
-        name: "{{ sap_vm_provision_ha_load_balancer_name_hana + '-pool-startsrv-http' }}"
-        # lb: # Do not use, will force create new resource
-        algorithm: weighted_round_robin
-        protocol: tcp
-        health_delay: 20
-        health_retries: 2
-        health_timeout: 10
-        health_type: tcp
-        health_monitor_port: "{{ ibmcloud_lb_pool_healthcheck_hana }}"
-        ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
-      when: (groups[sap_vm_provision_group_hana_secondary] is defined and (groups[sap_vm_provision_group_hana_secondary] | length>0))
+        - name: SAP VM Provision - IBM Cloud - Update Load Balancer Back-end Pool Health Check Port for SAP HANA - MDC Tenant 1 SQL
+          ibm.cloudcollection.ibm_is_lb_pool:
+            id: "{{ __sap_vm_provision_register_ibmcloud_lbs_hana_id }}/{{ __pool_id }}"
+            name: "{{ __pool_name }}"
+            # lb: # Do not use, will force create new resource
+            algorithm: weighted_round_robin
+            protocol: tcp
+            health_delay: 20
+            health_retries: 2
+            health_timeout: 10
+            health_type: tcp
+            health_monitor_port: "{{ __sap_vm_provision_fact_ha_lb_hana_primary_port }}"
+            ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
+          register: __sap_vm_provision_register_ibmcloud_lb_pool_hana2
+          no_log: "{{ __sap_vm_provision_no_log }}"
+          vars:
+            __pool_name: "{{ sap_vm_provision_ha_load_balancer_name_hana + '-pool-mdc1-sql' }}"
+            __pool_id: >-
+              {{ __sap_vm_provision_register_ibmcloud_lbs_pools
+                | selectattr('name', 'equalto', __pool_name)
+                | map(attribute='id') | first | d(none) }}
+          when:
+            - __sap_vm_provision_register_ibmcloud_lbs_hana_id is not none
+            - __pool_id is not none
 
-    - name: Update IBM Cloud Load Balancer Back-end Pool Health Check Port to Linux Pacemaker controlled listening port for SAP HANA - startsrv HTTPS
-      no_log: "{{ __sap_vm_provision_no_log }}"
-      register: __sap_vm_provision_task_ibmcloud_lb_pool_hana4
-      ibm.cloudcollection.ibm_is_lb_pool:
-        id: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', sap_vm_provision_ha_load_balancer_name_hana))[0].id }}/{{ ((ibmcloud_lbs_all_info | json_query('[*].pools') | flatten) | selectattr('name', '==', sap_vm_provision_ha_load_balancer_name_hana + '-pool-startsrv-https') | first).id }}"
-        name: "{{ sap_vm_provision_ha_load_balancer_name_hana + '-pool-startsrv-https' }}"
-        # lb: # Do not use, will force create new resource
-        algorithm: weighted_round_robin
-        protocol: tcp
-        health_delay: 20
-        health_retries: 2
-        health_timeout: 10
-        health_type: tcp
-        health_monitor_port: "{{ ibmcloud_lb_pool_healthcheck_hana }}"
-        ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
-      when: (groups[sap_vm_provision_group_hana_secondary] is defined and (groups[sap_vm_provision_group_hana_secondary] | length>0))
 
-    - name: Update IBM Cloud Load Balancer Back-end Pool Health Check Port to Linux Pacemaker controlled listening port for SAP AnyDB - IBM Db2 Communication Port
-      no_log: "{{ __sap_vm_provision_no_log }}"
-      ibm.cloudcollection.ibm_is_lb_pool:
-        id: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', sap_vm_provision_ha_load_balancer_name_anydb))[0].id }}/{{ ((ibmcloud_lbs_all_info | json_query('[*].pools') | flatten) | selectattr('name', '==', sap_vm_provision_ha_load_balancer_name_anydb + '-anydb-pool-ibmdb2') | first).id }}"
-        name: "{{ sap_vm_provision_ha_load_balancer_name_anydb + '-ibmdb2' }}"
-        # lb: # Do not use, will force create new resource
-        algorithm: weighted_round_robin
-        protocol: tcp
-        health_delay: 20
-        health_retries: 2
-        health_timeout: 10
-        health_type: tcp
-        health_monitor_port: 62700
-        ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
-      when: (groups[sap_vm_provision_group_anydb_secondary] is defined and (groups[sap_vm_provision_group_anydb_secondary] | length>0))
+        - name: SAP VM Provision - IBM Cloud - Update Load Balancer Back-end Pool Health Check Port for SAP HANA - startsrv HTTP
+          ibm.cloudcollection.ibm_is_lb_pool:
+            id: "{{ __sap_vm_provision_register_ibmcloud_lbs_hana_id }}/{{ __pool_id }}"
+            name: "{{ __pool_name }}"
+            # lb: # Do not use, will force create new resource
+            algorithm: weighted_round_robin
+            protocol: tcp
+            health_delay: 20
+            health_retries: 2
+            health_timeout: 10
+            health_type: tcp
+            health_monitor_port: "{{ __sap_vm_provision_fact_ha_lb_hana_primary_port }}"
+            ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
+          register: __sap_vm_provision_register_ibmcloud_lb_pool_hana3
+          no_log: "{{ __sap_vm_provision_no_log }}"
+          vars:
+            __pool_name: "{{ sap_vm_provision_ha_load_balancer_name_hana + '-pool-startsrv-http' }}"
+            __pool_id: >-
+              {{ __sap_vm_provision_register_ibmcloud_lbs_pools
+                | selectattr('name', 'equalto', __pool_name)
+                | map(attribute='id') | first | d(none) }}
+          when:
+            - __sap_vm_provision_register_ibmcloud_lbs_hana_id is not none
+            - __pool_id is not none
 
-    - name: Update IBM Cloud Load Balancer Back-end Pool Health Check Port to Linux Pacemaker controlled listening port for SAP NetWeaver ASCS - Dispatcher sapdp<ASCS_NN> process
-      no_log: "{{ __sap_vm_provision_no_log }}"
-      register: __sap_vm_provision_task_ibmcloud_lb_pool_nwas_ascs1
-      ibm.cloudcollection.ibm_is_lb_pool:
-        id: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', sap_vm_provision_ha_load_balancer_name_nwas + '-ascs'))[0].id }}/{{ ((ibmcloud_lbs_all_info | json_query('[*].pools') | flatten) | selectattr('name', '==', sap_vm_provision_ha_load_balancer_name_nwas + '-ascs-pool-dp') | first).id }}"
-        name: "{{ sap_vm_provision_ha_load_balancer_name_nwas + '-ascs-pool-dp' }}"
-        # lb: # Do not use, will force create new resource
-        algorithm: weighted_round_robin
-        protocol: tcp
-        health_delay: 20
-        health_retries: 2
-        health_timeout: 10
-        health_type: tcp
-        health_monitor_port: "{{ ibmcloud_lb_pool_healthcheck_nwas_ascs }}"
-        ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
-      when: (groups[sap_vm_provision_group_nwas_ers] is defined and (groups[sap_vm_provision_group_nwas_ers] | length>0))
+        - name: SAP VM Provision - IBM Cloud - Update Load Balancer Back-end Pool Health Check Port for SAP HANA - startsrv HTTPS
+          ibm.cloudcollection.ibm_is_lb_pool:
+            id: "{{ __sap_vm_provision_register_ibmcloud_lbs_hana_id }}/{{ __pool_id }}"
+            name: "{{ __pool_name }}"
+            # lb: # Do not use, will force create new resource
+            algorithm: weighted_round_robin
+            protocol: tcp
+            health_delay: 20
+            health_retries: 2
+            health_timeout: 10
+            health_type: tcp
+            health_monitor_port: "{{ __sap_vm_provision_fact_ha_lb_hana_primary_port }}"
+            ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
+          register: __sap_vm_provision_register_ibmcloud_lb_pool_hana4
+          no_log: "{{ __sap_vm_provision_no_log }}"
+          vars:
+            __pool_name: "{{ sap_vm_provision_ha_load_balancer_name_hana + '-pool-startsrv-https' }}"
+            __pool_id: >-
+              {{ __sap_vm_provision_register_ibmcloud_lbs_pools
+                | selectattr('name', 'equalto', __pool_name)
+                | map(attribute='id') | first | d(none) }}
+          when:
+            - __sap_vm_provision_register_ibmcloud_lbs_hana_id is not none
+            - __pool_id is not none
 
-    - name: Update IBM Cloud Load Balancer Back-end Pool Health Check Port to Linux Pacemaker controlled listening port for SAP NetWeaver ASCS - Message Server sapms<SAPSID> process
-      no_log: "{{ __sap_vm_provision_no_log }}"
-      register: __sap_vm_provision_task_ibmcloud_lb_pool_nwas_ascs2
-      ibm.cloudcollection.ibm_is_lb_pool:
-        id: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', sap_vm_provision_ha_load_balancer_name_nwas + '-ascs'))[0].id }}/{{ ((ibmcloud_lbs_all_info | json_query('[*].pools') | flatten) | selectattr('name', '==', sap_vm_provision_ha_load_balancer_name_nwas + '-ascs-pool-ms') | first).id }}"
-        name: "{{ sap_vm_provision_ha_load_balancer_name_nwas + '-ascs-pool-ms' }}"
-        # lb: # Do not use, will force create new resource
-        algorithm: weighted_round_robin
-        protocol: tcp
-        health_delay: 20
-        health_retries: 2
-        health_timeout: 10
-        health_type: tcp
-        health_monitor_port: "{{ ibmcloud_lb_pool_healthcheck_nwas_ascs }}"
-        ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
-      when: (groups[sap_vm_provision_group_nwas_ers] is defined and (groups[sap_vm_provision_group_nwas_ers] | length>0))
 
-    - name: Update IBM Cloud Load Balancer Back-end Pool Health Check Port to Linux Pacemaker controlled listening port for SAP NetWeaver ASCS - Message Server HTTP sapms<SAPSID> process
-      no_log: "{{ __sap_vm_provision_no_log }}"
-      register: __sap_vm_provision_task_ibmcloud_lb_pool_nwas_ascs3
-      ibm.cloudcollection.ibm_is_lb_pool:
-        id: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', sap_vm_provision_ha_load_balancer_name_nwas + '-ascs'))[0].id }}/{{ ((ibmcloud_lbs_all_info | json_query('[*].pools') | flatten) | selectattr('name', '==', sap_vm_provision_ha_load_balancer_name_nwas + '-ascs-pool-ms') | first).id }}"
-        name: "{{ sap_vm_provision_ha_load_balancer_name_nwas + '-ascs-pool-ms-http' }}"
-        # lb: # Do not use, will force create new resource
-        algorithm: weighted_round_robin
-        protocol: tcp
-        health_delay: 20
-        health_retries: 2
-        health_timeout: 10
-        health_type: tcp
-        health_monitor_port: "{{ ibmcloud_lb_pool_healthcheck_nwas_ascs }}"
-        ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
-      when: (groups[sap_vm_provision_group_nwas_ers] is defined and (groups[sap_vm_provision_group_nwas_ers] | length>0))
+    - name: Block for AnyDB HA
+      when: __sap_vm_provision_fact_is_ha_anydb
+      vars:
+        __sap_vm_provision_register_ibmcloud_lbs_anydb_id: >-
+          {{ __sap_vm_provision_register_ibmcloud_lbs_all_info
+            | selectattr('name', 'equalto', sap_vm_provision_ha_load_balancer_name_anydb)
+            | map(attribute='id') | first | d(none) }}
+        __sap_vm_provision_register_ibmcloud_lbs_pools: >-
+          {{ __sap_vm_provision_register_ibmcloud_lbs_all_info
+            | map(attribute='pools') | flatten }}
+      block:
 
-    - name: Update IBM Cloud Load Balancer Back-end Pool Health Check Port to Linux Pacemaker controlled listening port for SAP NetWeaver ASCS - Enqueue Server sapenq<SAPSID> process
-      no_log: "{{ __sap_vm_provision_no_log }}"
-      register: __sap_vm_provision_task_ibmcloud_lb_pool_nwas_ascs4
-      ibm.cloudcollection.ibm_is_lb_pool:
-        id: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', sap_vm_provision_ha_load_balancer_name_nwas + '-ascs'))[0].id }}/{{ ((ibmcloud_lbs_all_info | json_query('[*].pools') | flatten) | selectattr('name', '==', sap_vm_provision_ha_load_balancer_name_nwas + '-ascs-pool-enq') | first).id }}"
-        name: "{{ sap_vm_provision_ha_load_balancer_name_nwas + '-ascs-pool-enq' }}"
-        # lb: # Do not use, will force create new resource
-        algorithm: weighted_round_robin
-        protocol: tcp
-        health_delay: 20
-        health_retries: 2
-        health_timeout: 10
-        health_type: tcp
-        health_monitor_port: "{{ ibmcloud_lb_pool_healthcheck_nwas_ascs }}"
-        ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
-      when: (groups[sap_vm_provision_group_nwas_ers] is defined and (groups[sap_vm_provision_group_nwas_ers] | length>0))
+        - name: SAP VM Provision - IBM Cloud - Update Load Balancer Back-end Pool Health Check Port for SAP AnyDB - IBM Db2 Communication Port
+          ibm.cloudcollection.ibm_is_lb_pool:
+            id: "{{ __sap_vm_provision_register_ibmcloud_lbs_anydb_id }}/{{ __pool_id }}"
+            name: "{{ __pool_name }}"
+            # lb: # Do not use, will force create new resource
+            algorithm: weighted_round_robin
+            protocol: tcp
+            health_delay: 20
+            health_retries: 2
+            health_timeout: 10
+            health_type: tcp
+            health_monitor_port: "{{ __sap_vm_provision_fact_ha_lb_anydb_primary_port }}"
+            ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
+          register: __sap_vm_provision_register_ibmcloud_lb_pool_anydb
+          no_log: "{{ __sap_vm_provision_no_log }}"
+          vars:
+            __pool_name: "{{ sap_vm_provision_ha_load_balancer_name_anydb + '-pool-ibmdb2' }}"
+            __pool_id: >-
+              {{ __sap_vm_provision_register_ibmcloud_lbs_pools
+                | selectattr('name', 'equalto', __pool_name)
+                | map(attribute='id') | first | d(none) }}
+          when:
+            - __sap_vm_provision_register_ibmcloud_lbs_anydb_id is not none
+            - __pool_id is not none
 
-    - name: Update IBM Cloud Load Balancer Back-end Pool Health Check Port to Linux Pacemaker controlled listening port for SAP NetWeaver ASCS - Enqueue Replicator Server sapenqrepl<SAPSID> process
-      no_log: "{{ __sap_vm_provision_no_log }}"
-      register: __sap_vm_provision_task_ibmcloud_lb_pool_nwas_ascs5
-      ibm.cloudcollection.ibm_is_lb_pool:
-        id: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', sap_vm_provision_ha_load_balancer_name_nwas + '-ascs'))[0].id }}/{{ ((ibmcloud_lbs_all_info | json_query('[*].pools') | flatten) | selectattr('name', '==', sap_vm_provision_ha_load_balancer_name_nwas + '-ascs-pool-enq') | first).id }}"
-        name: "{{ sap_vm_provision_ha_load_balancer_name_nwas + '-ascs-pool-enqrepl' }}"
-        # lb: # Do not use, will force create new resource
-        algorithm: weighted_round_robin
-        protocol: tcp
-        health_delay: 20
-        health_retries: 2
-        health_timeout: 10
-        health_type: tcp
-        health_monitor_port: "{{ ibmcloud_lb_pool_healthcheck_nwas_ascs }}"
-        ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
-      when: (groups[sap_vm_provision_group_nwas_ers] is defined and (groups[sap_vm_provision_group_nwas_ers] | length>0))
 
-    - name: Update IBM Cloud Load Balancer Back-end Pool Health Check Port to Linux Pacemaker controlled listening port for SAP NetWeaver ASCS - SAP Start Service (SAPControl SOAP) HTTP sapctrl<ASCS_NN> process
-      no_log: "{{ __sap_vm_provision_no_log }}"
-      register: __sap_vm_provision_task_ibmcloud_lb_pool_nwas_ascs6
-      ibm.cloudcollection.ibm_is_lb_pool:
-        id: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', sap_vm_provision_ha_load_balancer_name_nwas + '-ascs'))[0].id }}/{{ ((ibmcloud_lbs_all_info | json_query('[*].pools') | flatten) | selectattr('name', '==', sap_vm_provision_ha_load_balancer_name_nwas + '-ascs-pool-sapctrl') | first).id }}"
-        name: "{{ sap_vm_provision_ha_load_balancer_name_nwas + '-ascs-pool-sapctrl' }}"
-        # lb: # Do not use, will force create new resource
-        algorithm: weighted_round_robin
-        protocol: tcp
-        health_delay: 20
-        health_retries: 2
-        health_timeout: 10
-        health_type: tcp
-        health_monitor_port: "{{ ibmcloud_lb_pool_healthcheck_nwas_ascs }}"
-        ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
-      when: (groups[sap_vm_provision_group_nwas_ers] is defined and (groups[sap_vm_provision_group_nwas_ers] | length>0))
+    - name: Block for ASCS/ERS HA
+      when: __sap_vm_provision_fact_is_ha_nwas_ers
+      vars:
+        __sap_vm_provision_register_ibmcloud_lbs_ascs_id: >-
+          {{ __sap_vm_provision_register_ibmcloud_lbs_all_info
+            | selectattr('name', 'equalto', sap_vm_provision_ha_load_balancer_name_nwas + '-ascs')
+            | map(attribute='id') | first | d(none) }}
 
-    - name: Update IBM Cloud Load Balancer Back-end Pool Health Check Port to Linux Pacemaker controlled listening port for SAP NetWeaver ASCS - SAP Start Service (SAPControl SOAP) HTTPS (Secure) sapctrls<ASCS_NN>
-      no_log: "{{ __sap_vm_provision_no_log }}"
-      register: __sap_vm_provision_task_ibmcloud_lb_pool_nwas_ascs7
-      ibm.cloudcollection.ibm_is_lb_pool:
-        id: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', sap_vm_provision_ha_load_balancer_name_nwas + '-ascs'))[0].id }}/{{ ((ibmcloud_lbs_all_info | json_query('[*].pools') | flatten) | selectattr('name', '==', sap_vm_provision_ha_load_balancer_name_nwas + '-ascs-pool-sapctrls') | first).id }}"
-        name: "{{ sap_vm_provision_ha_load_balancer_name_nwas + '-ascs-pool-sapctrls' }}"
-        # lb: # Do not use, will force create new resource
-        algorithm: weighted_round_robin
-        protocol: tcp
-        health_delay: 20
-        health_retries: 2
-        health_timeout: 10
-        health_type: tcp
-        health_monitor_port: "{{ ibmcloud_lb_pool_healthcheck_nwas_ascs }}"
-        ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
-      when: (groups[sap_vm_provision_group_nwas_ers] is defined and (groups[sap_vm_provision_group_nwas_ers] | length>0))
+        __sap_vm_provision_register_ibmcloud_lbs_ers_id: >-
+          {{ __sap_vm_provision_register_ibmcloud_lbs_all_info
+            | selectattr('name', 'equalto', sap_vm_provision_ha_load_balancer_name_nwas + '-ers')
+            | map(attribute='id') | first | d(none) }}
 
-    # - name: Update IBM Cloud Load Balancer Back-end Pool Health Check Port to Linux Pacemaker controlled listening port for SAP NetWeaver ERS - Dispatcher sapdp<ERS_NN> process
-    #   no_log: "{{ __sap_vm_provision_no_log }}"
-    #   register: __sap_vm_provision_task_ibmcloud_lb_pool_nwas_ers1
-    #   ibm.cloudcollection.ibm_is_lb_pool:
-    #     id: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', sap_vm_provision_ha_load_balancer_name_nwas + '-ers'))[0].id }}/{{ ((ibmcloud_lbs_all_info | json_query('[*].pools') | flatten) | selectattr('name', '==', sap_vm_provision_ha_load_balancer_name_nwas + '-ers-pool-dp') | first).id }}"
-    #     name: name: "{{ sap_vm_provision_ha_load_balancer_name_nwas + '-ers-pool-dp' }}"
-    #     # lb: # Do not use, will force create new resource
-    #     algorithm: weighted_round_robin
-    #     protocol: tcp
-    #     health_delay: 20
-    #     health_retries: 2
-    #     health_timeout: 10
-    #     health_type: tcp
-    #     health_monitor_port: "{{ ibmcloud_lb_pool_healthcheck_nwas_ers }}"
-    #     ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
-    #   when: (groups[sap_vm_provision_group_nwas_ers] is defined and (groups[sap_vm_provision_group_nwas_ers] | length>0))
+        __sap_vm_provision_register_ibmcloud_lbs_pools: >-
+          {{ __sap_vm_provision_register_ibmcloud_lbs_all_info
+            | map(attribute='pools') | flatten }}
+      block:
 
-    # - name: Update IBM Cloud Load Balancer Back-end Pool Health Check Port to Linux Pacemaker controlled listening port for SAP NetWeaver ERS - Message Server sapms<SAPSID> process
-    #   no_log: "{{ __sap_vm_provision_no_log }}"
-    #   register: __sap_vm_provision_task_ibmcloud_lb_pool_nwas_ers2
-    #   ibm.cloudcollection.ibm_is_lb_pool:
-    #     id: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', sap_vm_provision_ha_load_balancer_name_nwas + '-ers'))[0].id }}/{{ ((ibmcloud_lbs_all_info | json_query('[*].pools') | flatten) | selectattr('name', '==', sap_vm_provision_ha_load_balancer_name_nwas + '-ers-pool-ms') | first).id }}"
-    #     name: name: "{{ sap_vm_provision_ha_load_balancer_name_nwas + '-ers-pool-ms' }}"
-    #     # lb: # Do not use, will force create new resource
-    #     algorithm: weighted_round_robin
-    #     protocol: tcp
-    #     health_delay: 20
-    #     health_retries: 2
-    #     health_timeout: 10
-    #     health_type: tcp
-    #     health_monitor_port: "{{ ibmcloud_lb_pool_healthcheck_nwas_ers }}"
-    #     ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
-    #   when: (groups[sap_vm_provision_group_nwas_ers] is defined and (groups[sap_vm_provision_group_nwas_ers] | length>0))
+        # Dispatcher
+        - name: SAP VM Provision - IBM Cloud - Update Load Balancer Back-end Pool Health Check Port for SAP NetWeaver ASCS - sapdp<ASCS_NN> process
+          ibm.cloudcollection.ibm_is_lb_pool:
+            id: "{{ __sap_vm_provision_register_ibmcloud_lbs_ascs_id }}/{{ __pool_id }}"
+            name: "{{ __pool_name }}"
+            # lb: # Do not use, will force create new resource
+            algorithm: weighted_round_robin
+            protocol: tcp
+            health_delay: 20
+            health_retries: 2
+            health_timeout: 10
+            health_type: tcp
+            health_monitor_port: "{{ __sap_vm_provision_fact_ha_lb_nwas_abap_ascs_port }}"
+            ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
+          register: __sap_vm_provision_register_ibmcloud_lb_pool_nwas_ascs1
+          no_log: "{{ __sap_vm_provision_no_log }}"
+          vars:
+            __pool_name: "{{ sap_vm_provision_ha_load_balancer_name_nwas + '-ascs-pool-dp' }}"
+            __pool_id: >-
+              {{ __sap_vm_provision_register_ibmcloud_lbs_pools
+                | selectattr('name', 'equalto', __pool_name)
+                | map(attribute='id') | first | d(none) }}
+          when:
+            - __sap_vm_provision_register_ibmcloud_lbs_ascs_id is not none
+            - __pool_id is not none
 
-    - name: Update IBM Cloud Load Balancer Back-end Pool Health Check Port to Linux Pacemaker controlled listening port for SAP NetWeaver ERS - Enqueue Replication Server sapenqr<SAPSID> process
-      no_log: "{{ __sap_vm_provision_no_log }}"
-      register: __sap_vm_provision_task_ibmcloud_lb_pool_nwas_ers3
-      ibm.cloudcollection.ibm_is_lb_pool:
-        id: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', sap_vm_provision_ha_load_balancer_name_nwas + '-ers'))[0].id }}/{{ ((ibmcloud_lbs_all_info | json_query('[*].pools') | flatten) | selectattr('name', '==', sap_vm_provision_ha_load_balancer_name_nwas + '-ers-pool-enqr') | first).id }}"
-        name: "{{ sap_vm_provision_ha_load_balancer_name_nwas + '-ers-pool-enqr' }}"
-        # lb: # Do not use, will force create new resource
-        algorithm: weighted_round_robin
-        protocol: tcp
-        health_delay: 20
-        health_retries: 2
-        health_timeout: 10
-        health_type: tcp
-        health_monitor_port: "{{ ibmcloud_lb_pool_healthcheck_nwas_ers }}"
-        ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
-      when: (groups[sap_vm_provision_group_nwas_ers] is defined and (groups[sap_vm_provision_group_nwas_ers] | length>0))
+        # Message Server
+        - name: SAP VM Provision - IBM Cloud - Update Load Balancer Back-end Pool Health Check Port for SAP NetWeaver ASCS - sapms<SAPSID> process
+          ibm.cloudcollection.ibm_is_lb_pool:
+            id: "{{ __sap_vm_provision_register_ibmcloud_lbs_ascs_id }}/{{ __pool_id }}"
+            name: "{{ __pool_name }}"
+            # lb: # Do not use, will force create new resource
+            algorithm: weighted_round_robin
+            protocol: tcp
+            health_delay: 20
+            health_retries: 2
+            health_timeout: 10
+            health_type: tcp
+            health_monitor_port: "{{ __sap_vm_provision_fact_ha_lb_nwas_abap_ascs_port }}"
+            ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
+          register: __sap_vm_provision_register_ibmcloud_lb_pool_nwas_ascs2
+          no_log: "{{ __sap_vm_provision_no_log }}"
+          vars:
+            __pool_name: "{{ sap_vm_provision_ha_load_balancer_name_nwas + '-ascs-pool-ms' }}"
+            __pool_id: >-
+              {{ __sap_vm_provision_register_ibmcloud_lbs_pools
+                | selectattr('name', 'equalto', __pool_name)
+                | map(attribute='id') | first | d(none) }}
+          when:
+            - __sap_vm_provision_register_ibmcloud_lbs_ascs_id is not none
+            - __pool_id is not none
 
-    - name: Update IBM Cloud Load Balancer Back-end Pool Health Check Port to Linux Pacemaker controlled listening port for SAP NetWeaver ERS - SAP Start Service (SAPControl SOAP) HTTP sapctrl<ERS_NN> process
-      no_log: "{{ __sap_vm_provision_no_log }}"
-      register: __sap_vm_provision_task_ibmcloud_lb_pool_nwas_ers4
-      ibm.cloudcollection.ibm_is_lb_pool:
-        id: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', sap_vm_provision_ha_load_balancer_name_nwas + '-ers'))[0].id }}/{{ ((ibmcloud_lbs_all_info | json_query('[*].pools') | flatten) | selectattr('name', '==', sap_vm_provision_ha_load_balancer_name_nwas + '-ers-pool-sapctrl') | first).id }}"
-        name: "{{ sap_vm_provision_ha_load_balancer_name_nwas + '-ers-pool-sapctrl' }}"
-        # lb: # Do not use, will force create new resource
-        algorithm: weighted_round_robin
-        protocol: tcp
-        health_delay: 20
-        health_retries: 2
-        health_timeout: 10
-        health_type: tcp
-        health_monitor_port: "{{ ibmcloud_lb_pool_healthcheck_nwas_ers }}"
-        ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
-      when: (groups[sap_vm_provision_group_nwas_ers] is defined and (groups[sap_vm_provision_group_nwas_ers] | length>0))
+        # Message Server HTTP
+        - name: SAP VM Provision - IBM Cloud - Update Load Balancer Back-end Pool Health Check Port for SAP NetWeaver ASCS - sapms<SAPSID> HTTP process
+          ibm.cloudcollection.ibm_is_lb_pool:
+            id: "{{ __sap_vm_provision_register_ibmcloud_lbs_ascs_id }}/{{ __pool_id }}"
+            name: "{{ sap_vm_provision_ha_load_balancer_name_nwas + '-ascs-pool-ms-http' }}"
+            # lb: # Do not use, will force create new resource
+            algorithm: weighted_round_robin
+            protocol: tcp
+            health_delay: 20
+            health_retries: 2
+            health_timeout: 10
+            health_type: tcp
+            health_monitor_port: "{{ __sap_vm_provision_fact_ha_lb_nwas_abap_ascs_port }}"
+            ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
+          register: __sap_vm_provision_register_ibmcloud_lb_pool_nwas_ascs3
+          no_log: "{{ __sap_vm_provision_no_log }}"
+          vars:
+            __pool_name: "{{ sap_vm_provision_ha_load_balancer_name_nwas + '-ascs-pool-ms' }}"
+            __pool_id: >-
+              {{ __sap_vm_provision_register_ibmcloud_lbs_pools
+                | selectattr('name', 'equalto', __pool_name)
+                | map(attribute='id') | first | d(none) }}
+          when:
+            - __sap_vm_provision_register_ibmcloud_lbs_ascs_id is not none
+            - __pool_id is not none
 
-    - name: Update IBM Cloud Load Balancer Back-end Pool Health Check Port to Linux Pacemaker controlled listening port for SAP NetWeaver ERS - SAP Start Service (SAPControl SOAP) HTTPS (Secure) sapctrls<ERS_NN>
-      no_log: "{{ __sap_vm_provision_no_log }}"
-      register: __sap_vm_provision_task_ibmcloud_lb_pool_nwas_ers5
-      ibm.cloudcollection.ibm_is_lb_pool:
-        id: "{{ (ibmcloud_lbs_all_info | selectattr('name', '==', sap_vm_provision_ha_load_balancer_name_nwas + '-ers'))[0].id }}/{{ ((ibmcloud_lbs_all_info | json_query('[*].pools') | flatten) | selectattr('name', '==', sap_vm_provision_ha_load_balancer_name_nwas + '-ers-pool-sapctrls') | first).id }}"
-        name: "{{ sap_vm_provision_ha_load_balancer_name_nwas + '-ers-pool-sapctrls' }}"
-        # lb: # Do not use, will force create new resource
-        algorithm: weighted_round_robin
-        protocol: tcp
-        health_delay: 20
-        health_retries: 2
-        health_timeout: 10
-        health_type: tcp
-        health_monitor_port: "{{ ibmcloud_lb_pool_healthcheck_nwas_ers }}"
-        ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
-      when: (groups[sap_vm_provision_group_nwas_ers] is defined and (groups[sap_vm_provision_group_nwas_ers] | length>0))
+        # Enqueue Server
+        - name: SAP VM Provision - IBM Cloud - Update Load Balancer Back-end Pool Health Check Port for SAP NetWeaver ASCS - sapenq<SAPSID> process
+          ibm.cloudcollection.ibm_is_lb_pool:
+            id: "{{ __sap_vm_provision_register_ibmcloud_lbs_ascs_id }}/{{ __pool_id }}"
+            name: "{{ __pool_name }}"
+            # lb: # Do not use, will force create new resource
+            algorithm: weighted_round_robin
+            protocol: tcp
+            health_delay: 20
+            health_retries: 2
+            health_timeout: 10
+            health_type: tcp
+            health_monitor_port: "{{ __sap_vm_provision_fact_ha_lb_nwas_abap_ascs_port }}"
+            ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
+          register: __sap_vm_provision_register_ibmcloud_lb_pool_nwas_ascs4
+          no_log: "{{ __sap_vm_provision_no_log }}"
+          vars:
+            __pool_name: "{{ sap_vm_provision_ha_load_balancer_name_nwas + '-ascs-pool-enq' }}"
+            __pool_id: >-
+              {{ __sap_vm_provision_register_ibmcloud_lbs_pools
+                | selectattr('name', 'equalto', __pool_name)
+                | map(attribute='id') | first | d(none) }}
+          when:
+            - __sap_vm_provision_register_ibmcloud_lbs_ascs_id is not none
+            - __pool_id is not none
+
+        # Enqueue Replicator Server
+        - name: SAP VM Provision - IBM Cloud - Update Load Balancer Back-end Pool Health Check Port for SAP NetWeaver ASCS - sapenqrepl<SAPSID> process
+          ibm.cloudcollection.ibm_is_lb_pool:
+            id: "{{ __sap_vm_provision_register_ibmcloud_lbs_ascs_id }}/{{ __pool_id }}"
+            name: "{{ sap_vm_provision_ha_load_balancer_name_nwas + '-ascs-pool-enqrepl' }}"
+            # lb: # Do not use, will force create new resource
+            algorithm: weighted_round_robin
+            protocol: tcp
+            health_delay: 20
+            health_retries: 2
+            health_timeout: 10
+            health_type: tcp
+            health_monitor_port: "{{ __sap_vm_provision_fact_ha_lb_nwas_abap_ascs_port }}"
+            ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
+          register: __sap_vm_provision_register_ibmcloud_lb_pool_nwas_ascs5
+          no_log: "{{ __sap_vm_provision_no_log }}"
+          vars:
+            __pool_name: "{{ sap_vm_provision_ha_load_balancer_name_nwas + '-ascs-pool-enq' }}"
+            __pool_id: >-
+              {{ __sap_vm_provision_register_ibmcloud_lbs_pools
+                | selectattr('name', 'equalto', __pool_name)
+                | map(attribute='id') | first | d(none) }}
+          when:
+            - __sap_vm_provision_register_ibmcloud_lbs_ascs_id is not none
+            - __pool_id is not none
+
+        #  SAP Start Service (SAPControl SOAP) HTTP
+        - name: SAP VM Provision - IBM Cloud - Update Load Balancer Back-end Pool Health Check Port for SAP NetWeaver ASCS - sapctrl<ASCS_NN> process
+          ibm.cloudcollection.ibm_is_lb_pool:
+            id: "{{ __sap_vm_provision_register_ibmcloud_lbs_ascs_id }}/{{ __pool_id }}"
+            name: "{{ __pool_name }}"
+            # lb: # Do not use, will force create new resource
+            algorithm: weighted_round_robin
+            protocol: tcp
+            health_delay: 20
+            health_retries: 2
+            health_timeout: 10
+            health_type: tcp
+            health_monitor_port: "{{ __sap_vm_provision_fact_ha_lb_nwas_abap_ascs_port }}"
+            ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
+          register: __sap_vm_provision_register_ibmcloud_lb_pool_nwas_ascs6
+          no_log: "{{ __sap_vm_provision_no_log }}"
+          vars:
+            __pool_name: "{{ sap_vm_provision_ha_load_balancer_name_nwas + '-ascs-pool-sapctrl' }}"
+            __pool_id: >-
+              {{ __sap_vm_provision_register_ibmcloud_lbs_pools
+                | selectattr('name', 'equalto', __pool_name)
+                | map(attribute='id') | first | d(none) }}
+          when:
+            - __sap_vm_provision_register_ibmcloud_lbs_ascs_id is not none
+            - __pool_id is not none
+
+        # SAP Start Service (SAPControl SOAP) HTTPS (Secure)
+        - name: SAP VM Provision - IBM Cloud - Update Load Balancer Back-end Pool Health Check Port for SAP NetWeaver ASCS - sapctrls<ASCS_NN> process
+          ibm.cloudcollection.ibm_is_lb_pool:
+            id: "{{ __sap_vm_provision_register_ibmcloud_lbs_ascs_id }}/{{ __pool_id }}"
+            name: "{{ __pool_name }}"
+            # lb: # Do not use, will force create new resource
+            algorithm: weighted_round_robin
+            protocol: tcp
+            health_delay: 20
+            health_retries: 2
+            health_timeout: 10
+            health_type: tcp
+            health_monitor_port: "{{ __sap_vm_provision_fact_ha_lb_nwas_abap_ascs_port }}"
+            ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
+          register: __sap_vm_provision_register_ibmcloud_lb_pool_nwas_ascs7
+          no_log: "{{ __sap_vm_provision_no_log }}"
+          vars:
+            __pool_name: "{{ sap_vm_provision_ha_load_balancer_name_nwas + '-ascs-pool-sapctrls' }}"
+            __pool_id: >-
+              {{ __sap_vm_provision_register_ibmcloud_lbs_pools
+                | selectattr('name', 'equalto', __pool_name)
+                | map(attribute='id') | first | d(none) }}
+          when:
+            - __sap_vm_provision_register_ibmcloud_lbs_ascs_id is not none
+            - __pool_id is not none
+
+
+        # # Dispatcher
+        # - name: SAP VM Provision - IBM Cloud - Update Load Balancer Back-end Pool Health Check Port for SAP NetWeaver ERS - sapdp<ERS_NN> process
+        #   ibm.cloudcollection.ibm_is_lb_pool:
+        #     id: "{{ __sap_vm_provision_register_ibmcloud_lbs_ers_id }}/{{ __pool_id }}"
+        #     name: "{{ __pool_name }}"
+        #     # lb: # Do not use, will force create new resource
+        #     algorithm: weighted_round_robin
+        #     protocol: tcp
+        #     health_delay: 20
+        #     health_retries: 2
+        #     health_timeout: 10
+        #     health_type: tcp
+        #     health_monitor_port: "{{ __sap_vm_provision_fact_ha_lb_nwas_abap_ers_port }}"
+        #     ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
+        #   register: __sap_vm_provision_register_ibmcloud_lb_pool_nwas_ers1
+        #   no_log: "{{ __sap_vm_provision_no_log }}"
+        #   vars:
+        #     __pool_name: "{{ sap_vm_provision_ha_load_balancer_name_nwas + '-ers-pool-dp' }}"
+        #     __pool_id: >-
+        #       {{ __sap_vm_provision_register_ibmcloud_lbs_pools
+        #         | selectattr('name', 'equalto', __pool_name)
+        #         | map(attribute='id') | first | d(none) }}
+        #   when:
+        #     - __sap_vm_provision_register_ibmcloud_lbs_ers_id is not none
+        #     - __pool_id is not none
+
+        # # Message Server
+        # - name: SAP VM Provision - IBM Cloud - Update Load Balancer Back-end Pool Health Check Port for SAP NetWeaver ERS - sapms<SAPSID> process
+        #   ibm.cloudcollection.ibm_is_lb_pool:
+        #     id: "{{ __sap_vm_provision_register_ibmcloud_lbs_ers_id }}/{{ __pool_id }}"
+        #     name: "{{ __pool_name }}"
+        #     # lb: # Do not use, will force create new resource
+        #     algorithm: weighted_round_robin
+        #     protocol: tcp
+        #     health_delay: 20
+        #     health_retries: 2
+        #     health_timeout: 10
+        #     health_type: tcp
+        #     health_monitor_port: "{{ __sap_vm_provision_fact_ha_lb_nwas_abap_ers_port }}"
+        #     ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
+        #   register: __sap_vm_provision_register_ibmcloud_lb_pool_nwas_ers2
+        #   no_log: "{{ __sap_vm_provision_no_log }}"
+        #   vars:
+        #     __pool_name: "{{ sap_vm_provision_ha_load_balancer_name_nwas + '-ers-pool-ms' }}"
+        #     __pool_id: >-
+        #       {{ __sap_vm_provision_register_ibmcloud_lbs_pools
+        #         | selectattr('name', 'equalto', __pool_name)
+        #         | map(attribute='id') | first | d(none) }}
+        #   when:
+        #     - __sap_vm_provision_register_ibmcloud_lbs_ers_id is not none
+        #     - __pool_id is not none
+
+        # Enqueue Replication Server
+        - name: SAP VM Provision - IBM Cloud - Update Load Balancer Back-end Pool Health Check Port for SAP NetWeaver ERS - sapenqr<SAPSID> process
+          ibm.cloudcollection.ibm_is_lb_pool:
+            id: "{{ __sap_vm_provision_register_ibmcloud_lbs_ers_id }}/{{ __pool_id }}"
+            name: "{{ __pool_name }}"
+            # lb: # Do not use, will force create new resource
+            algorithm: weighted_round_robin
+            protocol: tcp
+            health_delay: 20
+            health_retries: 2
+            health_timeout: 10
+            health_type: tcp
+            health_monitor_port: "{{ __sap_vm_provision_fact_ha_lb_nwas_abap_ers_port }}"
+            ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
+          register: __sap_vm_provision_register_ibmcloud_lb_pool_nwas_ers3
+          no_log: "{{ __sap_vm_provision_no_log }}"
+          vars:
+            __pool_name: "{{ sap_vm_provision_ha_load_balancer_name_nwas + '-ers-pool-enqr' }}"
+            __pool_id: >-
+              {{ __sap_vm_provision_register_ibmcloud_lbs_pools
+                | selectattr('name', 'equalto', __pool_name)
+                | map(attribute='id') | first | d(none) }}
+          when:
+            - __sap_vm_provision_register_ibmcloud_lbs_ers_id is not none
+            - __pool_id is not none
+
+        # SAP Start Service (SAPControl SOAP) HTTP
+        - name: SAP VM Provision - IBM Cloud - Update Load Balancer Back-end Pool Health Check Port for SAP NetWeaver ERS - sapctrl<ERS_NN> HTTP process
+          ibm.cloudcollection.ibm_is_lb_pool:
+            id: "{{ __sap_vm_provision_register_ibmcloud_lbs_ers_id }}/{{ __pool_id }}"
+            name: "{{ __pool_name }}"
+            # lb: # Do not use, will force create new resource
+            algorithm: weighted_round_robin
+            protocol: tcp
+            health_delay: 20
+            health_retries: 2
+            health_timeout: 10
+            health_type: tcp
+            health_monitor_port: "{{ __sap_vm_provision_fact_ha_lb_nwas_abap_ers_port }}"
+            ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
+          register: __sap_vm_provision_register_ibmcloud_lb_pool_nwas_ers4
+          no_log: "{{ __sap_vm_provision_no_log }}"
+          vars:
+            __pool_name: "{{ sap_vm_provision_ha_load_balancer_name_nwas + '-ers-pool-sapctrl' }}"
+            __pool_id: >-
+              {{ __sap_vm_provision_register_ibmcloud_lbs_pools
+                | selectattr('name', 'equalto', __pool_name)
+                | map(attribute='id') | first | d(none) }}
+          when:
+            - __sap_vm_provision_register_ibmcloud_lbs_ers_id is not none
+            - __pool_id is not none
+
+        # SAP Start Service (SAPControl SOAP) HTTPS (Secure)
+        - name: SAP VM Provision - IBM Cloud - Update Load Balancer Back-end Pool Health Check Port for SAP NetWeaver ERS - sapctrls<ERS_NN> HTTPS process
+          ibm.cloudcollection.ibm_is_lb_pool:
+            id: "{{ __sap_vm_provision_register_ibmcloud_lbs_ers_id }}/{{ __pool_id }}"
+            name: "{{ __pool_name }}"
+            # lb: # Do not use, will force create new resource
+            algorithm: weighted_round_robin
+            protocol: tcp
+            health_delay: 20
+            health_retries: 2
+            health_timeout: 10
+            health_type: tcp
+            health_monitor_port: "{{ __sap_vm_provision_fact_ha_lb_nwas_abap_ers_port }}"
+            ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
+          register: __sap_vm_provision_register_ibmcloud_lb_pool_nwas_ers5
+          no_log: "{{ __sap_vm_provision_no_log }}"
+          vars:
+            __pool_name: "{{ sap_vm_provision_ha_load_balancer_name_nwas + '-ers-pool-sapctrls' }}"
+            __pool_id: >-
+              {{ __sap_vm_provision_register_ibmcloud_lbs_pools
+                | selectattr('name', 'equalto', __pool_name)
+                | map(attribute='id') | first | d(none) }}
+          when:
+            - __sap_vm_provision_register_ibmcloud_lbs_ers_id is not none
+            - __pool_id is not none
+
+
+  rescue:
+    # This requires no_log set on each Ansible Task, and not set on the Ansible Task Block
+    # This requires an Ansible Task Block containing the Ansible Tasks for calling
+    # Infrastructure Platform APIs (via Ansible Modules)
+    - name: SAP VM Provision - IBM Cloud - Show errors in task outputs
+      ansible.builtin.fail:
+        msg: "{{ lookup('ansible.builtin.vars', loop_item) }}"
+      loop:
+        # HANA
+        - __sap_vm_provision_register_ibmcloud_lb_pool_hana1
+        - __sap_vm_provision_register_ibmcloud_lb_pool_hana2
+        - __sap_vm_provision_register_ibmcloud_lb_pool_hana3
+        - __sap_vm_provision_register_ibmcloud_lb_pool_hana4
+        # AnyDB
+        - __sap_vm_provision_register_ibmcloud_lb_pool_anydb
+        # ASCS/ERS
+        - __sap_vm_provision_register_ibmcloud_lb_pool_nwas_ascs1
+        - __sap_vm_provision_register_ibmcloud_lb_pool_nwas_ascs2
+        - __sap_vm_provision_register_ibmcloud_lb_pool_nwas_ascs3
+        - __sap_vm_provision_register_ibmcloud_lb_pool_nwas_ascs4
+        - __sap_vm_provision_register_ibmcloud_lb_pool_nwas_ascs5
+        - __sap_vm_provision_register_ibmcloud_lb_pool_nwas_ascs6
+        - __sap_vm_provision_register_ibmcloud_lb_pool_nwas_ascs7
+        # - __sap_vm_provision_register_ibmcloud_lb_pool_nwas_ers1
+        # - __sap_vm_provision_register_ibmcloud_lb_pool_nwas_ers2
+        - __sap_vm_provision_register_ibmcloud_lb_pool_nwas_ers3
+        - __sap_vm_provision_register_ibmcloud_lb_pool_nwas_ers4
+        - __sap_vm_provision_register_ibmcloud_lb_pool_nwas_ers5
+      loop_control:
+        loop_var: loop_item
+        index_var: loop_item_index
+        label: "{{ 'Variable No. ' + (loop_item_index | string) }}"
+      when:
+        - lookup('ansible.builtin.vars', loop_item, default='') | length > 0
+        - not lookup('ansible.builtin.vars', loop_item, default='') is skipped
+        - lookup('ansible.builtin.vars', loop_item, default='') is failed
+
+    - name: SAP VM Provision - IBM Cloud - Fail if provisioning failed
+      ansible.builtin.fail:
+        msg: |
+          FAIL: Provisioning has failed during one of tasks not producing registered output.
+          You can investigate failure in tasks above or by:
+          - Increasing verbosity
+          - Setting the variable '__sap_vm_provision_no_log' to 'false'

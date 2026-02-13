@@ -1,0 +1,208 @@
+# SPDX-License-Identifier: Apache-2.0
+---
+
+# HA Flags are not set before this task so we must use same conditions for asserts.
+
+# VIP
+- name: Assert that the VIP variable for SAP HANA HA is defined and not empty
+  ansible.builtin.assert:
+    that:
+      - sap_vm_provision_ha_vip_hana_primary is defined
+      - sap_vm_provision_ha_vip_hana_primary is string
+      - sap_vm_provision_ha_vip_hana_primary | trim | length > 0
+    fail_msg: |
+      The following variable is required for SAP HANA High Availability.
+      - 'sap_vm_provision_ha_vip_hana_primary'
+      It has to be set to desired Virtual IP (VIP) following guidance available in defaults/main.yml file.
+      Example: '192.168.1.90/32'
+  when: groups[sap_vm_provision_group_hana_secondary] | d([]) | length > 0
+
+- name: Assert that the VIP variable for SAP AnyDB HA is defined and not empty
+  ansible.builtin.assert:
+    that:
+      - sap_vm_provision_ha_vip_anydb_primary is defined
+      - sap_vm_provision_ha_vip_anydb_primary is string
+      - sap_vm_provision_ha_vip_anydb_primary | trim | length > 0
+    fail_msg: |
+      The following variable is required for SAP AnyDB High Availability.
+      - 'sap_vm_provision_ha_vip_anydb_primary'
+      It has to be set to desired Virtual IP (VIP) following guidance available in defaults/main.yml file.
+      Example: '192.168.1.90/32'
+  when: groups[sap_vm_provision_group_anydb_secondary] | d([]) | length > 0
+
+- name: Assert that the VIP variables for SAP ASCS/ERS HA are defined and not empty
+  ansible.builtin.assert:
+    that:
+      - sap_vm_provision_ha_vip_nwas_abap_ascs is defined
+      - sap_vm_provision_ha_vip_nwas_abap_ers is defined
+      - sap_vm_provision_ha_vip_nwas_abap_ascs is string
+      - sap_vm_provision_ha_vip_nwas_abap_ers is string
+      - sap_vm_provision_ha_vip_nwas_abap_ascs | trim | length > 0
+      - sap_vm_provision_ha_vip_nwas_abap_ers | trim | length > 0
+    fail_msg: |
+      The following variables are required for SAP ASCS/ERS High Availability.
+      - 'sap_vm_provision_ha_vip_nwas_abap_ascs'
+      - 'sap_vm_provision_ha_vip_nwas_abap_ers'
+      They have to be set to desired Virtual IPs (VIP) following guidance available in defaults/main.yml file.
+      Example: '192.168.2.10/32' and '192.168.2.11/32'
+  when: groups[sap_vm_provision_group_nwas_ers] | d([]) | length > 0
+
+
+# Load Balancer Health Check Ports for GCP, IBM Cloud and MS Azure
+# Resulting port variables:
+# - __sap_vm_provision_fact_ha_lb_hana_primary_port
+# - __sap_vm_provision_fact_ha_lb_anydb_primary_port
+# - __sap_vm_provision_fact_ha_lb_nwas_abap_ascs_port
+# - __sap_vm_provision_fact_ha_lb_nwas_abap_ers_port
+
+- name: Block for Load Balancer Health Check Ports for GCP, IBM Cloud and MS Azure
+  when:
+    - sap_vm_provision_iac_platform in ['gcp_ce_vm', 'msazure_vm', 'ibmcloud_vs']
+    # This is specific for post_deployment, because only temporary ports are used during deployment.
+    - sap_vm_provision_iac_post_deployment | d(false)
+  block:
+    - name: Assert that the Load Balancer Health Check Port variable for SAP HANA HA is defined and not empty
+      ansible.builtin.assert:
+        that:
+          - (sap_vm_provision_ha_lb_hana_primary_port is defined
+            and sap_vm_provision_ha_lb_hana_primary_port is string
+            and sap_vm_provision_ha_lb_hana_primary_port | trim | length > 0
+            and sap_vm_provision_ha_lb_hana_primary_port is match('^[0-9]+$'))
+            or (sap_ha_pacemaker_cluster_healthcheck_hana_primary_port is defined
+              and sap_ha_pacemaker_cluster_healthcheck_hana_primary_port is string
+              and sap_ha_pacemaker_cluster_healthcheck_hana_primary_port | trim | length > 0
+              and sap_ha_pacemaker_cluster_healthcheck_hana_primary_port is match('^[0-9]+$'))
+            or (sap_system_hana_db_instance_nr is defined
+              and sap_system_hana_db_instance_nr is string
+              and sap_system_hana_db_instance_nr | trim | length > 0
+              and sap_system_hana_db_instance_nr is match('^[0-9]+$'))
+        fail_msg: |
+          The variable 'sap_vm_provision_ha_lb_hana_primary_port' is required for SAP HANA High Availability.
+          If it is not defined, it will attempt to use alternative variables:
+          - 'sap_ha_pacemaker_cluster_healthcheck_hana_primary_port' for sap_install.role sap_ha_pacemaker_cluster
+          - 'sap_system_hana_db_instance_nr' which is calculated into port '620<sap_system_hana_db_instance_nr>'
+      when: groups[sap_vm_provision_group_hana_secondary] | d([]) | length > 0
+
+    - name: Set fact with Load Balancer Health Check Port variable for SAP HANA HA
+      ansible.builtin.set_fact:
+        __sap_vm_provision_fact_ha_lb_hana_primary_port: >-
+          {% if sap_vm_provision_ha_lb_hana_primary_port is defined
+            and sap_vm_provision_ha_lb_hana_primary_port is string
+            and sap_vm_provision_ha_lb_hana_primary_port | trim | length > 0
+            and sap_vm_provision_ha_lb_hana_primary_port is match('^[0-9]+$') %}
+          {{ sap_vm_provision_ha_lb_hana_primary_port | trim | int }}
+          {% elif sap_ha_pacemaker_cluster_healthcheck_hana_primary_port is defined
+            and sap_ha_pacemaker_cluster_healthcheck_hana_primary_port is string
+            and sap_ha_pacemaker_cluster_healthcheck_hana_primary_port | trim | length > 0
+            and sap_ha_pacemaker_cluster_healthcheck_hana_primary_port is match('^[0-9]+$') %}
+          {{ sap_ha_pacemaker_cluster_healthcheck_hana_primary_port | trim | int }}
+          {% else %}
+          {{ ('620' ~ sap_system_hana_db_instance_nr | trim) | int }}
+          {% endif %}
+      when: groups[sap_vm_provision_group_hana_secondary] | d([]) | length > 0
+
+
+    - name: Assert that the Load Balancer Health Check Port variable for SAP AnyDB HA is not empty
+      ansible.builtin.assert:
+        that:
+          - sap_vm_provision_ha_lb_anydb_primary_port is string
+          - sap_vm_provision_ha_lb_anydb_primary_port | trim | length > 0
+          - sap_vm_provision_ha_lb_anydb_primary_port is match('^[0-9]+$')
+        fail_msg: |
+          The variable 'sap_vm_provision_ha_lb_anydb_primary_port' is required for SAP AnyDB High Availability.
+          It has to be set to desired port (String) or kept undefined to use default '62700'.
+      when:
+        - sap_vm_provision_ha_lb_anydb_primary_port is defined
+        - groups[sap_vm_provision_group_anydb_secondary] | d([]) | length > 0
+
+    - name: Set fact with Load Balancer Health Check Port variable for SAP AnyDB HA
+      ansible.builtin.set_fact:
+        __sap_vm_provision_fact_ha_lb_anydb_primary_port: >-
+          {% if sap_vm_provision_ha_lb_anydb_primary_port is defined %}
+          {{ sap_vm_provision_ha_lb_anydb_primary_port | trim | int }}
+          {% else %}
+          62700
+          {% endif %}
+      when: groups[sap_vm_provision_group_anydb_secondary] | d([]) | length > 0
+
+
+    - name: Assert that the Load Balancer Health Check Port variable for SAP ASCS HA is defined and not empty
+      ansible.builtin.assert:
+        that:
+          - (sap_vm_provision_ha_lb_nwas_abap_ascs_port is defined
+            and sap_vm_provision_ha_lb_nwas_abap_ascs_port is string
+            and sap_vm_provision_ha_lb_nwas_abap_ascs_port | trim | length > 0
+            and sap_vm_provision_ha_lb_nwas_abap_ascs_port is match('^[0-9]+$'))
+            or (sap_ha_pacemaker_cluster_healthcheck_nwas_abap_ascs_port is defined
+              and sap_ha_pacemaker_cluster_healthcheck_nwas_abap_ascs_port is string
+              and sap_ha_pacemaker_cluster_healthcheck_nwas_abap_ascs_port | trim | length > 0
+              and sap_ha_pacemaker_cluster_healthcheck_nwas_abap_ascs_port is match('^[0-9]+$'))
+            or (sap_system_nwas_abap_ascs_instance_nr is defined
+              and sap_system_nwas_abap_ascs_instance_nr is string
+              and sap_system_nwas_abap_ascs_instance_nr | trim | length > 0
+              and sap_system_nwas_abap_ascs_instance_nr is match('^[0-9]+$'))
+        fail_msg: |
+          The variable 'sap_vm_provision_ha_lb_nwas_abap_ascs_port' is required for SAP ASCS High Availability.
+          If it is not defined, it will attempt to use alternative variables:
+          - 'sap_ha_pacemaker_cluster_healthcheck_nwas_abap_ascs_port' for sap_install.role sap_ha_pacemaker_cluster
+          - 'sap_system_nwas_abap_ascs_instance_nr' which is calculated into port '620<sap_system_nwas_abap_ascs_instance_nr>'
+      when: groups[sap_vm_provision_group_nwas_ers] | d([]) | length > 0
+
+    - name: Set fact with Load Balancer Health Check Port variable for SAP ASCS HA
+      ansible.builtin.set_fact:
+        __sap_vm_provision_fact_ha_lb_nwas_abap_ascs_port: >-
+          {% if sap_vm_provision_ha_lb_nwas_abap_ascs_port is defined
+            and sap_vm_provision_ha_lb_nwas_abap_ascs_port is string
+            and sap_vm_provision_ha_lb_nwas_abap_ascs_port | trim | length > 0
+            and sap_vm_provision_ha_lb_nwas_abap_ascs_port is match('^[0-9]+$') %}
+          {{ sap_vm_provision_ha_lb_nwas_abap_ascs_port | trim | int }}
+          {% elif sap_ha_pacemaker_cluster_healthcheck_nwas_abap_ascs_port is defined
+            and sap_ha_pacemaker_cluster_healthcheck_nwas_abap_ascs_port is string
+            and sap_ha_pacemaker_cluster_healthcheck_nwas_abap_ascs_port | trim | length > 0
+            and sap_ha_pacemaker_cluster_healthcheck_nwas_abap_ascs_port is match('^[0-9]+$') %}
+          {{ sap_ha_pacemaker_cluster_healthcheck_nwas_abap_ascs_port | trim | int }}
+          {% else %}
+          {{ ('620' ~ sap_system_nwas_abap_ascs_instance_nr | trim) | int }}
+          {% endif %}
+      when: groups[sap_vm_provision_group_nwas_ers] | d([]) | length > 0
+
+
+    - name: Assert that the Load Balancer Health Check Port variable for SAP ERS HA is defined and not empty
+      ansible.builtin.assert:
+        that:
+          - (sap_vm_provision_ha_lb_nwas_abap_ers_port is defined
+            and sap_vm_provision_ha_lb_nwas_abap_ers_port is string
+            and sap_vm_provision_ha_lb_nwas_abap_ers_port | trim | length > 0
+            and sap_vm_provision_ha_lb_nwas_abap_ers_port is match('^[0-9]+$'))
+            or (sap_ha_pacemaker_cluster_healthcheck_nwas_abap_ers_port is defined
+              and sap_ha_pacemaker_cluster_healthcheck_nwas_abap_ers_port is string
+              and sap_ha_pacemaker_cluster_healthcheck_nwas_abap_ers_port | trim | length > 0
+              and sap_ha_pacemaker_cluster_healthcheck_nwas_abap_ers_port is match('^[0-9]+$'))
+            or (sap_system_nwas_abap_ers_instance_nr is defined
+              and sap_system_nwas_abap_ers_instance_nr is string
+              and sap_system_nwas_abap_ers_instance_nr | trim | length > 0
+              and sap_system_nwas_abap_ers_instance_nr is match('^[0-9]+$'))
+        fail_msg: |
+          The variable 'sap_vm_provision_ha_lb_nwas_abap_ers_port' is required for SAP ASCS High Availability.
+          If it is not defined, it will attempt to use alternative variables:
+          - 'sap_ha_pacemaker_cluster_healthcheck_nwas_abap_ers_port' for sap_install.role sap_ha_pacemaker_cluster
+          - 'sap_system_nwas_abap_ers_instance_nr' which is calculated into port '620<sap_system_nwas_abap_ers_instance_nr>'
+      when: groups[sap_vm_provision_group_nwas_ers] | d([]) | length > 0
+
+    - name: Set fact with Load Balancer Health Check Port variable for SAP ERS HA
+      ansible.builtin.set_fact:
+        __sap_vm_provision_fact_ha_lb_nwas_abap_ers_port: >-
+          {% if sap_vm_provision_ha_lb_nwas_abap_ers_port is defined
+            and sap_vm_provision_ha_lb_nwas_abap_ers_port is string
+            and sap_vm_provision_ha_lb_nwas_abap_ers_port | trim | length > 0
+            and sap_vm_provision_ha_lb_nwas_abap_ers_port is match('^[0-9]+$') %}
+          {{ sap_vm_provision_ha_lb_nwas_abap_ers_port | trim | int }}
+          {% elif sap_ha_pacemaker_cluster_healthcheck_nwas_abap_ers_port is defined
+            and sap_ha_pacemaker_cluster_healthcheck_nwas_abap_ers_port is string
+            and sap_ha_pacemaker_cluster_healthcheck_nwas_abap_ers_port | trim | length > 0
+            and sap_ha_pacemaker_cluster_healthcheck_nwas_abap_ers_port is match('^[0-9]+$') %}
+          {{ sap_ha_pacemaker_cluster_healthcheck_nwas_abap_ers_port | trim | int }}
+          {% else %}
+          {{ ('620' ~ sap_system_nwas_abap_ers_instance_nr | trim) | int }}
+          {% endif %}
+      when: groups[sap_vm_provision_group_nwas_ers] | d([]) | length > 0

@@ -1,0 +1,107 @@
+# SPDX-License-Identifier: Apache-2.0
+---
+
+- name: Block for HANA HA
+  delegate_to: "{{ sap_vm_provision_execution_host }}"
+  run_once: true
+  environment:
+    ANSIBLE_AZURE_AUTH_SOURCE: "auto" # Set to auto to use module parameters
+  block:
+
+    - name: SAP VM Provision - Azure - Ansible MS Azure Private DNS Records for SAP HANA HA Virtual Hostname
+      azure.azcollection.azure_rm_privatednsrecordset:
+        # DNS may exist in separate Resource Group. Use empty string var
+        # (or default false if undefined) to evaluate to false boolean, and use Python or logic operator
+        resource_group: "{{ (sap_vm_provision_msazure_private_dns_resource_group_name | d(sap_vm_provision_msazure_resource_group_name)) }}"
+        zone_name: "{{ hostvars[host_node].sap_vm_provision_dns_root_domain }}"
+        relative_name: "{{ __sap_vm_provision_fact_ha_hostname_hana_primary }}"
+        record_type: A
+        records:
+          - entry: "{{ sap_vm_provision_ha_vip_hana_primary | regex_replace('/.*', '') }}"
+        subscription_id: "{{ sap_vm_provision_msazure_subscription_id }}"
+        tenant: "{{ sap_vm_provision_msazure_tenant_id }}"
+        client_id: "{{ sap_vm_provision_msazure_app_client_id }}"
+        secret: "{{ sap_vm_provision_msazure_app_client_secret }}"
+      loop: "{{ (groups[sap_vm_provision_group_hana_primary] | d([])) }}"
+      loop_control:
+        loop_var: host_node
+      register: __sap_vm_provision_register_msazure_dns_vip_hana
+      no_log: "{{ __sap_vm_provision_no_log }}"
+
+    # All set_facts are removed because VIP is always one and we can set it directly.
+    - name: SAP VM Provision - Azure - Create NLB for SAP HANA with Virtual IP and Health Probe configuration
+      azure.azcollection.azure_rm_loadbalancer:
+        resource_group: "{{ sap_vm_provision_msazure_resource_group_name }}"
+        name: "{{ sap_vm_provision_ha_load_balancer_name_hana }}"
+        # AnyPort (HA Port) Protocol rule is not allowed for basic SKU load balancer, use standard SKU load balancer instead
+        sku: "Standard"
+        backend_address_pools:
+          - name: "{{ sap_vm_provision_ha_load_balancer_name_hana + '-backend-pool' }}"
+
+        frontend_ip_configurations:
+          - name: "{{ sap_vm_provision_ha_load_balancer_name_hana + '-vip' }}"
+            private_ip_address: "{{ sap_vm_provision_ha_vip_hana_primary | regex_replace('/.*', '') }}"
+            private_ip_allocation_method: "Static"
+            subnet: "{{ __sap_vm_provision_register_msazure_vnet_subnet_info.subnets[0].id }}"
+            zones: ["1", "2", "3"] # Zone-redundant
+
+        # Temporary ports are set now, then updated in post_deployment
+        probes:
+          - name: "{{ sap_vm_provision_ha_load_balancer_name_hana + '-probe-hc-vip' }}"
+            protocol: Tcp
+            port: "55550" # __sap_vm_provision_fact_ha_lb_hana_primary_port
+            interval: 5
+            fail_count: 2
+
+        load_balancing_rules:
+          - name: "{{ sap_vm_provision_ha_load_balancer_name_hana + '-rule' }}"
+            frontend_ip_configuration: "{{ sap_vm_provision_ha_load_balancer_name_hana + '-vip' }}"
+            backend_address_pool: "{{ sap_vm_provision_ha_load_balancer_name_hana + '-backend-pool' }}"
+            protocol: All
+            frontend_port: 0 # High Availability Ports (AnyPort), only on Internal Standard Load Balancer
+            backend_port: 0 # High Availability Ports (AnyPort), only on Internal Standard Load Balancer
+            probe: "{{ sap_vm_provision_ha_load_balancer_name_hana + '-probe-hc-vip' }}"
+            load_distribution: Default # Session persistence = None
+            idle_timeout: 30 # 30 minutes
+            # enable Frontend IP as a Floating IP (aka. Direct Server Return), if disabled then only 1 LB Rule allowed
+            enable_floating_ip: true
+
+        subscription_id: "{{ sap_vm_provision_msazure_subscription_id }}"
+        tenant: "{{ sap_vm_provision_msazure_tenant_id }}"
+        client_id: "{{ sap_vm_provision_msazure_app_client_id }}"
+        secret: "{{ sap_vm_provision_msazure_app_client_secret }}"
+      register: __sap_vm_provision_register_msazure_lb_create_hana
+      no_log: "{{ __sap_vm_provision_no_log }}"
+
+
+    - name: SAP VM Provision - Azure - Update network interfaces for MS Azure VM - for SAP HANA HA with load balancing
+      azure.azcollection.azure_rm_networkinterface:
+        resource_group: "{{ sap_vm_provision_msazure_resource_group_name }}"
+        location: "{{ sap_vm_provision_msazure_location_region }}"
+        name: "{{ host_node }}-nic"
+        virtual_network: "{{ sap_vm_provision_msazure_vnet_name }}"
+        subnet_name: "{{ sap_vm_provision_msazure_vnet_subnet_name }}"
+        create_with_security_group: false
+        ip_configurations:
+          - name: "{{ host_node }}-nic-ipconfig"
+            primary: true
+            # private_ip_allocation_method: "Static" # When static, must define the specific IP Address
+            load_balancer_backend_address_pools:
+              - "{{ __sap_vm_provision_register_msazure_lb_create_hana.state.backend_address_pools
+                | selectattr('name', '==', sap_vm_provision_ha_load_balancer_name_hana + '-backend-pool')
+                | map(attribute='id') | first }}"
+        enable_accelerated_networking: true
+        # When disable the Anti IP Spoofing = true, then Enable IP Forwarding = true
+        enable_ip_forwarding: "{{ __sap_vm_provision_host_dict_spec.disable_ip_anti_spoofing }}"
+        subscription_id: "{{ sap_vm_provision_msazure_subscription_id }}"
+        tenant: "{{ sap_vm_provision_msazure_tenant_id }}"
+        client_id: "{{ sap_vm_provision_msazure_app_client_id }}"
+        secret: "{{ sap_vm_provision_msazure_app_client_secret }}"
+      loop: "{{ __sap_vm_provision_fact_merged_hosts_list }}"
+      loop_control:
+        loop_var: host_node
+      register: __sap_vm_provision_register_msazure_update_vnic_hana
+      no_log: "{{ __sap_vm_provision_no_log }}"
+      when:
+        - sap_vm_provision_group_hana_primary in __sap_vm_provision_host_dict_spec.sap_host_type
+          or sap_vm_provision_group_hana_secondary in __sap_vm_provision_host_dict_spec.sap_host_type
