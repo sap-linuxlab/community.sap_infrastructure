@@ -79,7 +79,7 @@
 
 
 # # Workaround to missing Ansible Module functionality in legacy Ansible Collection
-# - name: SAP VM Provision - IBM Cloud - IBM Cloud CLI append DNS to Load Balancer  # noqa risky-shell-pipe
+# - name: SAP VM Provision - IBM Cloud - IBM Cloud CLI append DNS to Load Balancer
 #   no_log: "{{ __sap_vm_provision_no_log }}"
 #   register: __sap_vm_provision_register_ibmcloud_lb_update_dns
 #   ansible.builtin.shell:

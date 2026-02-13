@@ -25,7 +25,7 @@
     - sap_vm_provision_ibmcloud_private_dns_instance_name
     - sap_vm_provision_ibmcloud_vpc_name
     - sap_vm_provision_ibmcloud_vpc_subnet_name
-    - sap_vm_provision_ibmcloud_placement_resource_name
+    # - sap_vm_provision_ibmcloud_placement_resource_name
     - sap_vm_provision_ibmcloud_vs_host_os_image
 
 

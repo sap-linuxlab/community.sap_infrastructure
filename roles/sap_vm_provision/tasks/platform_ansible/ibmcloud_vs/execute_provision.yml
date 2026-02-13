@@ -66,15 +66,15 @@
   register: __sap_vm_provision_register_provision_host_single
   vars:
     __placement_group: "{{ (
-      (__sap_vm_provision_register_msazure_availability_set.results | selectattr('item','==','hana'))[0].state.name
+      (__sap_vm_provision_task_ibmcloud_placement_group.results | selectattr('item','==','hana'))[0].resource.id
       if (sap_vm_provision_group_hana_primary in __sap_vm_provision_host_dict_spec.sap_host_type
         or sap_vm_provision_group_hana_secondary in __sap_vm_provision_host_dict_spec.sap_host_type)
       else
-      (__sap_vm_provision_register_msazure_availability_set.results | selectattr('item','==','anydb'))[0].state.name
+      (__sap_vm_provision_task_ibmcloud_placement_group.results | selectattr('item','==','anydb'))[0].resource.id
       if (sap_vm_provision_group_anydb_primary in __sap_vm_provision_host_dict_spec.sap_host_type
         or sap_vm_provision_group_anydb_secondary in __sap_vm_provision_host_dict_spec.sap_host_type)
       else
-      (__sap_vm_provision_register_msazure_availability_set.results | selectattr('item','==','nwas'))[0].state.name
+      (__sap_vm_provision_task_ibmcloud_placement_group.results | selectattr('item','==','nwas'))[0].resource.id
       if (sap_vm_provision_group_nwas_ascs in __sap_vm_provision_host_dict_spec.sap_host_type
         or sap_vm_provision_group_nwas_ers in __sap_vm_provision_host_dict_spec.sap_host_type)
       ) | d(omit) }}"
@@ -228,6 +228,7 @@
               (__sap_vm_provision_register_gather_subset.ansible_facts['ansible_distribution_major_version'] | int) >= 16
               else '/etc/ssh/sshd_config' }}
 
+    # Reason for noqa: Handlers are executed at end of role, but this must be done now.
     - name: SAP VM Provision - IBM Cloud - Reload sshd service  # noqa no-handler
       ansible.builtin.service:
         name: sshd

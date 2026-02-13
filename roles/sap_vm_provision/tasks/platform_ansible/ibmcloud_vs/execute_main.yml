@@ -296,24 +296,19 @@
         - __sap_vm_provision_register_ibmcloud_iam_auth_policy
         - __sap_vm_provision_register_ibmcloud_lb_provision_parallel
         - __sap_vm_provision_register_ibmcloud_lb_provision_parallel_async_status
-        - __sap_vm_provision_register_ibmcloud_lb_update_dns
-        - __sap_vm_provision_register_ibmcloud_vs_all_info
+        # - __sap_vm_provision_register_ibmcloud_lb_update_dns
+        # - __sap_vm_provision_register_ibmcloud_vs_all_info
         - __sap_vm_provision_register_ibmcloud_lb_all_info_shell
+        - __sap_vm_provision_register_ibmcloud_lb_pools
+        # HANA
         - __sap_vm_provision_register_ibmcloud_lb_pool_hana1
         - __sap_vm_provision_register_ibmcloud_lb_pool_hana2
         - __sap_vm_provision_register_ibmcloud_lb_pool_hana3
         - __sap_vm_provision_register_ibmcloud_lb_pool_hana4
-        - __sap_vm_provision_register_ibmcloud_lb_pool_nwas_ascs1
-        - __sap_vm_provision_register_ibmcloud_lb_pool_nwas_ascs2
-        - __sap_vm_provision_register_ibmcloud_lb_pool_nwas_ascs3
-        - __sap_vm_provision_register_ibmcloud_lb_pool_nwas_ascs4
-        - __sap_vm_provision_register_ibmcloud_lb_pool_nwas_ascs5
-        - __sap_vm_provision_register_ibmcloud_lb_pool_nwas_ers1
-        - __sap_vm_provision_register_ibmcloud_lb_pool_nwas_ers2
-        - __sap_vm_provision_register_ibmcloud_lb_pool_nwas_ers3
-        - __sap_vm_provision_register_ibmcloud_lb_pool_nwas_ers4
-        - __sap_vm_provision_register_ibmcloud_lb_pool_nwas_ers5
-        - __sap_vm_provision_register_ibmcloud_lb_pools
+        - __sap_vm_provision_register_ibmcloud_lb_frontend_listener_hana1
+        - __sap_vm_provision_register_ibmcloud_lb_frontend_listener_hana2
+        - __sap_vm_provision_register_ibmcloud_lb_frontend_listener_hana3
+        - __sap_vm_provision_register_ibmcloud_lb_frontend_listener_hana4
         - __sap_vm_provision_register_ibmcloud_lb_pool_members_hana1
         - __sap_vm_provision_register_ibmcloud_lb_pool_members_hana2
         - __sap_vm_provision_register_ibmcloud_lb_pool_members_hana3
@@ -322,8 +317,35 @@
         - __sap_vm_provision_register_ibmcloud_lb_pool_members_hana6
         - __sap_vm_provision_register_ibmcloud_lb_pool_members_hana7
         - __sap_vm_provision_register_ibmcloud_lb_pool_members_hana8
+        - __sap_vm_provision_register_ibmcloud_pdns_record_ha_hana
+
+        # AnyDB
+        - __sap_vm_provision_register_ibmcloud_lb_pool_anydb
+        - __sap_vm_provision_register_ibmcloud_lb_frontend_listener_anydb1
         - __sap_vm_provision_register_ibmcloud_lb_pool_members_anydb1
         - __sap_vm_provision_register_ibmcloud_lb_pool_members_anydb2
+        - __sap_vm_provision_register_ibmcloud_pdns_record_ha_anydb
+
+        # ASCS/ERS
+        - __sap_vm_provision_register_ibmcloud_lb_pool_nwas_ascs1
+        - __sap_vm_provision_register_ibmcloud_lb_pool_nwas_ascs2
+        - __sap_vm_provision_register_ibmcloud_lb_pool_nwas_ascs3
+        - __sap_vm_provision_register_ibmcloud_lb_pool_nwas_ascs4
+        - __sap_vm_provision_register_ibmcloud_lb_pool_nwas_ascs5
+        - __sap_vm_provision_register_ibmcloud_lb_pool_nwas_ascs6
+        - __sap_vm_provision_register_ibmcloud_lb_pool_nwas_ascs7
+        # - __sap_vm_provision_register_ibmcloud_lb_pool_nwas_ers1
+        # - __sap_vm_provision_register_ibmcloud_lb_pool_nwas_ers2
+        - __sap_vm_provision_register_ibmcloud_lb_pool_nwas_ers3
+        - __sap_vm_provision_register_ibmcloud_lb_pool_nwas_ers4
+        - __sap_vm_provision_register_ibmcloud_lb_pool_nwas_ers5
+        - __sap_vm_provision_register_ibmcloud_lb_frontend_listener_ascs1
+        - __sap_vm_provision_register_ibmcloud_lb_frontend_listener_ascs2
+        - __sap_vm_provision_register_ibmcloud_lb_frontend_listener_ascs3
+        - __sap_vm_provision_register_ibmcloud_lb_frontend_listener_ascs4
+        - __sap_vm_provision_register_ibmcloud_lb_frontend_listener_ascs5
+        - __sap_vm_provision_register_ibmcloud_lb_frontend_listener_ascs6
+        - __sap_vm_provision_register_ibmcloud_lb_frontend_listener_ascs7
         - __sap_vm_provision_register_ibmcloud_lb_pool_members_nwas_ascs1
         - __sap_vm_provision_register_ibmcloud_lb_pool_members_nwas_ascs2
         - __sap_vm_provision_register_ibmcloud_lb_pool_members_nwas_ascs3
@@ -334,33 +356,25 @@
         - __sap_vm_provision_register_ibmcloud_lb_pool_members_nwas_ascs8
         - __sap_vm_provision_register_ibmcloud_lb_pool_members_nwas_ascs9
         - __sap_vm_provision_register_ibmcloud_lb_pool_members_nwas_ascs10
-        - __sap_vm_provision_register_ibmcloud_lb_pool_members_nwas_ers1
-        - __sap_vm_provision_register_ibmcloud_lb_pool_members_nwas_ers2
-        - __sap_vm_provision_register_ibmcloud_lb_pool_members_nwas_ers3
-        - __sap_vm_provision_register_ibmcloud_lb_pool_members_nwas_ers4
+        - __sap_vm_provision_register_ibmcloud_lb_pool_members_nwas_ascs11
+        - __sap_vm_provision_register_ibmcloud_lb_pool_members_nwas_ascs12
+        - __sap_vm_provision_register_ibmcloud_lb_pool_members_nwas_ascs13
+        - __sap_vm_provision_register_ibmcloud_lb_pool_members_nwas_ascs14
+        # - __sap_vm_provision_register_ibmcloud_lb_frontend_listener_ers1
+        # - __sap_vm_provision_register_ibmcloud_lb_frontend_listener_ers2
+        - __sap_vm_provision_register_ibmcloud_lb_frontend_listener_ers3
+        - __sap_vm_provision_register_ibmcloud_lb_frontend_listener_ers4
+        - __sap_vm_provision_register_ibmcloud_lb_frontend_listener_ers5
+        # - __sap_vm_provision_register_ibmcloud_lb_pool_members_nwas_ers1
+        # - __sap_vm_provision_register_ibmcloud_lb_pool_members_nwas_ers2
+        # - __sap_vm_provision_register_ibmcloud_lb_pool_members_nwas_ers3
+        # - __sap_vm_provision_register_ibmcloud_lb_pool_members_nwas_ers4
         - __sap_vm_provision_register_ibmcloud_lb_pool_members_nwas_ers5
         - __sap_vm_provision_register_ibmcloud_lb_pool_members_nwas_ers6
         - __sap_vm_provision_register_ibmcloud_lb_pool_members_nwas_ers7
         - __sap_vm_provision_register_ibmcloud_lb_pool_members_nwas_ers8
         - __sap_vm_provision_register_ibmcloud_lb_pool_members_nwas_ers9
         - __sap_vm_provision_register_ibmcloud_lb_pool_members_nwas_ers10
-        - __sap_vm_provision_register_ibmcloud_lb_frontend_listener_hana1
-        - __sap_vm_provision_register_ibmcloud_lb_frontend_listener_hana2
-        - __sap_vm_provision_register_ibmcloud_lb_frontend_listener_hana3
-        - __sap_vm_provision_register_ibmcloud_lb_frontend_listener_hana4
-        - __sap_vm_provision_register_ibmcloud_lb_frontend_listener_anydb1
-        - __sap_vm_provision_register_ibmcloud_lb_frontend_listener_ascs1
-        - __sap_vm_provision_register_ibmcloud_lb_frontend_listener_ascs2
-        - __sap_vm_provision_register_ibmcloud_lb_frontend_listener_ascs3
-        - __sap_vm_provision_register_ibmcloud_lb_frontend_listener_ascs4
-        - __sap_vm_provision_register_ibmcloud_lb_frontend_listener_ascs5
-        - __sap_vm_provision_register_ibmcloud_lb_frontend_listener_ers1
-        - __sap_vm_provision_register_ibmcloud_lb_frontend_listener_ers2
-        - __sap_vm_provision_register_ibmcloud_lb_frontend_listener_ers3
-        - __sap_vm_provision_register_ibmcloud_lb_frontend_listener_ers4
-        - __sap_vm_provision_register_ibmcloud_lb_frontend_listener_ers5
-        - __sap_vm_provision_register_ibmcloud_pdns_record_ha_hana
-        - __sap_vm_provision_register_ibmcloud_pdns_record_ha_anydb
         - __sap_vm_provision_register_ibmcloud_pdns_record_ha_nwas_ascs
         - __sap_vm_provision_register_ibmcloud_pdns_record_ha_nwas_ers
       loop_control:
@@ -388,6 +402,5 @@
   block:
 
     - name: SAP VM Provision - IBM Cloud - Set /etc/hosts for HA
-      register: __sap_vm_provision_task_os_etc_hosts_ha
       ansible.builtin.include_tasks:
         file: common/set_etc_hosts_ha.yml

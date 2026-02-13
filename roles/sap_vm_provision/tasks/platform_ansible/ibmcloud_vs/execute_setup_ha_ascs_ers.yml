@@ -205,15 +205,15 @@
         ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
       register: __sap_vm_provision_register_ibmcloud_lb_pool_nwas_ers5
 
-# Identify the provisioned IBM Cloud Load Balancer Back-end Pools
 
-- name: Identify IBM Cloud Load Balancer Back-end Pools
-  no_log: "{{ __sap_vm_provision_no_log }}"
-  register: __sap_vm_provision_register_ibmcloud_lb_pools
-  ibm.cloudcollection.ibm_is_lb_pools_info:
-    lb: "{{ item }}"
-    ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
-  loop: "{{ __sap_vm_provision_register_ibmcloud_lbs_all_info | map(attribute='id') }}"
+    # Identify the provisioned IBM Cloud Load Balancer Back-end Pools
+    - name: Identify IBM Cloud Load Balancer Back-end Pools
+      no_log: "{{ __sap_vm_provision_no_log }}"
+      register: __sap_vm_provision_register_ibmcloud_lb_pools
+      ibm.cloudcollection.ibm_is_lb_pools_info:
+        lb: "{{ item }}"
+        ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
+      loop: "{{ __sap_vm_provision_register_ibmcloud_lbs_all_info | map(attribute='id') }}"
 
 
 # Create IBM Cloud Load Balancer Front-end Listeners (open port for Virtual IPs)
@@ -917,6 +917,7 @@
     - not 'The record already exists' in __sap_vm_provision_register_ibmcloud_pdns_record_ha_nwas_ers.stderr
 
 
+# Reason for noqa: This is setting variables for usage in end to end playbooks.
 - name: SAP VM Provision - IBM Cloud - Set facts for all hosts - use facts from localhost - HA/DR - IBM Cloud Load Balancer - SAP NetWeaver ASCS and ERS
   ansible.builtin.set_fact:  # noqa var-naming[no-role-prefix]
     sap_vm_provision_ha_vip_nwas_abap_ascs: "{{ __vip_ip_ascs }}"

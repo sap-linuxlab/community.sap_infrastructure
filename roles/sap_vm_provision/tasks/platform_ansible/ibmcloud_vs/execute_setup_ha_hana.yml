@@ -335,6 +335,8 @@
     - not __sap_vm_provision_register_ibmcloud_pdns_record_ha_hana.rc == 0
     - not 'The record already exists' in __sap_vm_provision_register_ibmcloud_pdns_record_ha_hana.stderr
 
+
+# Reason for noqa: This is setting variables for usage in end to end playbooks.
 - name: SAP VM Provision - IBM Cloud - Set facts for all hosts - use facts from localhost - HA/DR - IBM Cloud Load Balancer - SAP HANA Primary node
   ansible.builtin.set_fact:  # noqa var-naming[no-role-prefix]
     sap_vm_provision_ha_vip_hana_primary: "{{ __vip_ip }}"
