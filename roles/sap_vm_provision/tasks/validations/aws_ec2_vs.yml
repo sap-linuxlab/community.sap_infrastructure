@@ -43,7 +43,7 @@
   loop:
     - sap_vm_provision_aws_vpc_sg_names
     - sap_vm_provision_aws_key_pair_name_ssh_host_public_key
-    - sap_vm_provision_aws_placement_resource_name
+    # - sap_vm_provision_aws_placement_resource_name
     - sap_vm_provision_aws_ha_iam_role
     - sap_vm_provision_aws_ha_iam_instance_profile
   when:

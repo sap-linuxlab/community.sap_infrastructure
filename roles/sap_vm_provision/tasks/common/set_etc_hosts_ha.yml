@@ -7,7 +7,7 @@
 # ansible.builtin.setup is already gathered in 'set_etc_hosts' so it is not needed again.
 
 - name: Block for HANA HA
-  when: sap_vm_provision_fact_is_ha_hana
+  when: __sap_vm_provision_fact_is_ha_hana
   block:
 
     - name: SAP VM Provision - Hosts - Set facts with hostname for High Availability - HANA
@@ -28,11 +28,11 @@
       loop:
         # Add hana_primary to hana_secondary, because hana_primary has it already
         - "{{ [sap_vm_provision_dynamic_inventory_hana_primary_ip, sap_vm_provision_dynamic_inventory_hana_primary_hostname]
-            if sap_vm_provision_fact_is_hana_secondary
+            if __sap_vm_provision_fact_is_hana_secondary
             else '' }}"
         # Add hana_secondary to hana_primary and hana_secondary
         - "{{ [sap_vm_provision_dynamic_inventory_hana_secondary_ip, sap_vm_provision_dynamic_inventory_hana_secondary_hostname]
-            if sap_vm_provision_fact_is_hana_primary or sap_vm_provision_fact_is_hana_secondary
+            if __sap_vm_provision_fact_is_hana_primary or __sap_vm_provision_fact_is_hana_secondary
             else '' }}"
       loop_control:
         loop_var: hosts_item
@@ -62,11 +62,11 @@
       when:
         - sap_vm_provision_ha_vip_hana_primary | d('') | length > 0
         - not __is_cloud_with_lb
-          or (not sap_vm_provision_fact_is_hana_primary and not sap_vm_provision_fact_is_hana_secondary)
+          or (not __sap_vm_provision_fact_is_hana_primary and not __sap_vm_provision_fact_is_hana_secondary)
 
 
 - name: Block for AnyDB HA
-  when: sap_vm_provision_fact_is_ha_anydb
+  when: __sap_vm_provision_fact_is_ha_anydb
   block:
 
     - name: SAP VM Provision - Hosts - Set facts with hostname for High Availability - AnyDB
@@ -84,11 +84,11 @@
       loop:
         # Add anydb_primary to anydb_secondary, because anydb_primary has it already
         - "{{ [sap_vm_provision_dynamic_inventory_anydb_primary_ip, sap_vm_provision_dynamic_inventory_anydb_primary_hostname]
-            if sap_vm_provision_fact_is_anydb_secondary
+            if __sap_vm_provision_fact_is_anydb_secondary
             else '' }}"
         # Add anydb_secondary to anydb_primary and hana_secondary
         - "{{ [sap_vm_provision_dynamic_inventory_anydb_secondary_ip, sap_vm_provision_dynamic_inventory_anydb_secondary_hostname]
-            if sap_vm_provision_fact_is_anydb_primary or sap_vm_provision_fact_is_anydb_secondary
+            if __sap_vm_provision_fact_is_anydb_primary or __sap_vm_provision_fact_is_anydb_secondary
             else '' }}"
       loop_control:
         loop_var: hosts_item
@@ -111,7 +111,7 @@
 
 
 - name: Block for ASCS/ERS HA
-  when: sap_vm_provision_fact_is_ha_nwas_ers
+  when: __sap_vm_provision_fact_is_ha_nwas_ers
   block:
 
     - name: SAP VM Provision - Hosts - Set facts with hostname for High Availability - ASCS/ERS
@@ -134,11 +134,11 @@
       loop:
         # Add anydb_primary to anydb_secondary, because anydb_primary has it already
         - "{{ [sap_vm_provision_dynamic_inventory_nw_ascs_ip, sap_vm_provision_dynamic_inventory_nw_ascs_hostname]
-            if sap_vm_provision_fact_is_nwas_ers
+            if __sap_vm_provision_fact_is_nwas_ers
             else '' }}"
         # Add anydb_secondary to anydb_primary and hana_secondary
         - "{{ [sap_vm_provision_dynamic_inventory_nw_ers_ip, sap_vm_provision_dynamic_inventory_nw_ers_hostname]
-            if sap_vm_provision_fact_is_nwas_ascs or sap_vm_provision_fact_is_nwas_ers
+            if __sap_vm_provision_fact_is_nwas_ascs or __sap_vm_provision_fact_is_nwas_ers
             else '' }}"
       loop_control:
         loop_var: hosts_item
@@ -161,7 +161,7 @@
         - sap_vm_provision_ha_vip_nwas_abap_ascs | d('') | length > 0
         - sap_vm_provision_ha_vip_nwas_abap_ers | d('') | length > 0
         - not ansible_facts['chassis_asset_tag'] == 'ibmcloud'
-          or (not sap_vm_provision_fact_is_nwas_ascs and not sap_vm_provision_fact_is_nwas_ers)
+          or (not __sap_vm_provision_fact_is_nwas_ascs and not __sap_vm_provision_fact_is_nwas_ers)
 
 
 # Ensure SAP AnyDB, SAP HANA or SAP NetWeaver hostname is not localhost in /etc/hosts. See SAP Note 1054467 - Local host name refers to loopback address.
@@ -173,7 +173,7 @@
 - name: Block for IBM Cloud
   when:
     - ansible_facts['chassis_asset_tag'] == 'ibmcloud'
-    - sap_vm_provision_fact_is_ha_nwas_ers
+    - __sap_vm_provision_fact_is_ha_nwas_ers
   block:
 
     - name: SAP VM Provision - Hosts - Update /etc/hosts file with Virtual Hostname for SAP NetWeaver HA ASCS on IBM Cloud
@@ -193,7 +193,7 @@
         loop_var: hosts_item
         label: "{{ hosts_item[1] | d('N/A') }}"
       when:
-        - sap_vm_provision_fact_is_nwas_ascs
+        - __sap_vm_provision_fact_is_nwas_ascs
         - sap_vm_provision_ha_vip_nwas_abap_ascs | d('') | length > 0
 
     # Remove /etc/hosts entries and then consolidate into one entry with aliases
@@ -206,7 +206,7 @@
         - "{{ [sap_vm_provision_dynamic_inventory_nw_ascs_ip, sap_vm_provision_dynamic_inventory_nw_ascs_hostname] }}"
         - "{{ [(sap_vm_provision_ha_vip_nwas_abap_ascs | regex_replace('/.*', '')), __sap_vm_provision_fact_ha_hostname_nwas_abap_ascs] }}"
       when:
-        - sap_vm_provision_fact_is_nwas_ascs
+        - __sap_vm_provision_fact_is_nwas_ascs
         - sap_vm_provision_ha_vip_nwas_abap_ascs | d('') | length > 0
 
 
@@ -227,7 +227,7 @@
         loop_var: hosts_item
         label: "{{ hosts_item[1] | d('N/A') }}"
       when:
-        - sap_vm_provision_fact_is_nwas_ers
+        - __sap_vm_provision_fact_is_nwas_ers
         - sap_vm_provision_ha_vip_nwas_abap_ers | d('') | length > 0
 
     # Remove /etc/hosts entries and then consolidate into one entry with aliases
@@ -240,5 +240,5 @@
         - "{{ [sap_vm_provision_dynamic_inventory_nw_ers_ip, sap_vm_provision_dynamic_inventory_nw_ers_hostname] }}"
         - "{{ [(sap_vm_provision_ha_vip_nwas_abap_ers | regex_replace('/.*', '')), __sap_vm_provision_fact_ha_hostname_nwas_abap_ers] }}"
       when:
-        - sap_vm_provision_fact_is_nwas_ers
+        - __sap_vm_provision_fact_is_nwas_ers
         - sap_vm_provision_ha_vip_nwas_abap_ers | d('') | length > 0

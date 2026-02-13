@@ -25,4 +25,4 @@ __sap_vm_provision_task_file:
 __sap_vm_provision_storage_vol_letters: "bcdefghijklmnopqrstuvwxyz"
 
 # List of provisioning results for all hosts combined into one list.
-__sap_vm_provision_provisioned_hosts: []
+__sap_vm_provision_fact_provisioned_hosts: []

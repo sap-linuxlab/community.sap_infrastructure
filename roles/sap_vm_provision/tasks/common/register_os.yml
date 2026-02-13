@@ -34,7 +34,7 @@
       ansible.builtin.shell:  # noqa: command-instead-of-shell
         cmd: "{{ sap_vm_provision_os_registration_script_command }}"
       changed_when: true
-      no_log: true
+      no_log: "{{ __sap_vm_provision_no_log }}"
 
     - name: SAP VM Provision - Register OS - Red Hat Package Repositories - Cleanup dnf repositories
       ansible.builtin.command:
@@ -68,7 +68,7 @@
       ansible.builtin.shell:  # noqa: command-instead-of-shell
         cmd: "{{ sap_vm_provision_os_registration_script_command }}"
       changed_when: true
-      no_log: true
+      no_log: "{{ __sap_vm_provision_no_log }}"
 
 
 #### For Online Registration via SNAT ####
@@ -108,4 +108,4 @@
           --regcode '{{ sap_vm_provision_os_online_registration_passcode }}'
       ignore_errors: true
       changed_when: true
-      no_log: true
+      no_log: "{{ __sap_vm_provision_no_log }}"

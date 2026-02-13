@@ -5,6 +5,10 @@
 # Using environment, no_log is ineffective and log will show 'EXEC /bin/sh -c 'ENV_VAR=value python3 /AnsiballZ_ansible_module_name.py && sleep 0'
 # Therefore do not use environment for secrets, use only for non-sensitive values as this will reduce Ansible Task parameters.
 
+# Cannot override any variables from extravars input.
+# Source: https://docs.ansible.com/ansible/latest/playbook_guide/playbooks_variables.html#understanding-variable-precedence
+# Ensure no default value exists for any prompted variable before execution of Ansible Playbook
+
 # Block is required for 'delegate_facts'.
 - name: Main Block
   delegate_to: "{{ sap_vm_provision_execution_host }}"
@@ -19,13 +23,13 @@
       ansible.builtin.include_tasks:
         file: "{{ __sap_vm_provision_task_file }}/execute_main.yml"
       when:
-        - sap_vm_provision_iac_post_deployment is not defined or not sap_vm_provision_iac_post_deployment
+        - sap_vm_provision_iac_post_deployment is not defined
+          or not sap_vm_provision_iac_post_deployment
 
     - name: SAP VM Provision - Post Deployment tasks for {{ sap_vm_provision_iac_type ~ ' on ' ~ sap_vm_provision_iac_platform }}
       ansible.builtin.include_tasks:
         file: "{{ __sap_vm_provision_task_file }}/post_deployment_execute.yml"
       when:
-        - sap_vm_provision_iac_post_deployment is defined
-        - sap_vm_provision_iac_post_deployment
+        - sap_vm_provision_iac_post_deployment | d(false)
         # Execute only for files that are present
         - (role_path ~ '/tasks/' ~ __sap_vm_provision_task_file ~ '/post_deployment_execute.yml') is file

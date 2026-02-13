@@ -119,3 +119,12 @@
   ansible.builtin.include_tasks:
     file: "validations/bastion.yml"
   when: sap_vm_provision_bastion_execution
+
+# Validation specific to High Availability
+- name: Include task for validation of High Availability variables
+  ansible.builtin.include_tasks:
+    file: "validations/high_availability.yml"
+  when:
+    - groups[sap_vm_provision_group_hana_secondary] | d([]) | length > 0
+      or groups[sap_vm_provision_group_anydb_secondary] | d([]) | length > 0
+      or groups[sap_vm_provision_group_nwas_ers] | d([]) | length > 0

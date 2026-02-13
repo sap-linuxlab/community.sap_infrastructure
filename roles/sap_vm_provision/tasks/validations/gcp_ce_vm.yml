@@ -25,7 +25,7 @@
     - sap_vm_provision_gcp_region_zone
     - sap_vm_provision_gcp_vpc_name
     - sap_vm_provision_gcp_vpc_subnet_name
-    - sap_vm_provision_gcp_placement_resource_name
+    # - sap_vm_provision_gcp_placement_resource_name
     - sap_vm_provision_gcp_ce_vm_host_os_image
 
 

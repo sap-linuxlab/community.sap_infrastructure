@@ -44,22 +44,23 @@
       no_log: "{{ __sap_vm_provision_no_log }}"
       run_once: true
       when:
-        - sap_vm_provision_aws_placement_resource_name is defined
+        - sap_vm_provision_aws_placement_resource_name | d('') | length > 0
         - sap_vm_provision_aws_placement_strategy_spread
         - not placement_item == ''
 
-    - name: SAP VM Provision - AWS - Provision hosts
+
+    - name: SAP VM Provision - AWS - Provision hosts to AWS
       ansible.builtin.include_tasks:
         file: "{{ __sap_vm_provision_task_file }}/execute_provision.yml"
 
 
-    - name: SAP VM Provision - Set Bastion SSH argument facts
+    - name: SAP VM Provision - AWS - Set Bastion SSH argument facts
       ansible.builtin.set_fact:
         __sap_vm_provision_fact_ssh_args_bastion: >-
           -o ProxyCommand='ssh -W %h:%p {{ sap_vm_provision_bastion_user }}@{{ sap_vm_provision_bastion_public_ip }}
           -p {{ sap_vm_provision_bastion_ssh_port }}
           -i {{ sap_vm_provision_ssh_bastion_private_key_file_path }}
-          {{ sap_vm_provision_ssh_bastion_ssh_ars }}'
+          {{ sap_vm_provision_ssh_bastion_ssh_args }}'
       when:
         - sap_vm_provision_bastion_execution
         - sap_vm_provision_bastion_user | d('') != ''
@@ -75,17 +76,13 @@
         ansible_host: "{{ add_item[0].instances[0].private_ip_address }}"
         ansible_user: "root"
         ansible_ssh_private_key_file: "{{ sap_vm_provision_ssh_host_private_key_file_path }}"
-        ansible_ssh_common_args: "{{ sap_vm_provision_ssh_host_ssh_ars }} {{ __sap_vm_provision_fact_ssh_args_bastion | d('') }}"
-      loop: "{{ ansible_play_hosts | map('extract', hostvars, '__sap_vm_provision_provisioned_hosts') }}"
+        ansible_ssh_common_args: "{{ sap_vm_provision_ssh_host_ssh_args }} {{ __sap_vm_provision_fact_ssh_args_bastion | d('') }}"
+      loop: "{{ ansible_play_hosts | map('extract', hostvars, '__sap_vm_provision_fact_provisioned_hosts') }}"
       loop_control:
         label: "{{ add_item[0].host_node }}"
         loop_var: add_item
       register: __sap_vm_provision_register_add_hosts
       no_log: "{{ __sap_vm_provision_no_log }}"
-
-    # Cannot override any variables from extravars input.
-    # Source: https://docs.ansible.com/ansible/latest/playbook_guide/playbooks_variables.html#understanding-variable-precedence
-    # Ensure no default value exists for any prompted variable before execution of Ansible Playbook
 
     - name: SAP VM Provision - AWS - Gather information about AWS VPC Route Table for the VPC Subnet
       amazon.aws.ec2_vpc_route_table_info:
@@ -96,17 +93,21 @@
       register: __sap_vm_provision_register_aws_vpc_subnet_rt_info
       no_log: "{{ __sap_vm_provision_no_log }}"
 
-    - name: SAP VM Provision - AWS - Set fact to hold all inventory hosts in all valid groups
-      ansible.builtin.set_fact:
-        __sap_vm_provision_fact_merged_hosts_list: "{{
-            [[groups[sap_vm_provision_group_hana_primary] | d([])],
-            [groups[sap_vm_provision_group_hana_secondary] | d([])],
-            [groups[sap_vm_provision_group_anydb_primary] | d([])],
-            [groups[sap_vm_provision_group_anydb_secondary] | d([])],
-            [groups[sap_vm_provision_group_nwas_ascs] | d([])],
-            [groups[sap_vm_provision_group_nwas_ers] | d([])],
-            [groups[sap_vm_provision_group_nwas_pas] | d([])],
-            [groups[sap_vm_provision_group_nwas_aas] | d([])]] | flatten | select() }}"
+    # - name: SAP VM Provision - AWS - Set fact to hold all inventory hosts in all valid groups
+    #   ansible.builtin.set_fact:
+    #     __sap_vm_provision_fact_merged_hosts_list: "{{
+    #         [[groups[sap_vm_provision_group_hana_primary] | d([])],
+    #         [groups[sap_vm_provision_group_hana_secondary] | d([])],
+    #         [groups[sap_vm_provision_group_anydb_primary] | d([])],
+    #         [groups[sap_vm_provision_group_anydb_secondary] | d([])],
+    #         [groups[sap_vm_provision_group_nwas_ascs] | d([])],
+    #         [groups[sap_vm_provision_group_nwas_ers] | d([])],
+    #         [groups[sap_vm_provision_group_nwas_pas] | d([])],
+    #         [groups[sap_vm_provision_group_nwas_aas] | d([])]] | flatten | select() }}"
+
+    - name: SAP VM Provision - AWS - Identify hosts
+      ansible.builtin.include_tasks:
+        file: common/identify_hosts.yml
 
     - name: SAP VM Provision - AWS - Set Ansible Vars
       ansible.builtin.include_tasks:
@@ -136,16 +137,18 @@
       ansible.builtin.fail:
         msg: "{{ lookup('ansible.builtin.vars', loop_item) }}"
       loop:
+        # Main
         - __sap_vm_provision_register_image_info
         - __sap_vm_provision_register_placement_group
-        - __sap_vm_provision_register_provision_results
+        - __sap_vm_provision_register_add_hosts
+        - __sap_vm_provision_register_aws_vpc_subnet_rt_info
+        - __sap_vm_provision_register_aws_route53
+        # Provision
+        - __sap_vm_provision_register_provision_host_single
         - __sap_vm_provision_register_instance_info
         - __sap_vm_provision_register_volume_results
         - __sap_vm_provision_register_gather_subset
         - __sap_vm_provision_register_update_sshd_config
-        - __sap_vm_provision_register_add_hosts
-        - __sap_vm_provision_register_aws_vpc_subnet_rt_info
-        - __sap_vm_provision_register_aws_route53
       loop_control:
         loop_var: loop_item
         index_var: loop_item_index
@@ -189,12 +192,12 @@
       ansible.builtin.include_tasks:
         file: common/set_etc_hosts_ha.yml
       when:
-        - sap_vm_provision_fact_is_ha_hana or sap_vm_provision_fact_is_ha_nwas_ers or sap_vm_provision_fact_is_ha_anydb
+        - __sap_vm_provision_fact_is_ha_hana or __sap_vm_provision_fact_is_ha_anydb or __sap_vm_provision_fact_is_ha_nwas_ers
 
     - name: SAP VM Provision - AWS - Set /etc/hosts for Scale-Out
       ansible.builtin.include_tasks:
         file: common/set_etc_hosts_scaleout.yml
-      when: sap_vm_provision_fact_is_hana_scaleout
+      when: __sap_vm_provision_fact_is_hana_scaleout
 
     - name: SAP VM Provision - AWS - Set vars for sap_storage_setup Ansible Role
       ansible.builtin.include_tasks:
@@ -215,7 +218,7 @@
 
 
 - name: Ansible Task block for provisioning of High Availability resources for AWS EC2 instances
-  delegate_to: localhost
+  delegate_to: "{{ sap_vm_provision_execution_host }}"
   any_errors_fatal: true
   run_once: true
   environment:
@@ -224,7 +227,7 @@
     # AWS_SECRET_ACCESS_KEY: "{{ sap_vm_provision_aws_secret_access_key }}"
     AWS_REGION: "{{ sap_vm_provision_aws_region }}"
   when:
-    - sap_vm_provision_fact_is_ha_hana or sap_vm_provision_fact_is_ha_nwas_ers or sap_vm_provision_fact_is_ha_anydb
+    - __sap_vm_provision_fact_is_ha_hana or __sap_vm_provision_fact_is_ha_anydb or __sap_vm_provision_fact_is_ha_nwas_ers
   block:
 
     - name: SAP VM Provision - AWS - Provision High Availability resources for AWS EC2 hosts
@@ -241,23 +244,26 @@
       loop:
         - __sap_vm_provision_register_aws_account_info
         - __sap_vm_provision_register_aws_vpc_subnet_rt_info
+        - __sap_vm_provision_register_aws_iam_role_ha_pacemaker
+        - __sap_vm_provision_register_aws_iam_policy_dataprovider
+        - __sap_vm_provision_register_aws_iam_policy_overlayip
+        - __sap_vm_provision_register_aws_iam_attach_role
+        # HANA
         - __sap_vm_provision_register_aws_vpc_subnet_rt_route_sap_hana
         - __sap_vm_provision_register_aws_route53_sap_hana
+        - __sap_vm_provision_register_aws_iam_policy_stonith_saphana
+        - __sap_vm_provision_register_aws_iam_associate_instance_saphana
+        # AnyDB
         - __sap_vm_provision_register_aws_vpc_subnet_rt_route_sap_anydb
         - __sap_vm_provision_register_aws_route53_sap_anydb
+        - __sap_vm_provision_register_aws_iam_policy_stonith_sapanydb
+        - __sap_vm_provision_register_aws_iam_associate_instance_sapanydb
+        # ASCS/ERS
         - __sap_vm_provision_register_aws_vpc_subnet_rt_route_sap_netweaver_ascs
         - __sap_vm_provision_register_aws_route53_sap_netweaver_ascs
         - __sap_vm_provision_register_aws_vpc_subnet_rt_route_sap_netweaver_ers
         - __sap_vm_provision_register_aws_route53_sap_netweaver_ers
-        - __sap_vm_provision_register_aws_iam_role_ha_pacemaker
-        - __sap_vm_provision_register_aws_iam_policy_dataprovider
-        - __sap_vm_provision_register_aws_iam_policy_overlayip
-        - __sap_vm_provision_register_aws_iam_policy_stonith_saphana
-        - __sap_vm_provision_register_aws_iam_policy_stonith_sapanydb
         - __sap_vm_provision_register_aws_iam_policy_stonith_sapnwas
-        - __sap_vm_provision_register_aws_iam_attach_role
-        - __sap_vm_provision_register_aws_iam_associate_instance_saphana
-        - __sap_vm_provision_register_aws_iam_associate_instance_sapanydb
         - __sap_vm_provision_register_aws_iam_associate_instance_sapnwas
       loop_control:
         loop_var: loop_item

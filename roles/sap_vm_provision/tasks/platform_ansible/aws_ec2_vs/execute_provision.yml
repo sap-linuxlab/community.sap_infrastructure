@@ -2,7 +2,7 @@
 ---
 
 # When SAP HANA Scale-Out is used, if host name is not in original specifications then strip suffix node number from host name
-- name: SAP VM Provision - Set host spec for SAP HANA Scale-Out
+- name: SAP VM Provision - AWS - Set host spec for SAP HANA Scale-Out
   ansible.builtin.set_fact:
     __sap_vm_provision_fact_scaleout_origin_hostname: "{{ inventory_hostname | regex_replace('^(.+?)\\d*$', '\\1') }}"
   when:
@@ -36,7 +36,7 @@
     placement: "{{ placement_dict if sap_vm_provision_aws_placement_strategy_spread else omit }}"
     access_key: "{{ sap_vm_provision_aws_access_key }}"
     secret_key: "{{ sap_vm_provision_aws_secret_access_key }}"
-  register: __sap_vm_provision_register_provision_results
+  register: __sap_vm_provision_register_provision_host_single
   no_log: "{{ __sap_vm_provision_no_log }}"
   vars:
     placement_dict:
@@ -116,7 +116,7 @@
 - name: SAP VM Provision - AWS - Provision AWS EBS volumes for AWS EC2 Virtual Server instance filesystems
   amazon.aws.ec2_vol:
     name: "{{ inventory_hostname }}-vol_{{ vol_item.name }}"
-    instance: "{{ __sap_vm_provision_register_provision_results.instance_ids[0] }}"
+    instance: "{{ __sap_vm_provision_register_provision_host_single.instance_ids[0] }}"
     volume_type: "{{ vol_item.type }}"
     volume_size: "{{ vol_item.size }}"
     iops: "{{ vol_item.iops | d(omit) }}"
@@ -155,23 +155,23 @@
 
 - name: SAP VM Provision - AWS - Create fact for delegate host IP
   ansible.builtin.set_fact:
-    __sap_vm_provision_fact_private_ip: "{{ __sap_vm_provision_register_provision_results.instances[0].private_ip_address }}"
+    __sap_vm_provision_fact_private_ip: "{{ __sap_vm_provision_register_provision_host_single.instances[0].private_ip_address }}"
 
 - name: SAP VM Provision - Set Bastion SSH argument facts to delegate host
+  delegate_to: "{{ __sap_vm_provision_fact_private_ip }}"
+  delegate_facts: true
   ansible.builtin.set_fact:
     __sap_vm_provision_fact_ssh_args_bastion: >-
       -o ProxyCommand='ssh -W %h:%p {{ sap_vm_provision_bastion_user }}@{{ sap_vm_provision_bastion_public_ip }}
       -p {{ sap_vm_provision_bastion_ssh_port }}
       -i {{ sap_vm_provision_ssh_bastion_private_key_file_path }}
-      {{ sap_vm_provision_ssh_bastion_ssh_ars }}'
+      {{ sap_vm_provision_ssh_bastion_ssh_args }}'
   when:
     - sap_vm_provision_bastion_execution
     - sap_vm_provision_bastion_user | d('') != ''
     - sap_vm_provision_bastion_public_ip | d('') != ''
     - sap_vm_provision_bastion_ssh_port | d('') != ''
     - sap_vm_provision_ssh_bastion_private_key_file_path | d('') != ''
-  delegate_to: "{{ __sap_vm_provision_fact_private_ip }}"
-  delegate_facts: true
 
 
 - name: Block to allow login from root OS User
@@ -182,7 +182,7 @@
   delegate_facts: true
   vars:
     ansible_ssh_private_key_file: "{{ sap_vm_provision_ssh_host_private_key_file_path }}"
-    ansible_ssh_common_args: "{{ sap_vm_provision_ssh_host_ssh_ars }} {{ __sap_vm_provision_fact_ssh_args_bastion | d('') }}"
+    ansible_ssh_common_args: "{{ sap_vm_provision_ssh_host_ssh_args }} {{ __sap_vm_provision_fact_ssh_args_bastion | d('') }}"
   block:
 
     - name: SAP VM Provision - AWS - Wait until SSH connection is available
@@ -213,7 +213,7 @@
         replace: 'PermitRootLogin yes'
       register: __sap_vm_provision_register_update_sshd_config
       vars:
-        # # Path to SSH config, which is different starting with SLES 16.
+        # Path to SSH config, which is different starting with SLES 16.
         __sap_vm_provision_ssh_config_path: >-
           {{ '/usr/etc/ssh/sshd_config'
               if __sap_vm_provision_register_gather_subset.ansible_facts['ansible_os_family'] == 'Suse' and
@@ -229,11 +229,11 @@
 
 - name: SAP VM Provision - AWS - Combine details of provisioned hosts into one list
   ansible.builtin.set_fact:
-    __sap_vm_provision_provisioned_hosts: "{{ __sap_vm_provision_provisioned_hosts + [__merged_results] }}"
+    __sap_vm_provision_fact_provisioned_hosts: "{{ __sap_vm_provision_fact_provisioned_hosts + [__merged_results] }}"
   # Append keys to provisioning result, that are not part of default return dictionary.
   vars:
     __merged_results:
-      "{{ __sap_vm_provision_register_provision_results
+      "{{ __sap_vm_provision_register_provision_host_single
         | combine({'host_node': inventory_hostname},
         {'sap_host_type': __sap_vm_provision_host_dict_spec.sap_host_type},
         {'sap_system_type': (__sap_vm_provision_host_dict_spec.sap_system_type | d(''))}) }}"

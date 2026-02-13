@@ -43,19 +43,19 @@
   loop:
     # Since scaleout hosts are in same group, we have to skip it as it has separate file
     - "{{ [sap_vm_provision_dynamic_inventory_hana_primary_ip, sap_vm_provision_dynamic_inventory_hana_primary_hostname]
-        if sap_vm_provision_fact_is_hana_primary and not sap_vm_provision_fact_is_hana_scaleout else '' }}"
+        if __sap_vm_provision_fact_is_hana_primary and not __sap_vm_provision_fact_is_hana_scaleout else '' }}"
 
     - "{{ [sap_vm_provision_dynamic_inventory_anydb_primary_ip, sap_vm_provision_dynamic_inventory_anydb_primary_hostname]
-        if sap_vm_provision_fact_is_anydb_primary else '' }}"
+        if __sap_vm_provision_fact_is_anydb_primary else '' }}"
 
     - "{{ [sap_vm_provision_dynamic_inventory_nw_ascs_ip, sap_vm_provision_dynamic_inventory_nw_ascs_hostname]
-        if sap_vm_provision_fact_is_nwas_ascs and (ansible_play_hosts_all | length) > 1 else '' }}"
+        if __sap_vm_provision_fact_is_nwas_ascs and (ansible_play_hosts_all | length) > 1 else '' }}"
 
     - "{{ [sap_vm_provision_dynamic_inventory_nw_pas_ip, sap_vm_provision_dynamic_inventory_nw_pas_hostname]
-        if sap_vm_provision_fact_is_nwas_pas else '' }}"
+        if __sap_vm_provision_fact_is_nwas_pas else '' }}"
 
     - "{{ [sap_vm_provision_dynamic_inventory_nw_aas_ip, sap_vm_provision_dynamic_inventory_nw_aas_hostname]
-        if sap_vm_provision_fact_is_nwas_aas and (ansible_play_hosts_all | length) > 1 else '' }}"
+        if __sap_vm_provision_fact_is_nwas_aas and (ansible_play_hosts_all | length) > 1 else '' }}"
 
   loop_control:
     loop_var: hosts_item
