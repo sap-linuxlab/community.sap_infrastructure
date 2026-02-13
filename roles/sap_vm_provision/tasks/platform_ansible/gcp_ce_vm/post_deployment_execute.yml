@@ -1,124 +1,139 @@
+# SPDX-License-Identifier: Apache-2.0
 ---
 
-- name: Ansible Task block for amending Load Balancer ports for High Availability - after provisioning GCP CE VMs
-  delegate_to: localhost
+# Ansible Task block for amending Load Balancer ports for High Availability - after provisioning GCP CE VMs
+
+- name: SAP VM Provision - GCP - Identify hosts
+  ansible.builtin.include_tasks:
+    file: common/identify_hosts.yml
+
+- name: Block for High Availability tasks
+  delegate_to: "{{ sap_vm_provision_execution_host }}"
   run_once: true
   any_errors_fatal: true
-  # Using environment, no_log is ineffective and log will show 'EXEC /bin/sh -c 'ENV_VAR=value python3 /AnsiballZ_ansible_module_name.py && sleep 0'
-  # Therefore do not use environment for secrets, use only for non-sensitive values as this will reduce Ansible Task parameters.
-  # environment:
-  #   GCP_AUTH_KIND: "serviceaccount"
-  #   GCP_SERVICE_ACCOUNT_FILE: "{{ sap_vm_provision_gcp_credentials_json }}"
   when:
-    - (groups[sap_vm_provision_group_hana_secondary] is defined and (groups[sap_vm_provision_group_hana_secondary] | length>0)) or (groups[sap_vm_provision_group_nwas_ers] is defined and (groups[sap_vm_provision_group_nwas_ers] | length>0)) or (groups[sap_vm_provision_group_anydb_secondary] is defined and (groups[sap_vm_provision_group_anydb_secondary] | length>0))
+    - __sap_vm_provision_fact_is_ha_hana or __sap_vm_provision_fact_is_ha_anydb or __sap_vm_provision_fact_is_ha_nwas_ers
   block:
 
-    - name: Inherit variable - set fact for Google Cloud Compute Engine Health Check (Global) - SAP HANA
-      ansible.builtin.set_fact:
-        __sap_vm_provision_task_gcp_lb_healthcheck_hana: "{{ sap_ha_pacemaker_cluster_healthcheck_hana_primary_port | default('') }}"
-      when: sap_ha_pacemaker_cluster_healthcheck_hana_primary_port is defined
+    - name: Block for HANA HA
+      when: __sap_vm_provision_fact_is_ha_hana
+      block:
 
-    - name: Inherit variable - set fact for Google Cloud Compute Engine Health Check (Global) - SAP NWAS ASCS
-      ansible.builtin.set_fact:
-        __sap_vm_provision_task_gcp_lb_healthcheck_nwas_ascs: "{{ sap_ha_pacemaker_cluster_healthcheck_nwas_abap_ascs_port | default('') }}"
-      when: sap_ha_pacemaker_cluster_healthcheck_nwas_abap_ascs_port is defined
+        - name: SAP VM Provision - GCP - Create Google Cloud Compute Engine Health Check (Global) service instance for SAP HANA
+          google.cloud.gcp_compute_health_check:
+            state: present
+            project: "{{ sap_vm_provision_gcp_project }}"
+            name: "{{ sap_vm_provision_ha_load_balancer_name_hana + '-probe-hc-vip' }}"
+            type: TCP
+            tcp_health_check:
+              port: "{{ __sap_vm_provision_fact_ha_lb_hana_primary_port }}"
+              proxy_header: NONE
+            check_interval_sec: 10
+            timeout_sec: 10
+            unhealthy_threshold: 2
+            healthy_threshold: 2
+            auth_kind: "serviceaccount"
+            service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
+          register: __sap_vm_provision_register_gcp_lb_healthcheck_service_hana
+          no_log: "{{ __sap_vm_provision_no_log }}"
+          when: __sap_vm_provision_fact_is_ha_hana
 
-    - name: Inherit variable - set fact for Google Cloud Compute Engine Health Check (Global) - SAP NWAS ERS
-      ansible.builtin.set_fact:
-        __sap_vm_provision_task_gcp_lb_healthcheck_nwas_ers: "{{ sap_ha_pacemaker_cluster_healthcheck_nwas_abap_ers_port | default('') }}"
-      when: sap_ha_pacemaker_cluster_healthcheck_nwas_abap_ers_port is defined
 
-    - name: Default variable - Set fact for Google Cloud Compute Engine Health Check (Global) - SAP HANA
-      ansible.builtin.set_fact:
-        __sap_vm_provision_task_gcp_lb_healthcheck_hana: "{{ ('620' + (sap_system_hana_db_instance_nr | default('')) | string) | int }}"
-      when: not sap_ha_pacemaker_cluster_healthcheck_hana_primary_port is defined
+    - name: Block for AnyDB HA
+      when: __sap_vm_provision_fact_is_ha_anydb
+      block:
 
-    - name: Default variable - Set fact for Google Cloud Compute Engine Health Check (Global) - SAP NWAS ASCS
-      ansible.builtin.set_fact:
-        __sap_vm_provision_task_gcp_lb_healthcheck_nwas_ascs: "{{ ('620' + (sap_system_nwas_abap_ascs_instance_nr | default('')) | string) | int }}"
-      when: not sap_ha_pacemaker_cluster_healthcheck_nwas_abap_ascs_port is defined
+        - name: SAP VM Provision - GCP - Create Google Cloud Compute Engine Health Check (Global) service instance for SAP AnyDB
+          google.cloud.gcp_compute_health_check:
+            state: present
+            project: "{{ sap_vm_provision_gcp_project }}"
+            name: "{{ sap_vm_provision_ha_load_balancer_name_anydb + '-probe-hc-vip' }}"
+            type: TCP
+            tcp_health_check:
+              port: "{{ __sap_vm_provision_fact_ha_lb_anydb_primary_port }}"
+              proxy_header: NONE
+            check_interval_sec: 10
+            timeout_sec: 10
+            unhealthy_threshold: 2
+            healthy_threshold: 2
+            auth_kind: "serviceaccount"
+            service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
+          register: __sap_vm_provision_register_gcp_lb_healthcheck_service_anydb
+          no_log: "{{ __sap_vm_provision_no_log }}"
+          when: __sap_vm_provision_fact_is_ha_anydb
 
-    - name: Default variable - Set fact for Google Cloud Compute Engine Health Check (Global) - SAP NWAS ERS
-      ansible.builtin.set_fact:
-        __sap_vm_provision_task_gcp_lb_healthcheck_nwas_ers: "{{ ('620' + (sap_system_nwas_abap_ers_instance_nr | default('')) | string) | int }}"
-      when: not sap_ha_pacemaker_cluster_healthcheck_nwas_abap_ers_port is defined
 
-    - name: Create Google Cloud Compute Engine Health Check (Global) service instance for SAP HANA
-      no_log: "{{ __sap_vm_provision_no_log }}"
-      register: __sap_vm_provision_task_gcp_lb_healthcheck_service
-      google.cloud.gcp_compute_health_check:
-        state: present
-        project: "{{ sap_vm_provision_gcp_project }}"
-        name: "{{ sap_vm_provision_ha_load_balancer_name_hana + '-probe-hc-vip' }}"
-        type: TCP
-        tcp_health_check:
-          port: "{{ __sap_vm_provision_task_gcp_lb_healthcheck_hana }}"
-          proxy_header: NONE
-        check_interval_sec: 10
-        timeout_sec: 10
-        unhealthy_threshold: 2
-        healthy_threshold: 2
-        auth_kind: "serviceaccount"
-        service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
+    - name: Block for ASCS/ERS HA
+      when: __sap_vm_provision_fact_is_ha_nwas_ers
+      block:
+
+        - name: SAP VM Provision - GCP - Create Google Cloud Compute Engine Health Check (Global) service instance for SAP NetWeaver ASCS
+          google.cloud.gcp_compute_health_check:
+            state: present
+            project: "{{ sap_vm_provision_gcp_project }}"
+            name: "{{ sap_vm_provision_ha_load_balancer_name_nwas + '-ascs-probe-hc-vip' }}"
+            type: TCP
+            tcp_health_check:
+              port: "{{ __sap_vm_provision_fact_ha_lb_nwas_abap_ascs_port }}"
+              proxy_header: NONE
+            check_interval_sec: 10
+            timeout_sec: 10
+            unhealthy_threshold: 2
+            healthy_threshold: 2
+            auth_kind: "serviceaccount"
+            service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
+          register: __sap_vm_provision_register_gcp_lb_healthcheck_service_ascs
+          no_log: "{{ __sap_vm_provision_no_log }}"
+          when: __sap_vm_provision_fact_is_ha_nwas_ers
+
+        - name: SAP VM Provision - GCP - Create Google Cloud Compute Engine Health Check (Global) service instance for SAP NetWeaver ERS
+          google.cloud.gcp_compute_health_check:
+            state: present
+            project: "{{ sap_vm_provision_gcp_project }}"
+            name: "{{ sap_vm_provision_ha_load_balancer_name_nwas + '-ers-probe-hc-vip' }}"
+            type: TCP
+            tcp_health_check:
+              port: "{{ __sap_vm_provision_fact_ha_lb_nwas_abap_ers_port }}"
+              proxy_header: NONE
+            check_interval_sec: 10
+            timeout_sec: 10
+            unhealthy_threshold: 2
+            healthy_threshold: 2
+            auth_kind: "serviceaccount"
+            service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
+          register: __sap_vm_provision_register_gcp_lb_healthcheck_service_ers
+          no_log: "{{ __sap_vm_provision_no_log }}"
+          when: __sap_vm_provision_fact_is_ha_nwas_ers
+
+
+  rescue:
+    # This requires no_log set on each Ansible Task, and not set on the Ansible Task Block
+    # This requires an Ansible Task Block containing the Ansible Tasks for calling
+    # Infrastructure Platform APIs (via Ansible Modules)
+    - name: SAP VM Provision - GCP - Show errors in task outputs
+      ansible.builtin.fail:
+        msg: "{{ lookup('ansible.builtin.vars', loop_item) }}"
+      loop:
+        # HANA
+        - __sap_vm_provision_register_gcp_lb_healthcheck_service_hana
+        # AnyDB
+        - __sap_vm_provision_register_gcp_lb_healthcheck_service_anydb
+        # ASCS/ERS
+        - __sap_vm_provision_register_gcp_lb_healthcheck_service_ascs
+        - __sap_vm_provision_register_gcp_lb_healthcheck_service_ers
+      loop_control:
+        loop_var: loop_item
+        index_var: loop_item_index
+        label: "{{ 'Variable No. ' + (loop_item_index | string) }}"
       when:
-        - groups[sap_vm_provision_group_hana_secondary] is defined and (groups[sap_vm_provision_group_hana_secondary]|length>0)
+        - lookup('ansible.builtin.vars', loop_item, default='') | length > 0
+        - not lookup('ansible.builtin.vars', loop_item, default='') is skipped
+        - lookup('ansible.builtin.vars', loop_item, default='') is failed
 
-    - name: Create Google Cloud Compute Engine Health Check (Global) service instance for SAP AnyDB
-      no_log: "{{ __sap_vm_provision_no_log }}"
-      register: __sap_vm_provision_task_gcp_lb_healthcheck_service
-      google.cloud.gcp_compute_health_check:
-        state: present
-        project: "{{ sap_vm_provision_gcp_project }}"
-        name: "{{ sap_vm_provision_ha_load_balancer_name_anydb + '-probe-hc-vip' }}"
-        type: TCP
-        tcp_health_check:
-          port: 62700
-          proxy_header: NONE
-        check_interval_sec: 10
-        timeout_sec: 10
-        unhealthy_threshold: 2
-        healthy_threshold: 2
-        auth_kind: "serviceaccount"
-        service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
-      when:
-        - groups[sap_vm_provision_group_anydb_secondary] is defined and (groups[sap_vm_provision_group_anydb_secondary]|length>0)
-
-    - name: Create Google Cloud Compute Engine Health Check (Global) service instance for SAP NetWeaver ASCS
-      no_log: "{{ __sap_vm_provision_no_log }}"
-      register: __sap_vm_provision_task_gcp_lb_healthcheck_service_ascs
-      google.cloud.gcp_compute_health_check:
-        state: present
-        project: "{{ sap_vm_provision_gcp_project }}"
-        name: "{{ sap_vm_provision_ha_load_balancer_name_nwas + '-ascs-probe-hc-vip' }}"
-        type: TCP
-        tcp_health_check:
-          port: "{{ __sap_vm_provision_task_gcp_lb_healthcheck_nwas_ascs }}"
-          proxy_header: NONE
-        check_interval_sec: 10
-        timeout_sec: 10
-        unhealthy_threshold: 2
-        healthy_threshold: 2
-        auth_kind: "serviceaccount"
-        service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
-      when:
-        - groups[sap_vm_provision_group_nwas_ers] is defined and (groups[sap_vm_provision_group_nwas_ers]|length>0)
-
-    - name: Create Google Cloud Compute Engine Health Check (Global) service instance for SAP NetWeaver ERS
-      no_log: "{{ __sap_vm_provision_no_log }}"
-      register: __sap_vm_provision_task_gcp_lb_healthcheck_service_ers
-      google.cloud.gcp_compute_health_check:
-        state: present
-        project: "{{ sap_vm_provision_gcp_project }}"
-        name: "{{ sap_vm_provision_ha_load_balancer_name_nwas + '-ers-probe-hc-vip' }}"
-        type: TCP
-        tcp_health_check:
-          port: "{{ __sap_vm_provision_task_gcp_lb_healthcheck_nwas_ers }}"
-          proxy_header: NONE
-        check_interval_sec: 10
-        timeout_sec: 10
-        unhealthy_threshold: 2
-        healthy_threshold: 2
-        auth_kind: "serviceaccount"
-        service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
-      when:
-        - groups[sap_vm_provision_group_nwas_ers] is defined and (groups[sap_vm_provision_group_nwas_ers]|length>0)
+    - name: SAP VM Provision - GCP - Fail if provisioning failed
+      ansible.builtin.fail:
+        msg: |
+          FAIL: Provisioning has failed during one of tasks not producing registered output.
+          You can investigate failure in tasks above or by:
+          - Increasing verbosity
+          - Setting the variable '__sap_vm_provision_no_log' to 'false'

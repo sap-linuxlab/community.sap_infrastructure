@@ -1,0 +1,182 @@
+# SPDX-License-Identifier: Apache-2.0
+---
+
+# - name: SAP VM Provision - GCP - Append route for SAP HANA HA (route must be outside of existing VPC Subnet Range/s)
+#   no_log: "{{ __sap_vm_provision_no_log }}"
+#   register: __sap_vm_provision_register_gcp_vpc_subnet_rt_route_sap_hana
+#   google.cloud.gcp_compute_route:
+#     state: present
+#     project: "{{ sap_vm_provision_gcp_project }}"
+#     name: "{{ __sap_vm_provision_fact_ha_hostname_hana_primary }}-vip"
+#     dest_range: "{{ sap_vm_provision_ha_vip_hana_primary | regex_replace('/.*', '') }}"
+#     next_hop_instance:
+#       selfLink: "{{ __sap_vm_provision_register_provision_host_single_info
+#         | json_query('results[*].resources[?name==`' + host_node + '`].selfLink') | flatten | join(' ') }}"
+#     network:
+#       selfLink: "{{ __sap_vm_provision_register_gcp_vpc_info.resources[0].selfLink }}"
+#     auth_kind: "serviceaccount"
+#     service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
+#   loop: "{{ (groups[sap_vm_provision_group_hana_primary] | d([])) }}"
+#   loop_control:
+#     loop_var: host_node
+
+- name: SAP VM Provision - GCP - Create Private DNS Record for SAP HANA HA Virtual Hostname
+  google.cloud.gcp_dns_resource_record_set:
+    state: present
+    project: "{{ sap_vm_provision_gcp_project }}"
+    managed_zone:
+      name: "{{ __sap_vm_provision_register_gcp_pdns_info.resources[0].name }}"
+      dnsName: "{{ hostvars[host_node].sap_vm_provision_dns_root_domain }}."
+    name: "{{ __sap_vm_provision_fact_ha_hostname_hana_primary }}.{{ hostvars[host_node].sap_vm_provision_dns_root_domain }}."
+    target:
+      - "{{ sap_vm_provision_ha_vip_hana_primary | regex_replace('/.*', '') }}"
+    type: A
+    ttl: 7200
+    auth_kind: "serviceaccount"
+    service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
+  loop: "{{ (groups[sap_vm_provision_group_hana_primary] | d([])) }}"
+  loop_control:
+    loop_var: host_node
+  register: __sap_vm_provision_register_gcp_dns_vip_hana
+  no_log: "{{ __sap_vm_provision_no_log }}"
+
+- name: SAP VM Provision - GCP - Create Reserved Static Internal IP Address for the Virtual IP (VIP) of SAP HANA
+  google.cloud.gcp_compute_address:
+    state: present
+    project: "{{ sap_vm_provision_gcp_project }}"
+    region: "{{ sap_vm_provision_gcp_region }}"
+    subnetwork: { "selfLink": "{{ __sap_vm_provision_register_gcp_vpc_subnet_info.resources[0].selfLink }}" }
+    name: "{{ sap_vm_provision_ha_load_balancer_name_hana + '-reserved-static-ip-vip' }}"
+    address_type: internal
+    address: "{{ sap_vm_provision_ha_vip_hana_primary | regex_replace('/.*', '') }}"
+    # network_tier: PREMIUM # An address with type INTERNAL cannot have a network tier
+    purpose: GCE_ENDPOINT # GCE_ENDPOINT is for addresses used by VMs, alias IP ranges, and internal load balancers
+    auth_kind: "serviceaccount"
+    service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
+  register: __sap_vm_provision_register_gcp_lb_reserved_address_hana
+  no_log: "{{ __sap_vm_provision_no_log }}"
+
+- name: SAP VM Provision - GCP - Create Health Check (Global) service instance for SAP HANA
+  google.cloud.gcp_compute_health_check:
+    state: present
+    project: "{{ sap_vm_provision_gcp_project }}"
+    name: "{{ sap_vm_provision_ha_load_balancer_name_hana + '-probe-hc-vip' }}"
+    type: TCP
+    tcp_health_check:
+      port: 55550
+      proxy_header: NONE
+    check_interval_sec: 10
+    timeout_sec: 10
+    unhealthy_threshold: 2
+    healthy_threshold: 2
+    auth_kind: "serviceaccount"
+    service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
+  register: __sap_vm_provision_register_gcp_lb_healthcheck_service_hana
+  no_log: "{{ __sap_vm_provision_no_log }}"
+
+- name: SAP VM Provision - GCP - Create Instance Group (Self-Managed/Unmanaged) Primary - for SAP HANA
+  google.cloud.gcp_compute_instance_group:
+    state: present
+    project: "{{ sap_vm_provision_gcp_project }}"
+    name: "{{ sap_vm_provision_ha_load_balancer_name_hana + '-primary-instance-group' }}"
+    zone: "{{ __sap_vm_provision_register_provision_host_single_info
+      | json_query('results[*].resources[?name==`' + host_node + '`].zone') | flatten | join(' ') | basename }}"
+    instances:
+      - { "selfLink": "{{ __sap_vm_provision_register_provision_host_single_info
+        | json_query('results[*].resources[?name==`' + host_node + '`].selfLink') | flatten | join(' ') }}" }
+    # named_ports:
+    #  - name: http # default, not applicable to internal passthrough NLB, only applicable to proxy NLB
+    #    port: 80 # default
+    auth_kind: "serviceaccount"
+    service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
+  loop: "{{ (groups[sap_vm_provision_group_hana_primary] | d([])) }}"
+  loop_control:
+    loop_var: host_node
+  register: __sap_vm_provision_register_gcp_lb_instance_group1_hana
+  no_log: "{{ __sap_vm_provision_no_log }}"
+
+
+- name: SAP VM Provision - GCP - Create Instance Group (Self-Managed/Unmanaged) Secondary (Failover) - for SAP HANA
+  google.cloud.gcp_compute_instance_group:
+    state: present
+    project: "{{ sap_vm_provision_gcp_project }}"
+    name: "{{ sap_vm_provision_ha_load_balancer_name_hana + '-secondary-instance-group' }}"
+    zone: "{{ __sap_vm_provision_register_provision_host_single_info
+      | json_query('results[*].resources[?name==`' + host_node + '`].zone') | flatten | join(' ') | basename }}"
+    instances:
+      - { "selfLink": "{{ __sap_vm_provision_register_provision_host_single_info
+        | json_query('results[*].resources[?name==`' + host_node + '`].selfLink') | flatten | join(' ') }}" }
+    # named_ports:
+    #  - name: http # default, not applicable to internal passthrough NLB, only applicable to proxy NLB
+    #    port: 80 # default
+    auth_kind: "serviceaccount"
+    service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
+  loop: "{{ (groups[sap_vm_provision_group_hana_secondary] | d([])) }}"
+  loop_control:
+    loop_var: host_node
+  register: __sap_vm_provision_register_gcp_lb_instance_group2_hana
+  no_log: "{{ __sap_vm_provision_no_log }}"
+
+# Note: Failover Ratio must be 1.0, which enforces failover to Secondary/Failover Instance Group
+# if any VM the Backend Service's Primary Instance Group
+# No option for --global-health-checks ?
+- name: SAP VM Provision - GCP - Create Backend Service (Regional) for the Internal passthrough Network Load Balancer used by SAP HANA
+  google.cloud.gcp_compute_region_backend_service:
+    state: present
+    project: "{{ sap_vm_provision_gcp_project }}"
+    region: "{{ sap_vm_provision_gcp_region }}"
+    name: "{{ sap_vm_provision_ha_load_balancer_name_hana + '-backend-service' }}"
+    backends:
+      - group: "{{ __sap_vm_provision_register_gcp_lb_instance_group1_hana.results[0].selfLink }}"
+        balancing_mode: CONNECTION # UTILIZATION , RATE , CONNECTION
+        # failover: false # Should be unset according to GCP for SAP documentation, which is different than set to false
+      - group: "{{ __sap_vm_provision_register_gcp_lb_instance_group2_hana.results[0].selfLink }}"
+        balancing_mode: CONNECTION # UTILIZATION , RATE , CONNECTION
+        failover: true
+    health_checks:
+      - "{{ __sap_vm_provision_register_gcp_lb_healthcheck_service_hana.selfLink }}"
+    load_balancing_scheme: INTERNAL
+    failover_policy:
+      disable_connection_drain_on_failover: true
+      drop_traffic_if_unhealthy: true
+      failover_ratio: 1 # 1.0
+    session_affinity: NONE
+    # timeout_sec: 30 # value ignored for internal passthrough NLB, default 30s to wait for backend before failure
+    # See https://cloud.google.com/load-balancing/docs/backend-service#timeout-setting
+    auth_kind: "serviceaccount"
+    service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
+  register: __sap_vm_provision_register_gcp_lb_backend_service_regional_hana
+  no_log: "{{ __sap_vm_provision_no_log }}"
+
+- name: SAP VM Provision - GCP - Create Forwarding Rule (aka. Frontend IP and Port) for SAP HANA
+  google.cloud.gcp_compute_forwarding_rule:
+    state: present
+    project: "{{ sap_vm_provision_gcp_project }}"
+    region: "{{ sap_vm_provision_gcp_region }}"
+    name: "{{ sap_vm_provision_ha_load_balancer_name_hana + '-fwd-rule' }}"
+    # target: "{{ target_instance_group_pool }}"
+    ip_address: "{{ sap_vm_provision_ha_vip_hana_primary | regex_replace('/.*', '') }}"
+    all_ports: true # For internal network load balancing, allow any ports to be forwarded to the backend service (can not be set if ports are defined)
+    allow_global_access: false # Only for use if access to the SAP HANA Database Server is required from outside of the GCP Region
+    # Mandatory backend_service, otherwise error "Invalid value for field 'resource.target'"
+    backend_service: { "selfLink": "{{ __sap_vm_provision_register_gcp_lb_backend_service_regional_hana.selfLink }}" }
+    # backend_service: { "selfLink": "https://www.googleapis.com/compute/v1/projects/{{ sap_vm_provision_gcp_project }}/regions/
+    # {{ sap_vm_provision_gcp_region }}/backendServices/{{ sap_vm_provision_ha_load_balancer_name_hana + '-backend-service' }}" }
+    subnetwork: { "selfLink": "{{ __sap_vm_provision_register_gcp_vpc_subnet_info.resources[0].selfLink }}" }
+    load_balancing_scheme: INTERNAL
+    network_tier: PREMIUM
+    auth_kind: "serviceaccount"
+    service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
+  register: __sap_vm_provision_register_gcp_lb_forwarding_rule_hana
+  no_log: "{{ __sap_vm_provision_no_log }}"
+
+- name: SAP VM Provision - GCP - Get information on Backend Service (Regional)
+  google.cloud.gcp_compute_region_backend_service_info:
+    project: "{{ sap_vm_provision_gcp_project }}"
+    region: "{{ sap_vm_provision_gcp_region }}"
+    filters:
+      - name = "{{ sap_vm_provision_ha_load_balancer_name_hana + '-backend-service' }}"
+    auth_kind: "serviceaccount"
+    service_account_file: "{{ sap_vm_provision_gcp_credentials_json }}"
+  register: __sap_vm_provision_register_gcp_lb_backend_service_regional_hana_info
+  no_log: "{{ __sap_vm_provision_no_log }}"
