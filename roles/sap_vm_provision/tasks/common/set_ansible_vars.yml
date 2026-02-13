@@ -1,8 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 ---
 
-# This task file contains # noqa var-naming[no-role-prefix],
-# because we are setting helper variables for subsequent roles from sap-linuxlab collection.
+# Reason for noqa: Because we are setting helper variables for subsequent roles from sap-linuxlab collection.
 
 # Required when defining Ansible Role variables within the host_specifications_dictionary for multiple SAP Systems / SAP Landscapes
 - name: SAP VM Provision - Set facts for all hosts - SAP Variables from host_specifications_dictionary
@@ -20,12 +19,6 @@
     sap_vm_provision_nfs_mount_point: "{{ sap_vm_provision_nfs_mount_point | d('') }}"
     sap_vm_provision_nfs_mount_point_separate_sap_transport_dir: "{{ sap_vm_provision_nfs_mount_point_separate_sap_transport_dir | d('') }}"
     sap_install_media_detect_source_directory: "{{ sap_install_media_detect_source_directory | d('/software') }}"
-
-# - name: SAP VM Provision - Set facts for all hosts - Generic - SAP ID
-#   ansible.builtin.set_fact:
-#     sap_id_user: "{{ sap_id_user | d('') }}"
-#     sap_id_user_password: "{{ sap_id_user_password | d('') }}"
-#   no_log: "{{ __sap_vm_provision_no_log }}"
 
 
 - name: SAP VM Provision - Set facts for all hosts - SAP HANA  # noqa var-naming[no-role-prefix]

@@ -93,17 +93,17 @@
       register: __sap_vm_provision_register_aws_vpc_subnet_rt_info
       no_log: "{{ __sap_vm_provision_no_log }}"
 
-    # - name: SAP VM Provision - AWS - Set fact to hold all inventory hosts in all valid groups
-    #   ansible.builtin.set_fact:
-    #     __sap_vm_provision_fact_merged_hosts_list: "{{
-    #         [[groups[sap_vm_provision_group_hana_primary] | d([])],
-    #         [groups[sap_vm_provision_group_hana_secondary] | d([])],
-    #         [groups[sap_vm_provision_group_anydb_primary] | d([])],
-    #         [groups[sap_vm_provision_group_anydb_secondary] | d([])],
-    #         [groups[sap_vm_provision_group_nwas_ascs] | d([])],
-    #         [groups[sap_vm_provision_group_nwas_ers] | d([])],
-    #         [groups[sap_vm_provision_group_nwas_pas] | d([])],
-    #         [groups[sap_vm_provision_group_nwas_aas] | d([])]] | flatten | select() }}"
+    - name: SAP VM Provision - AWS - Set fact to hold all inventory hosts in all valid groups
+      ansible.builtin.set_fact:
+        __sap_vm_provision_fact_merged_hosts_list: "{{
+            [[groups[sap_vm_provision_group_hana_primary] | d([])],
+            [groups[sap_vm_provision_group_hana_secondary] | d([])],
+            [groups[sap_vm_provision_group_anydb_primary] | d([])],
+            [groups[sap_vm_provision_group_anydb_secondary] | d([])],
+            [groups[sap_vm_provision_group_nwas_ascs] | d([])],
+            [groups[sap_vm_provision_group_nwas_ers] | d([])],
+            [groups[sap_vm_provision_group_nwas_pas] | d([])],
+            [groups[sap_vm_provision_group_nwas_aas] | d([])]] | flatten | select() }}"
 
     - name: SAP VM Provision - AWS - Identify hosts
       ansible.builtin.include_tasks:

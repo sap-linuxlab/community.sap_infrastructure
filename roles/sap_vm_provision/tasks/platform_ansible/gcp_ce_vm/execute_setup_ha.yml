@@ -49,10 +49,10 @@
 
 - name: SAP VM Provision - GCP - SAP AnyDB
   ansible.builtin.include_tasks:
-    file: execute_setup_ha_hana.yml
-  when: __sap_vm_provision_fact_is_ha_hana
+    file: execute_setup_ha_anydb.yml
+  when: __sap_vm_provision_fact_is_ha_anydb
 
 - name: SAP VM Provision - GCP - SAP ASCS/ERS
   ansible.builtin.include_tasks:
-    file: execute_setup_ha_hana.yml
-  when: __sap_vm_provision_fact_is_ha_hana
+    file: execute_setup_ha_ascs_ers.yml
+  when: __sap_vm_provision_fact_is_ha_nwas_ers

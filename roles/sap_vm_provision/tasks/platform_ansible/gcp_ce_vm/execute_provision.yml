@@ -276,6 +276,7 @@
               (__sap_vm_provision_register_gather_subset.ansible_facts['ansible_distribution_major_version'] | int) >= 16
               else '/etc/ssh/sshd_config' }}
 
+    # Reason for noqa: Handlers are executed at end of role, but this must be done now.
     - name: SAP VM Provision - GCP - Reload sshd service  # noqa no-handler
       ansible.builtin.service:
         name: sshd

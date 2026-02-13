@@ -225,7 +225,7 @@ sap_vm_provision_msazure_ha_iam_role: "Linux Fence Agent Role"
 # Default names for Load Balancer resources on Google Cloud, IBM Cloud, Microsoft Azure
 sap_vm_provision_ha_load_balancer_name_hana: "lb-sap-ha-hana"
 sap_vm_provision_ha_load_balancer_name_anydb: "lb-sap-ha-anydb"
-sap_vm_provision_ha_load_balancer_name_nwas: "lb-sap-ha-nwas"
+sap_vm_provision_ha_load_balancer_name_nwas: "lb-sap-ha-nwas"  # '-ascs' and '-ers' will be appended for ASCS and ERS resources
 
 
 ####

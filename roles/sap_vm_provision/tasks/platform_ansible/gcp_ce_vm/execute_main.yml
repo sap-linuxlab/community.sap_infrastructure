@@ -246,6 +246,8 @@
 
     # GCP OS Images are missing NetworkManager-config-server package, append NetworkManager config file to ensure DHCP is still used for GCP VM
     # Primary IP Address by default uses subnet netmask /32 CIDR
+    # Reason for noqa: Command block is conditional to RHEL and we should not force changed status.
+    # TODO: Replace with native Ansible code instead of shell block.
     - name: SAP VM Provision - GCP - Ensure network configuration is persistent  # noqa no-changed-when
       ansible.builtin.shell:
         cmd: |
