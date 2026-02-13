@@ -1,0 +1,143 @@
+# SPDX-License-Identifier: Apache-2.0
+---
+
+# Temporary ports are set now, then updated in post_deployment.
+
+- name: SAP VM Provision - IBM Cloud - Set fact with Load Balancers for SAP AnyDB
+  ansible.builtin.set_fact:
+    __sap_vm_provision_register_ibmcloud_lbs_anydb_id: >-
+      {{ __sap_vm_provision_register_ibmcloud_lbs_all_info
+        | selectattr('name', 'equalto', sap_vm_provision_ha_load_balancer_name_anydb)
+        | map(attribute='id') | first | d(none) }}
+    __sap_vm_provision_register_ibmcloud_lbs_pools: >-
+      {{ __sap_vm_provision_register_ibmcloud_lbs_all_info
+        | map(attribute='pools') | flatten }}
+
+
+- name: SAP VM Provision - IBM Cloud - Create Load Balancer Back-end Pool Health Check Port for SAP AnyDB - IBM Db2 Communication Port
+  ibm.cloudcollection.ibm_is_lb_pool:
+    name: "{{ sap_vm_provision_ha_load_balancer_name_anydb + '-pool-ibmdb2' }}"
+    lb: "{{ __sap_vm_provision_register_ibmcloud_lbs_anydb_id }}"
+    algorithm: weighted_round_robin
+    protocol: tcp
+    health_delay: 20
+    health_retries: 2
+    health_timeout: 10
+    health_type: tcp
+    health_monitor_port: 55550
+    ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
+  register: __sap_vm_provision_register_ibmcloud_lb_pool_anydb
+  no_log: "{{ __sap_vm_provision_no_log }}"
+  when: __sap_vm_provision_register_ibmcloud_lbs_anydb_id is not none
+
+
+# Create IBM Cloud Load Balancer Front-end Listeners (open port for Virtual IPs)
+# Configure prior to Back-end Pool Server Members, as this will increase execution speed
+# by avoiding LB verification check/reload once the LB is active with Server Members
+
+# When IBM Cloud Load Balancer, Application Load Balancer Type:
+# - Important to increase the Front-end Listener Idle Connection Timeout (sec),
+#   if the received-and-forwarded request becomes idle (no data received/sent sent/received)
+#   then the idle connection is closed by default/minimum after 50 seconds and maximum 7200 seconds (2 hours).
+# - This can impact SAP SWPM waiting for SAP HANA Data Load to complete, and other long-running actions.
+
+
+- name: Block with no_log and pool id check
+  when: __sap_vm_provision_register_ibmcloud_lbs_anydb_id is not none
+  no_log: "{{ __sap_vm_provision_no_log }}"
+  block:
+
+    # Identify the provisioned IBM Cloud Load Balancer Back-end Pools
+    - name: SAP VM Provision - IBM Cloud - Identify IBM Cloud Load Balancer Back-end Pools
+      ibm.cloudcollection.ibm_is_lb_pools_info:
+        lb: "{{ pool_item }}"
+        ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
+      loop: "{{ __sap_vm_provision_register_ibmcloud_lbs_all_info | map(attribute='id') }}"
+      loop_control:
+        loop_var: pool_item
+      register: __sap_vm_provision_register_ibmcloud_lb_pools
+
+    - name: SAP VM Provision - IBM Cloud - Create IBM Cloud Load Balancer Front-end Listener for SAP AnyDB - IBM Db2 Communication Port
+      ibm.cloudcollection.ibm_is_lb_listener:
+        lb: "{{ __sap_vm_provision_register_ibmcloud_lbs_anydb_id }}"
+        default_pool: "{{ (__sap_vm_provision_register_ibmcloud_lb_pools.results | json_query('[*].resource.pools') | flatten
+          | selectattr('name', '==', sap_vm_provision_ha_load_balancer_name_anydb + '-pool-ibmdb2'))[0].id }}"
+        protocol: tcp
+        port: 5912
+        idle_connection_timeout: 600 # 10 minutes
+        ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
+      register: __sap_vm_provision_register_ibmcloud_lb_frontend_listener_anydb1
+      failed_when:
+        - not __sap_vm_provision_register_ibmcloud_lb_frontend_listener_anydb1.rc == 0
+        - not 'listener_duplicate_port' in __sap_vm_provision_register_ibmcloud_lb_frontend_listener_anydb1.stderr
+
+
+    # Append Server Members to the IBM Cloud Load Balancer Back-end Pools
+    - name: SAP VM Provision - IBM Cloud - Create IBM Cloud Load Balancer Back-end Pool Members for SAP AnyDB - Communication Port - Member 1
+      ibm.cloudcollection.ibm_is_lb_pool_member:
+        lb: "{{ __sap_vm_provision_register_ibmcloud_lbs_anydb_id }}"
+        pool: "{{ (__sap_vm_provision_register_ibmcloud_lb_pools.results | json_query('[*].resource.pools') | flatten
+          | selectattr('name', '==', sap_vm_provision_ha_load_balancer_name_anydb + '-pool-ibmdb2'))[0].id }}"
+        target_address: "{{ (__sap_vm_provision_register_ibmcloud_vs_all_info.resource.instances
+          | selectattr('name', '==', host_node))[0].primary_network_attachment[0].primary_ip[0].address }}"
+        port: 5912
+        weight: 100
+        ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
+      loop: "{{ (groups[sap_vm_provision_group_anydb_primary] | d([])) }}"
+      loop_control:
+        loop_var: host_node
+      register: __sap_vm_provision_register_ibmcloud_lb_pool_members_anydb1
+      failed_when:
+        - not __sap_vm_provision_register_ibmcloud_lb_pool_members_anydb1.rc == 0
+        - not 'already exists in a pool' in __sap_vm_provision_register_ibmcloud_lb_pool_members_anydb1.stderr
+
+    - name: SAP VM Provision - IBM Cloud - Create IBM Cloud Load Balancer Back-end Pool Members for SAP AnyDB - Communication Port - Member 2
+      ibm.cloudcollection.ibm_is_lb_pool_member:
+        lb: "{{ __sap_vm_provision_register_ibmcloud_lbs_anydb_id }}"
+        pool: "{{ (__sap_vm_provision_register_ibmcloud_lb_pools.results | json_query('[*].resource.pools') | flatten
+          | selectattr('name', '==', sap_vm_provision_ha_load_balancer_name_anydb + '-pool-ibmdb2'))[0].id }}"
+        target_address: "{{ (__sap_vm_provision_register_ibmcloud_vs_all_info.resource.instances
+          | selectattr('name', '==', host_node))[0].primary_network_attachment[0].primary_ip[0].address }}"
+        port: 5912
+        weight: 1
+        ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
+      loop: "{{ (groups[sap_vm_provision_group_anydb_secondary] | d([])) }}"
+      loop_control:
+        loop_var: host_node
+      register: __sap_vm_provision_register_ibmcloud_lb_pool_members_anydb2
+      failed_when:
+        - not __sap_vm_provision_register_ibmcloud_lb_pool_members_anydb2.rc == 0
+        - not 'already exists in a pool' in __sap_vm_provision_register_ibmcloud_lb_pool_members_anydb2.stderr
+
+
+- name: SAP VM Provision - IBM Cloud - IBM Cloud Private DNS Record for SAP AnyDB HA Virtual Hostname
+  ibm.cloudcollection.ibm_dns_resource_record:
+    instance_id: "{{ __sap_vm_provision_register_ibmcloud_pdns_service_instance.resource.guid }}"
+    zone_id: "{{ (__sap_vm_provision_register_ibmcloud_pdns.resource.dns_zones
+      | selectattr('name', '==', sap_vm_provision_dns_root_domain) | first).zone_id }}"
+    name: "{{ __sap_vm_provision_fact_ha_hostname_anydb_primary }}.{{ hostvars[host_node].sap_vm_provision_dns_root_domain }}" # Host FQDN
+    rdata: "{{ (__sap_vm_provision_register_ibmcloud_lbs_all_info
+      | selectattr('name', '==', sap_vm_provision_ha_load_balancer_name_anydb))[0].private_ips[0].address }}" # IP Address
+    type: A
+    ttl: 7200
+    ibmcloud_api_key: "{{ sap_vm_provision_ibmcloud_api_key }}"
+  loop: "{{ (groups[sap_vm_provision_group_anydb_primary] | d([])) }}"
+  loop_control:
+    loop_var: host_node
+  register: __sap_vm_provision_register_ibmcloud_pdns_record_ha_anydb
+  no_log: "{{ __sap_vm_provision_no_log }}"
+  failed_when:
+    - not __sap_vm_provision_register_ibmcloud_pdns_record_ha_anydb.rc == 0
+    - not 'The record already exists' in __sap_vm_provision_register_ibmcloud_pdns_record_ha_anydb.stderr
+
+- name: SAP VM Provision - IBM Cloud - Set facts for all hosts - use facts from localhost - HA/DR - IBM Cloud Load Balancer - SAP AnyDB Primary node
+  ansible.builtin.set_fact:  # noqa var-naming[no-role-prefix]
+    sap_vm_provision_ha_vip_anydb_primary: "{{ __vip_ip }}"
+    sap_vm_temp_vip_anydb_primary: "{{ __vip_ip }}"
+    sap_ha_install_anydb_ibmdb2_vip_primary_ip_address: "{{ __vip_ip }}"
+  delegate_to: "{{ item }}"
+  delegate_facts: true
+  loop: "{{ __sap_vm_provision_fact_merged_hosts_list }}"
+  vars:
+    __vip_ip: "{{ (__sap_vm_provision_register_ibmcloud_lbs_all_info
+      | selectattr('name', '==', sap_vm_provision_ha_load_balancer_name_anydb))[0].private_ips[0].address }}"
