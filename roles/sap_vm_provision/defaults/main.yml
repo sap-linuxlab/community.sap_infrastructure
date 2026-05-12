@@ -823,6 +823,7 @@ sap_vm_provision_kubevirt_vm_os_user_password: ""
 sap_vm_provision_kubevirt_vm_container_memory_overhead: 1
 
 # CPU performance settings which are applied to VM
+# Note: Using dedicatedCpuPlacement=true together with numa.guestMappingPassthrough requires also usage of huge pages
 sap_vm_provision_kubevirt_vm_performance_cpu_settings:
   dedicatedCpuPlacement: true
   model: host-passthrough
