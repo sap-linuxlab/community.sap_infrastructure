@@ -226,13 +226,12 @@
 - name: SAP VM Provision - KubeVirt - Set fact for VM deploy config
   ansible.builtin.set_fact:
     __sap_vm_provision_fact_vm_deploy_config:
+      evictionStrategy: "{{ sap_vm_provision_kubevirt_vm_eviction_strategy }}"
       volumes: "{{ __sap_vm_provision_fact_storage_disk_name_list + __sap_vm_provision_fact_cloud_init_volume }}"
       networks: "{{ __sap_vm_provision_fact_networks_definition }}"
       domain:
-        # shared | auto, auto prevents live migration
         ioThreadsPolicy: shared
         hostname: "{{ __sap_vm_provision_fact_vm_name }}"
-        evictionStrategy: LiveMigrate
         terminationGracePeriodSeconds: 1800 # 30 minutes after stop request before VM is force terminated
         resources:
           requests:
