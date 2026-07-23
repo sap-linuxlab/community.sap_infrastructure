@@ -8,6 +8,7 @@ This Ansible Collection provides a set of Ansible Roles designed to automate var
 These roles are typically used as a foundational step in end-to-end automation workflows, often in conjunction with other Ansible Collections that handle higher-level configurations, such as SAP application deployments.
 
 The included roles cover a range of tasks, such as:
+
 - Provisioning Virtual Machines on target infrastructure platforms, using `Ansible` or `Terraform`.
   - This also includes provisioning of High Availability resources (Routing, Load Balancers, etc.), where applicable.
 - Assigning temporary Virtual IP Addresses for application installation, before they are managed by a cluster.
@@ -19,35 +20,22 @@ The included roles cover a range of tasks, such as:
 ## Requirements
 **Please read the detailed documentation for each Ansible Role to understand their specific requirements.** 
 
-Always follow official [Ansible Documentation](https://docs.ansible.com/ansible/latest/reference_appendices/release_and_maintenance.html#ansible-core-support-matrix) for compatibility matrix between Control and Managed nodes.
+| Component | Control Node | Managed Node |
+| :--- | :--- | :--- |
+| Operating System | Any OS | [See compatible OS versions](#compatible-operating-system-versions) |
+| Python | 3.11 or higher | 3.9 or higher |
+| Ansible-Core | 2.18 or higher | N/A |
 
-### Control Nodes
-Supported Operating systems:
-- Any operating system with required Python and Ansible versions.
+**Additional notes:**
 
-Component versions:
-| Component | Version |
-| --- | --- |
-| Python | 3.11 or higher |
-| ansible-core | 2.16 or higher |
+- **Version Compatibility:** For a detailed mapping of supported Python versions and Ansible-Core lifecycle, refer to the official [Ansible-Core Support Matrix](https://docs.ansible.com/projects/ansible/latest/reference_appendices/release_and_maintenance.html#ansible-core-support-matrix).
+- **Control Node Permissions:** Ensure the user executing the playbooks has the necessary SSH keys and sudo privileges configured for the target environment.
+- **Managed Node Registration:** Operating system needs to have access to required package repositories either directly or via subscription registration.
 
-**NOTE:** We recommend using the latest version of components. </br>
-Each minor version of `ansible-core` can bring Security fixes (CVE) that can affect functionality. Examples:
-- `CVE-2023-5764` changed `assert` functionality in `2.14.12`, `2.15.8` and `2.16.1`.
-- `CVE-2024-11079` changed `hostvars` functionality in `2.16.14`, `2.17.7` and `2.18.1`.
+### Compatible Operating System Versions
 
-### Managed Nodes
-Supported Operating systems:
-- SUSE Linux Enterprise Server for SAP applications (SLE4SAP): 15 SP5-SP7 and 16
-- Red Hat Enterprise Linux for SAP Solutions (RHEL4SAP): 8.x, 9.x and 10.x
-
-**NOTE: Operating system needs to have access to required package repositories either directly or via a subscription registration.**
-
-Component versions:
-| Component | Version |
-| --- | --- |
-| Python | 3.6 or higher |
-
+- Red Hat Enterprise Linux for SAP Solutions: 8.x, 9.x, 10.x
+- SUSE Linux Enterprise Server for SAP applications: 15 SP5, 15 SP6, 15 SP7, 16
 
 ## Installation Instructions
 
