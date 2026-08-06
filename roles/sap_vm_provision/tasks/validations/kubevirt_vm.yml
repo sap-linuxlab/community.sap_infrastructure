@@ -1,0 +1,12 @@
+# SPDX-License-Identifier: Apache-2.0
+---
+
+- name: Assert that the variable 'sap_vm_provision_kubevirt_vm_eviction_strategy' is defined as valid string
+  ansible.builtin.assert:
+    that:
+      - sap_vm_provision_kubevirt_vm_eviction_strategy is defined
+      - sap_vm_provision_kubevirt_vm_eviction_strategy is string
+      - sap_vm_provision_kubevirt_vm_eviction_strategy in ['None', 'LiveMigrate']
+    fail_msg: |
+      The variable 'sap_vm_provision_kubevirt_vm_eviction_strategy' is undefined or invalid.
+      It should be one of: 'None' for local storage (ReadWriteOnce PVCs) or 'LiveMigrate' for shared storage (ReadWriteMany).

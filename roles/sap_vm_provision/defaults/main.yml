@@ -822,6 +822,10 @@ sap_vm_provision_kubevirt_vm_os_user_password: ""
 # RAM Overhead [GiB] for virt-launcher container, this can be small for VMs < 1 TB and without SRIOV but should be increased to 16 or more for VMs > 1TB
 sap_vm_provision_kubevirt_vm_container_memory_overhead: 1
 
+# Eviction strategy for KubeVirt VMs (String).
+# Set to 'None' for local storage (ReadWriteOnce PVCs) or 'LiveMigrate' for shared storage (ReadWriteMany).
+sap_vm_provision_kubevirt_vm_eviction_strategy: "None"
+
 # CPU performance settings which are applied to VM
 # Note: Using dedicatedCpuPlacement=true together with numa.guestMappingPassthrough requires also usage of huge pages
 sap_vm_provision_kubevirt_vm_performance_cpu_settings:
