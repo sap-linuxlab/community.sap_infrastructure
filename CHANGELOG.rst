@@ -4,6 +4,24 @@ community.sap\_infrastructure Release Notes
 
 .. contents:: Topics
 
+v1.4.1
+======
+
+Release Summary
+---------------
+
+Minimum Ansible version increased to 2.18 and fixes for sap_vm_provision/kubevirt_vm.
+
+Minor Changes
+--------
+- collection - Update min Ansible version and update workflows (https://github.com/sap-linuxlab/community.sap_infrastructure/pull/165)
+
+Bugfixes
+--------
+- sap_vm_provision/kubevirt_vm - Add cpu flags and hugepages to vars file and playbook (https://github.com/sap-linuxlab/community.sap_infrastructure/pull/163)
+- sap_vm_provision/kubevirt_vm - Make evictionStrategy configurable (https://github.com/sap-linuxlab/community.sap_infrastructure/pull/166)
+
+
 v1.4.0
 ======
 
