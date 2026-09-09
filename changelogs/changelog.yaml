@@ -147,3 +147,13 @@ releases:
         - sap_vm_provision - Fix deprecated network parameter for amazon.aws.ec2_instance (https://github.com/sap-linuxlab/community.sap_infrastructure/pull/153)
         - sap_vm_provision - Fix adding /etc/hosts for all in play not just itself (https://github.com/sap-linuxlab/community.sap_infrastructure/pull/160)
         - sap_vm_temp_vip - Fix NoneType broadcast variable (https://github.com/sap-linuxlab/community.sap_infrastructure/pull/154)
+
+  1.4.1:
+    release_date: '2026-09-09'
+    changes:
+      release_summary: Minimum Ansible version increased to 2.18 and fixes for sap_vm_provision/kubevirt_vm
+      minor_changes:
+       - collection - Update min Ansible version and update workflows (https://github.com/sap-linuxlab/community.sap_infrastructure/pull/165)
+      bugfixes:
+        - sap_vm_provision/kubevirt_vm - Add cpu flags and hugepages to vars file and playbook (https://github.com/sap-linuxlab/community.sap_infrastructure/pull/163)
+        - sap_vm_provision/kubevirt_vm - Make evictionStrategy configurable (https://github.com/sap-linuxlab/community.sap_infrastructure/pull/166)
