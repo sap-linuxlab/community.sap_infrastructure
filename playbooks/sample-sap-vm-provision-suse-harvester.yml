@@ -1,0 +1,33 @@
+---
+
+# Minimal sample Ansible Playbook for SAP VM provisioning on SUSE Harvester (kubevirt_vm).
+# Variables are provided by the sample variables file, see ./vars/sample-variables-sap-vm-provision-suse-harvester.yml
+#
+# Example:
+# ansible-playbook sample-sap-vm-provision-suse-harvester.yml -e @vars/sample-variables-sap-vm-provision-suse-harvester.yml
+
+- name: Preparation Ansible Play for SAP VM provisioning on SUSE Harvester
+  hosts: localhost
+  gather_facts: false
+  tasks:
+
+    - name: Create dynamic inventory group for Ansible Role sap_vm_provision from the host specification plan
+      ansible.builtin.add_host:
+        name: "{{ host_item }}"
+        groups: sap_vm_provision_target_inventory_group
+      loop: "{{ sap_vm_provision_kubevirt_vm_host_specifications_dictionary[sap_vm_provision_host_specification_plan].keys() }}"
+      loop_control:
+        loop_var: host_item
+
+
+- name: Ansible Play to provision VMs for SAP
+  hosts: sap_vm_provision_target_inventory_group
+  gather_facts: false
+  vars:
+    sap_vm_provision_iac_type: ansible
+    sap_vm_provision_iac_platform: kubevirt_vm
+  tasks:
+
+    - name: Include sap_vm_provision Ansible Role
+      ansible.builtin.include_role:
+        name: community.sap_infrastructure.sap_vm_provision

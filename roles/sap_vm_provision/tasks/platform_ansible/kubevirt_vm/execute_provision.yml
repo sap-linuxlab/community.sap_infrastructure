@@ -9,105 +9,32 @@
     - sap_vm_provision_calculate_sap_hana_scaleout_active_coordinator is defined
     - not inventory_hostname in __sap_vm_provision_host_dict_plan.keys()
 
-- name: SAP VM Provision - KubeVirt - Set fact for VM name
+- name: SAP VM Provision - KubeVirt - Set facts for all distributions
   ansible.builtin.set_fact:
     __sap_vm_provision_fact_vm_name: "{{ inventory_hostname }}"
-
-- name: SAP VM Provision - KubeVirt - Set fact for VM config
-  ansible.builtin.set_fact:
     __sap_vm_provision_fact_vm_config: "{{ __sap_vm_provision_host_dict_spec }}"
+    __sap_vm_provision_fact_boot_disk_name: "{{ (inventory_hostname ~ '-boot') | replace('_', '-') }}"
 
-- name: SAP VM Provision - KubeVirt - Set fact for download OS Image
-  ansible.builtin.set_fact:
-    __sap_vm_provision_fact_os_image: |-
-      {%- set disks_map = [
-        {
-          'metadata': { 'name': (__sap_vm_provision_fact_vm_name + '-boot' | replace('_', '-')) },
-          'spec' : {
-            'source' : {
-              'registry' : {
-                'url': __sap_vm_provision_fact_vm_config.os_image.url,
-                'pullMethod': 'node'
-              },
-            },
-            'storage' : {
-              'accessModes': __sap_vm_provision_fact_vm_config.os_image.access_modes | d(['ReadWriteMany']),
-              'resources': {
-                'requests': {
-                  'storage': __sap_vm_provision_fact_vm_config.os_image.size
-                }
-              }
-            }
-          }
-        }
-      ] -%}
-      {{ disks_map }}
-  when: __sap_vm_provision_fact_vm_config.os_image.url | d('') | length > 0
 
-- name: SAP VM Provision - KubeVirt - Set fact for existing OS Image
-  ansible.builtin.set_fact:
-    __sap_vm_provision_fact_os_image: |
-      {%- set disks_map = [
-        {
-          'metadata': { 'name': (__sap_vm_provision_fact_vm_name + '-boot' | replace('_', '-')) },
-          'spec' : {
-            'source' : {
-              'pvc' : {
-                'name': __sap_vm_provision_fact_vm_config.os_image.source_pvc_name,
-                'namespace': __sap_vm_provision_fact_vm_config.os_image.namespace
-              },
-            },
-            'storage' : {
-              'accessModes': __sap_vm_provision_fact_vm_config.os_image.access_modes | d(['ReadWriteMany']),
-              'resources': {
-                'requests': {
-                  'storage': __sap_vm_provision_fact_vm_config.os_image.size
-                }
-              }
-            }
-          }
-        }
-      ] -%}
-      {{ disks_map }}
-  when:
-    - __sap_vm_provision_fact_vm_config.os_image.source_pvc_name | d('') | length > 0
-    - __sap_vm_provision_fact_vm_config.os_image.namespace | d('') | length > 0
+# Sets facts of the KubeVirt distribution which differ between distributions, see distribution_*.yml,
+# e.g. __sap_vm_provision_fact_os_image and __sap_vm_provision_fact_storage_disks_map
+- name: SAP VM Provision - KubeVirt - Set facts for distribution {{ sap_vm_provision_kubevirt_vm_distribution }}
+  ansible.builtin.include_tasks:
+    file: "{{ __sap_vm_provision_task_file }}/distribution_{{ sap_vm_provision_kubevirt_vm_distribution }}.yml"
 
-- name: SAP VM Provision - KubeVirt - Set fact for storage volume template map
-  ansible.builtin.set_fact:
-    __sap_vm_provision_fact_storage_disks_map: |-
-      {% set disks_map = [] -%}
-      {% for storage_item in __sap_vm_provision_fact_vm_config.storage_definition -%}
-          {% set vol = disks_map.extend([
-          {
-            'metadata': { 'name': (__sap_vm_provision_fact_vm_name + '-' + storage_item.name | replace('_', '-')) },
-            'spec' : {
-              'source' : {
-                'blank' : {}
-              },
-              'storage' : {
-                'accessModes': storage_item.access_modes | d(['ReadWriteMany']),
-                'resources': {
-                  'requests': {
-                    'storage': ((storage_item.disk_size | default(0)) | string) + 'Gi',
-                  }
-                },
-                'storageClassName': storage_item.disk_type | default(''),
-              }
-            }
-          }]) %}
-      {%- endfor %}
-      {{ disks_map }}
 
+# Volume source is DataVolume (OpenShift) or PersistentVolumeClaim (Harvester), set by distribution
 - name: SAP VM Provision - KubeVirt - Set fact for storage volumes attachment list
   ansible.builtin.set_fact:
     __sap_vm_provision_fact_storage_disk_name_list: |-
+      {% set source_type = __sap_vm_provision_fact_volume_source_type | d('dataVolume') -%}
+      {% set source_name_key = __sap_vm_provision_fact_volume_source_name_key | d('name') -%}
       {% set disks_simple_map = [] -%}
       {% for list_item in __sap_vm_provision_fact_os_image | d([]) -%}
         {% set vol = disks_simple_map.extend([
         {
           'name': list_item.metadata.name,
-          'dataVolume': { 'name': list_item.metadata.name },
+          source_type: { source_name_key: list_item.metadata.name },
         }
         ]) %}
       {%- endfor %}
@@ -115,28 +42,30 @@
         {% set vol = disks_simple_map.extend([
         {
           'name': list_item.metadata.name,
-          'dataVolume': { 'name': list_item.metadata.name },
+          source_type: { source_name_key: list_item.metadata.name },
         }
         ]) %}
       {%- endfor %}
       {{ disks_simple_map }}
 
-
+# NOTE: According to the KubeVirt API reference, 'io' is a field of the disk (devices.disks[]) and not of its 'disk' target.
+# When 'io' was defined inside 'disk' of the boot disk, it was not applied and the API server showed the warning
+# 'unknown field "spec.template.spec.domain.devices.disks[0].disk.io"'.
 - name: SAP VM Provision - KubeVirt - Set fact for disk list
   ansible.builtin.set_fact:
     __sap_vm_provision_fact_storage_disk_list: |-
       {% set disks_list_simple = [] -%}
         {% set vol = disks_list_simple.extend([
         {
-          'name': __sap_vm_provision_fact_vm_name + '-boot' | replace('_', '-'),
+          'name': __sap_vm_provision_fact_boot_disk_name,
           'bootOrder': 1,
+          'io': 'native',
           'disk': {
-              'bus': 'virtio',
-              'io': 'native'
+              'bus': 'virtio'
          }
         },
         {
-          'name': 'cloudinit',
+          'name': __sap_vm_provision_fact_cloud_init_name | d('cloudinit'),
           'io': 'native',
           'disk': {
               'bus': 'virtio'
@@ -156,12 +85,13 @@
       {%- endfor %}
       {{ disks_list_simple }}
 
+# NOTE: According to the KubeVirt API reference, a volume has no 'disk' field, the bus is defined in the disk list.
+# When 'disk' was defined in the cloud-init volume, it was dropped and the API server showed the warning
+# 'unknown field "spec.template.spec.volumes[3].disk"'.
 - name: SAP VM Provision - KubeVirt - Set fact for cloud-init volume
   ansible.builtin.set_fact:
     __sap_vm_provision_fact_cloud_init_volume:
-      - name: cloudinit
-        disk:
-          bus: virtio
+      - name: "{{ __sap_vm_provision_fact_cloud_init_name | d('cloudinit') }}"
         cloudInitNoCloud: "{{ __sap_vm_provision_fact_vm_config.cloudinit }}"
 
 - name: SAP VM Provision - KubeVirt - Set fact for network interfaces
@@ -193,16 +123,22 @@
       {%- endfor %}
       {{ networks }}
 
+# Huge pages setting of the host, the default depends on the KubeVirt distribution (see distribution_*.yml),
+# value can be a page size (e.g. '1Gi'), true (page size '1Gi') or false (no huge pages)
 - name: SAP VM Provision - KubeVirt - Fail if hugepages are not used but dedicated CPU placement and/or NUMA guestMappingPassthrough
   ansible.builtin.fail:
     msg: |
       FAIL: Invalid CPU configuration: dedicatedCpuPlacement=true cannot be used
       together with numa.guestMappingPassthrough without huge pages.
+      Huge pages are disabled for sap_vm_provision_kubevirt_vm_distribution '{{ sap_vm_provision_kubevirt_vm_distribution }}'
+      unless 'kubevirt_vm_memory_hypervisor_hugepages' is set in the host specification.
   when:
     - sap_vm_provision_kubevirt_vm_performance_cpu_settings.dedicatedCpuPlacement | d(false) | bool
       or sap_vm_provision_kubevirt_vm_performance_cpu_settings.numa.guestMappingPassthrough is defined
-    - __sap_vm_provision_fact_vm_config.kubevirt_vm_memory_hypervisor_hugepages is defined
-    - not (__sap_vm_provision_fact_vm_config.kubevirt_vm_memory_hypervisor_hugepages | bool)
+    - (__hugepages | string | lower) in ['false', 'none', '']
+  vars:
+    __hugepages: "{{ __sap_vm_provision_fact_vm_config.kubevirt_vm_memory_hypervisor_hugepages
+      | default(__sap_vm_provision_fact_hugepages_default) }}"
 
 - name: SAP VM Provision - KubeVirt - Set fact for memory definition
   ansible.builtin.set_fact:
@@ -212,16 +148,17 @@
           'guest': __sap_vm_provision_fact_vm_config.kubevirt_vm_memory_gib ~ 'Gi'
         }
         | combine(
-            (__sap_vm_provision_fact_vm_config.kubevirt_vm_memory_hypervisor_hugepages | default(true)) | ternary(
-              {
-                 'hugepages': {
-                   'pageSize': (__sap_vm_provision_fact_vm_config.kubevirt_vm_memory_hypervisor_hugepages | default('1Gi'))
-                 }
-              },
-              {}
-            )
+            {
+              'hugepages': {
+                'pageSize': ('1Gi' if (__hugepages | string | lower) == 'true' else __hugepages)
+              }
+            }
+            if (__hugepages | string | lower) not in ['false', 'none', ''] else {}
           )
       }}
+  vars:
+    __hugepages: "{{ __sap_vm_provision_fact_vm_config.kubevirt_vm_memory_hypervisor_hugepages
+      | default(__sap_vm_provision_fact_hugepages_default) }}"
 
 - name: SAP VM Provision - KubeVirt - Set fact for VM deploy config
   ansible.builtin.set_fact:
@@ -229,19 +166,21 @@
       volumes: "{{ __sap_vm_provision_fact_storage_disk_name_list + __sap_vm_provision_fact_cloud_init_volume }}"
       networks: "{{ __sap_vm_provision_fact_networks_definition }}"
       evictionStrategy: "{{ sap_vm_provision_kubevirt_vm_eviction_strategy }}"
+      # NOTE: According to the KubeVirt API reference, 'terminationGracePeriodSeconds' is a field of the VM spec and not of 'domain'.
+      # When it was defined inside 'domain', it was dropped, the default grace period was applied and the API server showed the warning
+      # 'unknown field "spec.template.spec.domain.terminationGracePeriodSeconds"'.
+      terminationGracePeriodSeconds: 1800 # 30 minutes after stop request before VM is force terminated
       domain:
         # shared | auto, auto prevents live migration
         ioThreadsPolicy: shared
+        # NOTE: 'hostname' is a field of the VM spec and not of 'domain', so KubeVirt drops it and the API server shows
+        # the warning 'unknown field "spec.template.spec.domain.hostname"'. This is accepted, because the hostname
+        # of the guest is set later by the role (ansible.builtin.hostname) and not by KubeVirt.
         hostname: "{{ __sap_vm_provision_fact_vm_name }}"
-        terminationGracePeriodSeconds: 1800 # 30 minutes after stop request before VM is force terminated
-        resources:
-          requests:
-            # memory + overhead for container runtime)
-            memory: "{{ __sap_vm_provision_fact_vm_config.kubevirt_vm_memory_gib
-              + sap_vm_provision_kubevirt_vm_container_memory_overhead }}Gi"
+        # Set by distribution, see distribution_*.yml
+        resources: "{{ __sap_vm_provision_fact_domain_resources }}"
 
         devices:
-          downwardMetrics: {}
           networkInterfaceMultiqueue: true
           blockMultiQueue: true
           autoattachMemBalloon: false
@@ -254,17 +193,25 @@
 
         memory: "{{ __sap_vm_provision_fact_memory_definition }}"
 
-- name: SAP VM Provision - KubeVirt - Apply CPU performance settings
+# Whole deploy config is templated as one expression, so that the types of values (e.g. integers) are kept
+- name: SAP VM Provision - KubeVirt - Apply CPU performance settings and DownwardMetrics device
   ansible.builtin.set_fact:
     __sap_vm_provision_fact_vm_deploy_config: >-
       {{ __sap_vm_provision_fact_vm_deploy_config
         | combine({'domain': { 'cpu': __sap_vm_provision_fact_vm_deploy_config.domain.cpu
-        | combine(sap_vm_provision_kubevirt_vm_performance_cpu_settings)}}, recursive=True) }}
+        | combine({
+            'cores': __sap_vm_provision_fact_vm_config.kubevirt_vm_cpu_cores | int,
+            'threads': __sap_vm_provision_fact_vm_config.kubevirt_vm_cpu_smt | int
+          })
+        | combine(sap_vm_provision_kubevirt_vm_performance_cpu_settings)}}, recursive=True)
+        | combine({'domain': {'devices': {'downwardMetrics': {}}}}
+          if __sap_vm_provision_fact_downward_metrics | bool else {}, recursive=True) }}
 
 - name: SAP VM Provision - KubeVirt - Provision KubeVirt Virtual Machine
   kubevirt.core.kubevirt_vm:
     api_version: "{{ api_version | default(omit) }}"
     persist_config: "{{ persist_config | default(omit) }}"
+    validate_certs: "{{ sap_vm_provision_kubevirt_vm_validate_certs | d(true) }}"
 
     ## Virtual Machine target Hypervisor definition
     namespace: "{{ sap_vm_provision_kubevirt_vm_target_namespace }}" # Target namespace
@@ -281,13 +228,16 @@
     labels:
       app: "{{ __sap_vm_provision_fact_vm_name }}"
     # Virtual Disk volume definitions
-    data_volume_templates: "{{ __sap_vm_provision_fact_storage_disks_map + __sap_vm_provision_fact_os_image }}"
+    # Harvester volumes are PVCs which are already created, so no CDI DataVolume templates are passed
+    data_volume_templates: "{{ (__sap_vm_provision_fact_storage_disks_map + __sap_vm_provision_fact_os_image)
+      if sap_vm_provision_kubevirt_vm_distribution == 'openshift' else [] }}"
     spec: "{{ __sap_vm_provision_fact_vm_deploy_config }}"
   register: __sap_vm_provision_register_provision_host_single
   no_log: "{{ __sap_vm_provision_no_log }}"
 
 - name: SAP VM Provision - KubeVirt - Check VM status
   kubevirt.core.kubevirt_vm_info:
+    validate_certs: "{{ sap_vm_provision_kubevirt_vm_validate_certs | d(true) }}"
     name: "{{ __sap_vm_provision_fact_vm_name }}"
     namespace: "{{ sap_vm_provision_kubevirt_vm_target_namespace }}"
   register: __sap_vm_provision_register_provision_host_single_info
@@ -295,13 +245,20 @@
 
 - name: SAP VM Provision - KubeVirt - Get VMI details
   kubernetes.core.k8s_info:
+    validate_certs: "{{ sap_vm_provision_kubevirt_vm_validate_certs | d(true) }}"
     api_version: kubevirt.io/v1
     kind: VirtualMachineInstance
     namespace: "{{ sap_vm_provision_kubevirt_vm_target_namespace }}"
     name: "{{ __sap_vm_provision_fact_vm_name }}"
   register: __sap_vm_provision_register_provision_vmi_info
-  until: __sap_vm_provision_register_provision_vmi_info.resources[0].status.interfaces[0].ipAddress is defined
-  retries: 10
+  # Before Cloud Init finishes, only the IPv6 address known to the hypervisor is reported (without interfaceName).
+  # The guest agent reports interfaceName and the full IP list (incl. IPv4) once the guest is up.
+  until:
+    - __sap_vm_provision_register_provision_vmi_info.resources | d([]) | length > 0
+    - __sap_vm_provision_register_provision_vmi_info.resources[0].status.interfaces | d([]) | length > 0
+    - __sap_vm_provision_register_provision_vmi_info.resources[0].status.interfaces[0].interfaceName is defined
+    - __sap_vm_provision_register_provision_vmi_info.resources[0].status.interfaces[0].ipAddress is defined
+  retries: 20
   delay: 30
 
 

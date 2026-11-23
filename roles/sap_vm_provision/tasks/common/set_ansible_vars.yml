@@ -142,7 +142,9 @@
       or sap_vm_provision_iac_platform == "ibmcloud_powervs"
 
 
-# Set default to none, this will not set the var if the group does not exist
+# Set default to none for dynamic inventory hostname variables.
+# NOTE: Different Ansible versions have different defaults: Ansible 2.18 defaults to '', while 2.21 defaults to null.
+
 - name: SAP VM Provision - Set facts for all hosts - Set sap_vm_provision_dynamic_inventory_* hostname variables to identify hosts
   ansible.builtin.set_fact:
     sap_vm_provision_dynamic_inventory_anydb_primary_hostname:
@@ -166,8 +168,6 @@
     sap_vm_provision_dynamic_inventory_nw_aas_hostname:
       "{{ hostvars[inventory_hostname].groups.nwas_aas[0] | d(none) }}"
 
-
-# Set default to none, this will not set the var if the group does not exist
 - name: SAP VM Provision - Set facts for all hosts - sap_vm_provision_dynamic_inventory_* IP Address variables to identify hosts
   ansible.builtin.set_fact:
     sap_vm_provision_dynamic_inventory_anydb_primary_ip:

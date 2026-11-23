@@ -1,12 +1,300 @@
 # SPDX-License-Identifier: Apache-2.0
 ---
 
+- name: Assert that the variable 'sap_vm_provision_kubevirt_vm_distribution' is defined as valid string
+  ansible.builtin.assert:
+    that:
+      - sap_vm_provision_kubevirt_vm_distribution is defined
+      - sap_vm_provision_kubevirt_vm_distribution is string
+      - sap_vm_provision_kubevirt_vm_distribution in ['openshift', 'harvester']
+    fail_msg: |
+      The variable 'sap_vm_provision_kubevirt_vm_distribution' is undefined or invalid.
+      It should be one of:
+      - 'openshift' for Red Hat OpenShift Virtualization.
+        Storage workflow: Dynamic disk provisioning inline via CDI (DataVolume templates) during VM deployment.
+      - 'harvester' for SUSE Harvester.
+        Storage workflow: Pre-provisions Longhorn storage/image clones via PersistentVolumeClaim (PVC) before VM deployment.
+
 - name: Assert that the variable 'sap_vm_provision_kubevirt_vm_eviction_strategy' is defined as valid string
   ansible.builtin.assert:
     that:
       - sap_vm_provision_kubevirt_vm_eviction_strategy is defined
       - sap_vm_provision_kubevirt_vm_eviction_strategy is string
-      - sap_vm_provision_kubevirt_vm_eviction_strategy in ['None', 'LiveMigrate']
+      - sap_vm_provision_kubevirt_vm_eviction_strategy in ['None', 'LiveMigrate', 'LiveMigrateIfPossible']
     fail_msg: |
       The variable 'sap_vm_provision_kubevirt_vm_eviction_strategy' is undefined or invalid.
-      It should be one of: 'None' for local storage (ReadWriteOnce PVCs) or 'LiveMigrate' for shared storage (ReadWriteMany).
+      It should be one of:
+      - 'None' for local storage (ReadWriteOnce PVCs)
+      - 'LiveMigrate' for shared storage (ReadWriteMany)
+      - 'LiveMigrateIfPossible' for shared storage when the VM is migratable (default of SUSE Harvester)
+
+- name: Assert that the variable 'sap_vm_provision_kubevirt_vm_target_namespace' is defined as valid string
+  ansible.builtin.assert:
+    that:
+      - sap_vm_provision_kubevirt_vm_target_namespace is defined
+      - sap_vm_provision_kubevirt_vm_target_namespace is string
+      - sap_vm_provision_kubevirt_vm_target_namespace | trim | length > 0
+    fail_msg: |
+      The variable 'sap_vm_provision_kubevirt_vm_target_namespace' is undefined, empty or not a string.
+
+- name: Assert that the variable 'sap_vm_provision_kubevirt_vm_os_user' is defined as valid string
+  ansible.builtin.assert:
+    that:
+      - sap_vm_provision_kubevirt_vm_os_user is defined
+      - sap_vm_provision_kubevirt_vm_os_user is string
+      - sap_vm_provision_kubevirt_vm_os_user | trim | length > 0
+    fail_msg: |
+      The variable 'sap_vm_provision_kubevirt_vm_os_user' is undefined, empty or not a string.
+
+- name: Assert that the variable 'sap_vm_provision_kubevirt_vm_performance_cpu_settings' is defined as valid dictionary
+  ansible.builtin.assert:
+    that:
+      - sap_vm_provision_kubevirt_vm_performance_cpu_settings is defined
+      - sap_vm_provision_kubevirt_vm_performance_cpu_settings | type_debug == 'dict'
+    fail_msg: |
+      The variable 'sap_vm_provision_kubevirt_vm_performance_cpu_settings' is undefined or not a dictionary.
+
+
+- name: Block for all distributions
+  vars:
+    __kubevirt_vm_spec: "{{ __sap_vm_provision_host_dict_spec }}"
+  block:
+
+    - name: SAP VM Provision - KubeVirt - Assert that CPU and memory of the host are valid
+      ansible.builtin.assert:
+        that:
+          - __kubevirt_vm_spec[spec_key] is defined
+          - __kubevirt_vm_spec[spec_key] is integer
+          - __kubevirt_vm_spec[spec_key] > 0
+        fail_msg: |
+          The host specification requires '{{ spec_key }}' as an integer greater than 0.
+      loop:
+        - kubevirt_vm_cpu_cores
+        - kubevirt_vm_cpu_smt
+        - kubevirt_vm_memory_gib
+      loop_control:
+        loop_var: spec_key
+
+    - name: SAP VM Provision - KubeVirt - Assert that 'os_image' of the host is a dictionary
+      ansible.builtin.assert:
+        that:
+          - __kubevirt_vm_spec.os_image is defined
+          - __kubevirt_vm_spec.os_image | type_debug == 'dict'
+        fail_msg: |
+          The host specification requires 'os_image' as a dictionary.
+
+    - name: SAP VM Provision - KubeVirt - Assert that 'cloudinit' of the host is defined
+      ansible.builtin.assert:
+        that:
+          - __kubevirt_vm_spec.cloudinit is defined
+          - __kubevirt_vm_spec.cloudinit | type_debug == 'dict'
+        fail_msg: |
+          The host specification requires 'cloudinit' as a dictionary (e.g. with 'userData' and 'networkData').
+          It can be empty for a VM which is built without cloud-init.
+
+    - name: SAP VM Provision - KubeVirt - Assert that 'network_definition' of the host is a non-empty list
+      ansible.builtin.assert:
+        that:
+          - __kubevirt_vm_spec.network_definition is defined
+          - __kubevirt_vm_spec.network_definition | type_debug == 'list'
+          - __kubevirt_vm_spec.network_definition | length > 0
+        fail_msg: |
+          The host specification requires 'network_definition' as a non-empty list.
+
+    - name: SAP VM Provision - KubeVirt - Assert that network interfaces of the host are valid
+      ansible.builtin.assert:
+        that:
+          - network_item | type_debug == 'dict'
+          - network_item.name is defined
+          - network_item.name is string
+          - network_item.name | length > 0
+
+          - network_item.type is defined
+          - network_item.type is string
+          - network_item.type | length > 0
+
+          - network_item.model is defined
+          - network_item.model is string
+          - network_item.model | length > 0
+
+          - network_item.networkName is defined
+          - network_item.networkName is string
+          - network_item.networkName | length > 0
+        fail_msg: >-
+          Network interface '{{ network_item.name | d('N/A') }}' requires 'name',
+          'type' (e.g. bridge), 'model' (e.g. virtio) and 'networkName' as non-empty strings.
+      loop: "{{ __kubevirt_vm_spec.network_definition }}"
+      loop_control:
+        loop_var: network_item
+        label: "{{ network_item.name | d('N/A') }}"
+
+    - name: SAP VM Provision - KubeVirt - Assert that 'storage_definition' of the host is a list when defined
+      ansible.builtin.assert:
+        that:
+          - __kubevirt_vm_spec.storage_definition | type_debug == 'list'
+        fail_msg: |
+          The host specification 'storage_definition' must be a list.
+      when: __kubevirt_vm_spec.storage_definition is defined
+
+
+- name: Block for openshift
+  when: sap_vm_provision_kubevirt_vm_distribution == 'openshift'
+  vars:
+    __kubevirt_vm_spec: "{{ __sap_vm_provision_host_dict_spec }}"
+  block:
+
+    - name: SAP VM Provision - KubeVirt - OpenShift - Assert that the variable Memory Overhead is defined as valid integer
+      ansible.builtin.assert:
+        that:
+          - sap_vm_provision_kubevirt_vm_container_memory_overhead is defined
+          - sap_vm_provision_kubevirt_vm_container_memory_overhead is integer
+          - sap_vm_provision_kubevirt_vm_container_memory_overhead >= 0
+        fail_msg: |
+          The variable 'sap_vm_provision_kubevirt_vm_container_memory_overhead' is undefined, not an integer or negative (GiB).
+
+    - name: SAP VM Provision - KubeVirt - OpenShift - Assert that exactly one 'os_image' source is defined
+      ansible.builtin.assert:
+        that:
+          # At least one source must be defined
+          - __kubevirt_vm_spec.os_image.url is defined
+              or __kubevirt_vm_spec.os_image.source_pvc_name is defined
+          # Both sources must not be defined together
+          - not (__kubevirt_vm_spec.os_image.url is defined
+              and __kubevirt_vm_spec.os_image.source_pvc_name is defined)
+        fail_msg: |
+          The host specification 'os_image' must define exactly one of 'url' or 'source_pvc_name'.
+
+    - name: SAP VM Provision - KubeVirt - OpenShift - Assert that 'os_image' size is valid
+      ansible.builtin.assert:
+        that:
+          - __kubevirt_vm_spec.os_image.size is defined
+          - __kubevirt_vm_spec.os_image.size is string
+          - __kubevirt_vm_spec.os_image.size | length > 0
+        fail_msg: |
+          The host specification 'os_image' requires 'size' as a non-empty string (e.g. 50Gi).
+
+    - name: SAP VM Provision - KubeVirt - OpenShift - Assert that 'os_image' from URL is valid
+      ansible.builtin.assert:
+        that:
+          - __kubevirt_vm_spec.os_image.url is string
+          - __kubevirt_vm_spec.os_image.url | length > 0
+        fail_msg: |
+          The host specification 'os_image' requires 'url' as a non-empty string.
+      when: __kubevirt_vm_spec.os_image.url is defined
+
+    - name: SAP VM Provision - KubeVirt - OpenShift - Assert that 'os_image' from existing PVC is valid
+      ansible.builtin.assert:
+        that:
+          - __kubevirt_vm_spec.os_image.source_pvc_name is string
+          - __kubevirt_vm_spec.os_image.source_pvc_name | length > 0
+
+          - __kubevirt_vm_spec.os_image.namespace is defined
+          - __kubevirt_vm_spec.os_image.namespace is string
+          - __kubevirt_vm_spec.os_image.namespace | length > 0
+        fail_msg: |
+          The host specification 'os_image' with 'source_pvc_name' requires
+          'source_pvc_name' and 'namespace' as non-empty strings.
+      when: __kubevirt_vm_spec.os_image.source_pvc_name is defined
+
+    - name: SAP VM Provision - KubeVirt - OpenShift - Assert that storage definition is valid
+      ansible.builtin.assert:
+        that:
+          - storage_item | type_debug == 'dict'
+          - storage_item.name is defined
+          - storage_item.name is string
+          - storage_item.name | length > 0
+
+          - storage_item.disk_size is defined
+          - storage_item.disk_size is integer
+          - storage_item.disk_size > 0
+
+          - storage_item.disk_type is defined
+          - storage_item.disk_type is string
+          - storage_item.disk_type | length > 0
+        fail_msg: >-
+          Storage item '{{ storage_item.name | d('N/A') }}' requires 'name' (string),
+          'disk_size' (integer, GiB greater than 0) and 'disk_type' (string, KubeVirt storage class).
+      loop: "{{ __kubevirt_vm_spec.storage_definition | d([])
+        | rejectattr('nfs_server', 'defined')
+        | rejectattr('nfs_path', 'defined') }}"
+      loop_control:
+        loop_var: storage_item
+        label: "{{ storage_item.name | d('N/A') }}"
+
+
+- name: Block for harvester
+  when: sap_vm_provision_kubevirt_vm_distribution == 'harvester'
+  vars:
+    __kubevirt_vm_spec: "{{ __sap_vm_provision_host_dict_spec }}"
+  block:
+
+    - name: SAP VM Provision - KubeVirt - Harvester - Assert that exactly one 'os_image' reference is defined
+      ansible.builtin.assert:
+        that:
+          # At least one image reference must be defined
+          - __kubevirt_vm_spec.os_image.source_pvc_name is defined
+              or __kubevirt_vm_spec.os_image.source_pvc_id is defined
+          # Both image references must not be defined together
+          - not (__kubevirt_vm_spec.os_image.source_pvc_name is defined
+              and __kubevirt_vm_spec.os_image.source_pvc_id is defined)
+        fail_msg: |
+          The host specification 'os_image' must define exactly one of
+          'source_pvc_name' (display name of the Harvester image)
+          or 'source_pvc_id' (ID of the Harvester image, e.g. image-ds9jb).
+
+    - name: SAP VM Provision - KubeVirt - Harvester - Assert that 'os_image' by display name is valid
+      ansible.builtin.assert:
+        that:
+          - __kubevirt_vm_spec.os_image.source_pvc_name is string
+          - __kubevirt_vm_spec.os_image.source_pvc_name | length > 0
+        fail_msg: |
+          The host specification 'os_image' requires 'source_pvc_name' as a non-empty string.
+      when: __kubevirt_vm_spec.os_image.source_pvc_name is defined
+
+    - name: SAP VM Provision - KubeVirt - Harvester - Assert that 'os_image' by ID is valid
+      ansible.builtin.assert:
+        that:
+          - __kubevirt_vm_spec.os_image.source_pvc_id is string
+          - __kubevirt_vm_spec.os_image.source_pvc_id | length > 0
+        fail_msg: |
+          The host specification 'os_image' requires 'source_pvc_id' as a non-empty string.
+      when: __kubevirt_vm_spec.os_image.source_pvc_id is defined
+
+    - name: SAP VM Provision - KubeVirt - Harvester - Assert that 'os_image' namespace and size are valid
+      ansible.builtin.assert:
+        that:
+          - __kubevirt_vm_spec.os_image.namespace is defined
+          - __kubevirt_vm_spec.os_image.namespace is string
+          - __kubevirt_vm_spec.os_image.namespace | length > 0
+
+          - __kubevirt_vm_spec.os_image.size is defined
+          - __kubevirt_vm_spec.os_image.size is string
+          - __kubevirt_vm_spec.os_image.size | length > 0
+        fail_msg: |
+          The host specification 'os_image' requires 'namespace' (namespace of the image)
+          and 'size' (e.g. 50Gi) as non-empty strings.
+
+    - name: SAP VM Provision - KubeVirt - Harvester - Assert that storage definition is valid
+      ansible.builtin.assert:
+        that:
+          - storage_item | type_debug == 'dict'
+          - storage_item.name is defined
+          - storage_item.name is string
+          - storage_item.name | length > 0
+
+          - storage_item.disk_size is defined
+          - storage_item.disk_size is integer
+          - storage_item.disk_size > 0
+
+          - storage_item.disk_type is defined
+          - storage_item.disk_type is string
+          - storage_item.disk_type | length > 0
+        fail_msg: >-
+          Storage item '{{ storage_item.name | d('N/A') }}' requires 'name' (string),
+          'disk_size' (integer, GiB greater than 0) and 'disk_type' (string, storage class).
+      loop: "{{ __kubevirt_vm_spec.storage_definition | d([])
+        | rejectattr('nfs_server', 'defined')
+        | rejectattr('nfs_path', 'defined') }}"
+      loop_control:
+        loop_var: storage_item
+        label: "{{ storage_item.name | d('N/A') }}"

@@ -74,6 +74,7 @@ For list of all collection prerequisites, please see [Ansible Collection Readme]
   - `kubernetes`
 - Ansible Collections:
   - `kubevirt.core`
+  - `kubernetes.core`
 
 ### OVirt Prerequisites
 - Python libraries and modules:
@@ -103,7 +104,7 @@ A series of choices are deciding Ansible Role behavior:
 - Microsoft Azure Virtual Machines
 - IBM PowerVM Virtual Machines _(formerly LPAR)_
 - OVirt Virtual Machines `[Experimental]`
-- KubeVirt Virtual Machines `[beta]` (e.g. Red Hat OpenShift Virtualization)
+- KubeVirt Virtual Machines `[beta]` (e.g. Red Hat OpenShift Virtualization, SUSE Harvester)
 - VMware vSphere Virtual Machines `[Experimental]`
 
 #### Microsoft Azure: Reliability Disclaimer
@@ -198,7 +199,7 @@ Additionally the Ansible Role `sap_vm_provision` is continuously tested for Red 
 
 ### Known issues
 - VMware REST API combined with cloud-init is unstable, `userdata` configuration may not execute and provisioning will fail
-- On a kubevirt platform (e.g. Red Hat OpenShift) `ANSIBLE_JINJA2_NATIVE=true` has to be set in the environment.
+- On Red Hat OpenShift Virtualization (`sap_vm_provision_kubevirt_vm_distribution: openshift`) `ANSIBLE_JINJA2_NATIVE=true` has to be set in the environment.
 <!-- END Further Information -->
 
 ## License

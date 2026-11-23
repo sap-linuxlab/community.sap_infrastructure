@@ -119,30 +119,42 @@ See below for the drop-down list of required environment resources on an Infrast
 </details>
 
 <details>
-<summary><b>Red Hat OpenShift Virtualization (kubevirt_vm)</b></summary>
+<summary><b>KubeVirt (kubevirt_vm): Red Hat OpenShift Virtualization and SUSE Harvester</b></summary>
 
-- IMPORTANT: The playbook has to run with the environment variable `ANSIBLE_JINJA2_NATIVE=true` otherwise you will see an `unmarshalling` error when the VM is created. On Ansible Automation Platform Controller (AAPC) you have to set this in Settings --> Job Settings --> Extra Environment Variables, e.g.
-```
-{
-  "ANSIBLE_JINJA2_NATIVE": "true",
-  "HOME": "/var/lib/awx"
-}
-```
+> **NOTE:** The `defaults/main.yml` of this Ansible Role contains a breakdown of each KubeVirt variable, including the host specification dictionary.<br>
+> Some values are passed to KubeVirt without validation of their keys (e.g. `cloudinit` and `sap_vm_provision_kubevirt_vm_performance_cpu_settings`),
+> so the [KubeVirt documentation](https://kubevirt.io/user-guide/) and the documentation of the used distribution has to be followed.<br>
+> A key unknown to KubeVirt is not rejected, it is dropped and the task `Provision KubeVirt Virtual Machine` only shows a warning, e.g. `unknown field "spec.template.spec..."`.
+> If the warning names a key from a user defined variable (e.g. `cloudinit` or `sap_vm_provision_kubevirt_vm_performance_cpu_settings`), then the key is misspelled or not supported, and its setting is not applied to the VM.
 
-- Kubeconfig file, kubeadmin user and password for the cluster you want to deploy. Default behavior is to extract CA certificate and API endpoint from kubeconfig (`sap_vm_provision_kubevirt_vm_extract_kubeconfig: true`). Kubeconfig location will be read from `sap_vm_provision_kubevirt_vm_kubeconfig` and if that variable is not defined from environment variable `K8S_AUTH_KUBECONFIG` or `KUBECONFIG`.
+- Kubeconfig file for the cluster you want to deploy. Kubeconfig location will be read from `sap_vm_provision_kubevirt_vm_kubeconfig` and if that variable is not defined from environment variable `K8S_AUTH_KUBECONFIG` or `KUBECONFIG`.
 
-- SSH Key Pair for VMs
+- Distribution selected by `sap_vm_provision_kubevirt_vm_distribution` (`openshift` or `harvester`).
 
-- Optional: Ansible Control Node host with access to OpenShift cluster. 
+- SSH Key Pair for VMs, and an OS user (`sap_vm_provision_kubevirt_vm_os_user`) that exists on the VM.
+    - The default `cloudinit` of the host specification creates this user with the SSH public key. It requires `sap_vm_provision_kubevirt_vm_os_user` and an SSH public key file (`sap_vm_provision_ssh_host_public_key_file_path`, or the private key path with suffix `.pub`).
+    - With custom `cloudinit` or a baked image, the user and key must already be available on the VM.
 
-- Native Kubernetes with KubeVirt has not been tested.
+- Network Attachment Definition for each interface in `network_definition` (`networkName`).
 
-</details>
+- Storage Class for each disk in `storage_definition` (`disk_type`), e.g. `sapstorage` on OpenShift or `harvester-longhorn` on Harvester.
 
-<details>
-<summary><b>KubeVirt:</b></summary>
+- Red Hat OpenShift Virtualization:
+    - IMPORTANT: The playbook has to run with the environment variable `ANSIBLE_JINJA2_NATIVE=true` otherwise you will see an `unmarshalling` error when the VM is created. On Ansible Automation Platform Controller (AAPC) you have to set this in Settings --> Job Settings --> Extra Environment Variables, e.g.
+    ```
+    {
+      "ANSIBLE_JINJA2_NATIVE": "true",
+      "HOME": "/var/lib/awx"
+    }
+    ```
+    - OS image from a URL (`url`) or an existing PVC (`source_pvc_name` and `namespace`), e.g. in namespace `openshift-virtualization-os-images`.
+    - Optional: Ansible Control Node host with access to OpenShift cluster.
 
-- `TODO`
+- SUSE Harvester:
+    - OS image imported into Harvester, referenced by Display Name (`source_pvc_name`) or ID (`source_pvc_id`) and the `namespace` of the image.
+    - Volumes are created as PVCs before the VM, DownwardMetrics is not used and huge pages are off by default.
+
+> **NOTE: Native Kubernetes with KubeVirt has not been tested.**
 
 </details>
 

@@ -1,0 +1,170 @@
+# SPDX-License-Identifier: Apache-2.0
+---
+
+# Distribution specific task file for SUSE Harvester.
+# Volumes are PVCs created directly, because Harvester does not recognize volumes that are created during VM creation.
+
+- name: SAP VM Provision - KubeVirt - Harvester - Set facts for SUSE Harvester provisioning
+  ansible.builtin.set_fact:
+    # DownwardMetrics device and huge pages default.
+    # Feature gate DownwardMetrics is not enabled on Harvester, the cluster rejects the device.
+    # Huge pages are not used by default, because Harvester nodes do not provide them by default.
+    # NOTE: Can be set per host with 'kubevirt_vm_memory_hypervisor_hugepages' in the host specification.
+    __sap_vm_provision_fact_downward_metrics: false
+    __sap_vm_provision_fact_hugepages_default: false
+
+    # Name of the cloud-init disk and volume, same as used by Harvester for VMs created in its UI.
+    __sap_vm_provision_fact_cloud_init_name: cloudinitdisk
+
+    # Volumes of the VM reference the PVC (volumes[].persistentVolumeClaim.claimName),
+    # Harvester does not recognise the volumes as its own volumes when they reference a DataVolume.
+    __sap_vm_provision_fact_volume_source_type: persistentVolumeClaim
+    __sap_vm_provision_fact_volume_source_name_key: claimName
+
+    # Harvester UI shows memory of the VM from memory limit, memory request is not set
+    __sap_vm_provision_fact_domain_resources:
+      limits:
+        memory: "{{ __sap_vm_provision_fact_vm_config.kubevirt_vm_memory_gib ~ 'Gi' }}"
+
+    # Empty list for disk mapping.
+    __sap_vm_provision_fact_storage_disks_map: []
+
+
+# With 'source_pvc_id' only that image is read, otherwise all images of the namespace are read to match the display name
+- name: SAP VM Provision - KubeVirt - Harvester - Get Harvester images
+  kubernetes.core.k8s_info:
+    validate_certs: "{{ sap_vm_provision_kubevirt_vm_validate_certs | d(true) }}"
+    api_version: harvesterhci.io/v1beta1
+    kind: VirtualMachineImage
+    namespace: "{{ __sap_vm_provision_fact_vm_config.os_image.namespace }}"
+    name: "{{ __sap_vm_provision_fact_vm_config.os_image.source_pvc_id | d(omit, true) }}"
+  register: __sap_vm_provision_register_harvester_images
+  no_log: "{{ __sap_vm_provision_no_log }}"
+
+# Depending on whether 'source_pvc_id' is provided, either fetch the specific image by ID
+# or search for images by display name within the namespace.
+- name: SAP VM Provision - KubeVirt - Harvester - Set fact for matching Harvester images by ID
+  ansible.builtin.set_fact:
+    __sap_vm_provision_fact_harvester_image_matches: "{{ __sap_vm_provision_register_harvester_images.resources }}"
+  when: __sap_vm_provision_fact_vm_config.os_image.source_pvc_id | d('') | length > 0
+
+- name: SAP VM Provision - KubeVirt - Harvester - Set fact for matching Harvester images by display name
+  ansible.builtin.set_fact:
+    __sap_vm_provision_fact_harvester_image_matches: "{{ __sap_vm_provision_register_harvester_images.resources
+      | selectattr('spec.displayName', 'equalto', __sap_vm_provision_fact_vm_config.os_image.source_pvc_name)
+      | list }}"
+  when: __sap_vm_provision_fact_vm_config.os_image.source_pvc_id | d('') | length == 0
+
+- name: SAP VM Provision - KubeVirt - Harvester - Fail if image is not found or not unique
+  ansible.builtin.fail:
+    msg: |
+      Expected exactly one Harvester image matching
+      '{{ __sap_vm_provision_fact_vm_config.os_image.source_pvc_id
+        | d(__sap_vm_provision_fact_vm_config.os_image.source_pvc_name, true) }}'
+      in namespace '{{ __sap_vm_provision_fact_vm_config.os_image.namespace }}',
+      but found {{ __sap_vm_provision_fact_harvester_image_matches | length }}.
+  when: __sap_vm_provision_fact_harvester_image_matches | length != 1
+
+- name: SAP VM Provision - KubeVirt - Harvester - Set fact for Harvester image
+  ansible.builtin.set_fact:
+    __sap_vm_provision_fact_harvester_image: "{{ __sap_vm_provision_fact_harvester_image_matches[0] }}"
+
+- name: SAP VM Provision - KubeVirt - Harvester - Fail if Harvester image has no storage class
+  ansible.builtin.fail:
+    msg: |
+      Harvester image '{{ __sap_vm_provision_fact_harvester_image.metadata.name }}'
+      has no 'status.storageClassName', the image may not be imported yet.
+  when: __sap_vm_provision_fact_harvester_image.status.storageClassName | d('') | length == 0
+
+
+- name: SAP VM Provision - KubeVirt - Harvester - Create boot PVC from Harvester image
+  kubernetes.core.k8s:
+    validate_certs: "{{ sap_vm_provision_kubevirt_vm_validate_certs | d(true) }}"
+    state: present
+    definition:
+      apiVersion: v1
+      kind: PersistentVolumeClaim
+      metadata:
+        name: "{{ __sap_vm_provision_fact_boot_disk_name }}"
+        namespace: "{{ sap_vm_provision_kubevirt_vm_target_namespace }}"
+        annotations:
+          harvesterhci.io/imageId:
+            "{{ __sap_vm_provision_fact_harvester_image.metadata.namespace }}/{{ __sap_vm_provision_fact_harvester_image.metadata.name }}"
+        labels:
+          harvesterhci.io/image-name: "{{ __sap_vm_provision_fact_harvester_image.metadata.name }}"
+      spec:
+        accessModes: "{{ __sap_vm_provision_fact_vm_config.os_image.access_modes | d(['ReadWriteMany']) }}"
+        resources:
+          requests:
+            storage: "{{ __sap_vm_provision_fact_vm_config.os_image.size }}"
+        storageClassName: "{{ __sap_vm_provision_fact_harvester_image.status.storageClassName }}"
+        volumeMode: Block
+  no_log: "{{ __sap_vm_provision_no_log }}"
+
+# Only the boot PVC is awaited, because PVCs of storage classes with volume binding mode
+# WaitForFirstConsumer stay Pending until the VM which uses them is started.
+- name: SAP VM Provision - KubeVirt - Harvester - Wait for boot PVC to be Bound
+  kubernetes.core.k8s_info:
+    validate_certs: "{{ sap_vm_provision_kubevirt_vm_validate_certs | d(true) }}"
+    api_version: v1
+    kind: PersistentVolumeClaim
+    namespace: "{{ sap_vm_provision_kubevirt_vm_target_namespace }}"
+    name: "{{ __sap_vm_provision_fact_boot_disk_name }}"
+  register: __sap_vm_provision_register_harvester_boot_pvc
+  until:
+    - __sap_vm_provision_register_harvester_boot_pvc.resources | length > 0
+    - __sap_vm_provision_register_harvester_boot_pvc.resources[0].status.phase | d('') == 'Bound'
+  retries: 20
+  delay: 5
+  no_log: "{{ __sap_vm_provision_no_log }}"
+
+- name: SAP VM Provision - KubeVirt - Harvester - Create PVCs for storage disks
+  kubernetes.core.k8s:
+    validate_certs: "{{ sap_vm_provision_kubevirt_vm_validate_certs | d(true) }}"
+    state: present
+    definition:
+      apiVersion: v1
+      kind: PersistentVolumeClaim
+      metadata:
+        name: "{{ (__sap_vm_provision_fact_vm_name ~ '-' ~ storage_item.name) | replace('_', '-') }}"
+        namespace: "{{ sap_vm_provision_kubevirt_vm_target_namespace }}"
+      spec:
+        accessModes: "{{ storage_item.access_modes | d(['ReadWriteMany']) }}"
+        resources:
+          requests:
+            storage: "{{ storage_item.disk_size ~ 'Gi' }}"
+        storageClassName: "{{ storage_item.disk_type }}"
+        volumeMode: Block
+  # NFS storage items must be ignored as we are not creating them.
+  # Keys 'nfs_server' and 'nfs_path' are aligned with the 'sap_storage_setup' role variables.
+  loop: "{{ __sap_vm_provision_fact_vm_config.storage_definition | d([])
+    | rejectattr('nfs_server', 'defined')
+    | rejectattr('nfs_path', 'defined') }}"
+  loop_control:
+    loop_var: storage_item
+    label: "{{ storage_item.name }}"
+  no_log: "{{ __sap_vm_provision_no_log }}"
+
+- name: SAP VM Provision - KubeVirt - Harvester - Set fact for OS image PVC name
+  ansible.builtin.set_fact:
+    __sap_vm_provision_fact_os_image:
+      - metadata:
+          name: "{{ __sap_vm_provision_fact_boot_disk_name }}"
+
+
+- name: SAP VM Provision - KubeVirt - Harvester - Append storage disk PVC names to map
+  ansible.builtin.set_fact:
+    __sap_vm_provision_fact_storage_disks_map:
+      "{{ __sap_vm_provision_fact_storage_disks_map + [__sap_vm_provision_fact_storage_disk] }}"
+  vars:
+    __sap_vm_provision_fact_storage_disk:
+      metadata:
+        name: "{{ (__sap_vm_provision_fact_vm_name ~ '-' ~ storage_item.name) | replace('_', '-') }}"
+  # NFS storage items must be ignored as we are not creating them.
+  # Keys 'nfs_server' and 'nfs_path' are aligned with the 'sap_storage_setup' role variables.
+  loop: "{{ __sap_vm_provision_fact_vm_config.storage_definition | d([])
+    | rejectattr('nfs_server', 'defined')
+    | rejectattr('nfs_path', 'defined') }}"
+  loop_control:
+    loop_var: storage_item
+    label: "{{ storage_item.name }}"

@@ -80,6 +80,10 @@ sap_vm_provision_dns_root_domain: ""
 # VM Provision - Generic configuration - Hypervisor or Cloud Hyperscaler OS Images with Bring-Your-Own-Subscription (BYOS)
 ####
 
+# Set to 'false' to disable OS registration regardless of provided OS registration details below.
+sap_vm_provision_os_registration: true
+
+
 # Register to OS Vendor online subscription to package repositories
 # sap_vm_provision_os_online_registration_passcode: ""
 # sap_vm_provision_os_online_registration_user: ""
@@ -797,37 +801,52 @@ sap_vm_provision_ibmpowervm_vm_host_specifications_dictionary:
           disk_size: 512                 # size in GB, integer
 
 
-#######################################################
-# kubevirt / Red Hat OpenShift Virtualization         #
-#######################################################
+################################################################
+# kubevirt / Red Hat OpenShift Virtualization / SUSE Harvester #
+################################################################
 
-# kubeconfig for Red Hat OpenShift cluster connection.
-# If not provided, the kubeconfig will be read from the environment variables
-# KUBECONFIG or K8S_AUTH_KUBECONFIG
-# sap_vm_provision_kubevirt_vm_kubeconfig: /path/to/clusterconfigs/kubeconfig
+# KubeVirt distribution the VMs are provisioned on (String). Available options:
+# - 'openshift' for Red Hat OpenShift Virtualization.
+#   Storage workflow: Dynamic disk provisioning inline via CDI (DataVolume templates) during VM deployment.
+# - 'harvester' for SUSE Harvester.
+#   Storage workflow: Pre-provisions Longhorn storage/image clones via PersistentVolumeClaim (PVC) before VM deployment.
+sap_vm_provision_kubevirt_vm_distribution: openshift
 
-# Name of OS user on 'sap_vm_provision_execution_host' used for SSH access
-# to provisioned hosts via proxy command.
-sap_vm_provision_kubevirt_vm_execution_host_user: "{{ ansible_user | default(lookup('env', 'USER')) }}"
+# Credentials are handled via the kubeconfig file or via environment variables.
+# The path to the kubeconfig file (String).
+# If commented out (default), it is expected to be provided via environment variables (KUBECONFIG or K8S_AUTH_KUBECONFIG).
+# sap_vm_provision_kubevirt_vm_kubeconfig: ''
 
-# Namespace where the VM should be created in
-sap_vm_provision_kubevirt_vm_target_namespace: sap
+# The namespace where the VM and volumes will be created (String).
+sap_vm_provision_kubevirt_vm_target_namespace: ''
 
-# Username to be created on guest
-sap_vm_provision_kubevirt_vm_os_user: cloud-user
+# The OS user to be used for accessing the VM after creation (String).
+# This role does not create users on the VM, so this user must already exist on the VM (through cloud-init or baked images).
+# Original default value was 'cloud-user'
+sap_vm_provision_kubevirt_vm_os_user: ''
 
-# Password for the above user
-sap_vm_provision_kubevirt_vm_os_user_password: ""
+# The password for the user defined in 'sap_vm_provision_kubevirt_vm_os_user' (String).
+sap_vm_provision_kubevirt_vm_os_user_password: ''
 
-# RAM Overhead [GiB] for virt-launcher container, this can be small for VMs < 1 TB and without SRIOV but should be increased to 16 or more for VMs > 1TB
+# The name of OS user on 'sap_vm_provision_execution_host' used for Proxy jump to provisioned hosts via proxy command (String),
+# Used only when 'sap_vm_provision_bastion_execution' is true.
+sap_vm_provision_kubevirt_vm_execution_host_user: ''
+
+
+# (OpenShift Specific) The memory (RAM) Overhead in GiB for virt-launcher container (Integer).
+# This can be small for VMs < 1 TB and without SRIOV but should be increased to 16 or more for VMs > 1TB.
 sap_vm_provision_kubevirt_vm_container_memory_overhead: 1
 
-# Eviction strategy for KubeVirt VMs (String).
-# Set to 'None' for local storage (ReadWriteOnce PVCs) or 'LiveMigrate' for shared storage (ReadWriteMany).
-sap_vm_provision_kubevirt_vm_eviction_strategy: "None"
+# Eviction strategy for KubeVirt VMs (String). Available options:
+# - 'None' for local storage (ReadWriteOnce PVCs)
+# - 'LiveMigrate' for shared storage (ReadWriteMany)
+# - 'LiveMigrateIfPossible' for shared storage when the VM is migratable (default of SUSE Harvester)
+sap_vm_provision_kubevirt_vm_eviction_strategy: None
 
-# CPU performance settings which are applied to VM
-# Note: Using dedicatedCpuPlacement=true together with numa.guestMappingPassthrough requires also usage of huge pages
+# The dictionary with CPU performance settings applied to VM (Dictionary).
+# NOTE:
+# - The role does not validate the dictionary keys, so ensure they are correct according to KubeVirt documentation.
+# - Using 'dedicatedCpuPlacement=true' together with 'numa.guestMappingPassthrough' requires huge pages to be configured on the host.
 sap_vm_provision_kubevirt_vm_performance_cpu_settings:
   dedicatedCpuPlacement: true
   model: host-passthrough
@@ -841,62 +860,122 @@ sap_vm_provision_kubevirt_vm_performance_cpu_settings:
     - name: invtsc
       policy: require
 
+
+# The dictionary with host specifications for KubeVirt VMs (Dictionary).
 sap_vm_provision_kubevirt_vm_host_specifications_dictionary:
   example_host_specification_plan:
-    host1: # Hostname, must be 13 characters or less
-      # SMT-2 (i.e. 2 CPU Threads per CPU Core) is default for Intel CPU Hyper-Threading, optionally can be altered to SMT-1
-      kubevirt_vm_cpu_smt: 2
-      kubevirt_vm_cpu_cores: 2
-      kubevirt_vm_memory_gib: 24
-      # Defines size of huge pages for kubervirt hypervisor (e.g. '2Mi' or '1Gi')
+    host1:  # Hostname, must be 13 characters or less
+
+      # CPU and Memory configuration for the VM
+      kubevirt_vm_cpu_cores: 2  # Number of CPU cores for the VM (Integer).
+      # SMT-2 (i.e. 2 CPU Threads per CPU Core) is default for Intel CPU Hyper-Threading, optionally can be altered to SMT-1.
+      kubevirt_vm_cpu_smt: 2  # Number of CPU threads per CPU core (Integer).
+      kubevirt_vm_memory_gib: 24  # Memory size for the VM in GiB (Integer).
+
+      # Huge pages configuration for the VM (e.g. '2Mi' or '1Gi') (String or Boolean).
       # This can be disabled by setting value to false. The default value is '1Gi'.
-      # When set to false, remove NUMA and dedicatedCpuPlacement from sap_vm_provision_kubevirt_vm_performance_cpu_settings
+      # When set to false, remove NUMA and dedicatedCpuPlacement from the 'sap_vm_provision_kubevirt_vm_performance_cpu_settings'.
       kubevirt_vm_memory_hypervisor_hugepages: '1Gi'
-      sap_system_type: project_dev # project_dev, project_tst, project_prd
-      sap_host_type: hana_primary # hana_primary, hana_secondary, anydb_primary, anydb_secondary, nwas_ascs, nwas_ers, nwas_pas, nwas_aas
-      # Provide either an existing PVC or a URL for an OS image
-      os_image: # either url or source_pvc_name have to be provided
-        # URL for an image to be used
-        # url: "docker://registry.redhat.io/rhel8/rhel-guest-image:8.8.0"
-        # url: "docker://registry.redhat.io/rhel8/rhel-guest-image:8.10.0"
-        # url: "docker://registry.redhat.io/rhel9/rhel-guest-image:9.4"
-        url: "docker://registry.redhat.io/rhel9/rhel-guest-image:9.6"
-        # url: "docker://registry.redhat.io/rhel10/rhel-guest-image:10.0"
-        # Name for a PVC to be cloned
-        # source_pvc_name: "rhel-8.8"
-        namespace: openshift-virtualization-os-images
-        size: "50Gi"
-        access_modes:                    # e.g. ReadWriteMany | ReadWriteOnce
+
+      # Optional Ansible Group prefix for inventory creation, that is combined with the 'sap_host_type' (String).
+      # sap_system_type: project_dev  # e.g. project_dev, project_tst, project_prd
+      # Ansible Group name for inventory creation (String).
+      sap_host_type: hana_primary  # e.g. hana_primary, hana_secondary, anydb_primary, anydb_secondary, nwas_ascs, nwas_ers, nwas_pas, nwas_aas
+
+      # The dictionary with OS image details for the VM (Dictionary).
+      # Provide exactly one OS image source, keep the keys of the other sources commented out.
+      # - OpenShift: 'url' or 'source_pvc_name'.
+      # - Harvester: 'source_pvc_name' or 'source_pvc_id'.
+      os_image:
+        # The namespace where OS Image is located (String).
+        # Required for 'source_pvc_name' and 'source_pvc_id'.
+        namespace: ''
+
+        # (OpenShift Specific) The URL for the OS image (String).
+        # NOTE: Not compatible with the keys 'source_pvc_name' and 'source_pvc_id'.
+        # url: "docker://registry.redhat.io/rhel9/rhel-guest-image:9.6"
+
+        # The name of the OS image (String).
+        # - OpenShift: The name of PersistentVolumeClaim (PVC) with OS image, which is cloned.
+        # - Harvester: The Display Name of the Harvester image.
+        # NOTE: Not compatible with the keys 'url' and 'source_pvc_id'.
+        source_pvc_name: ''
+
+        # (Harvester Specific) The ID of the Harvester image, e.g. 'image-ds9jb' (String).
+        # NOTE: Not compatible with the keys 'url' and 'source_pvc_name'.
+        # source_pvc_id: ''
+
+        size: "50Gi"                      # Size of the OS image PVC (String).
+        access_modes:                     # The access modes for the OS image PVC, e.g. ReadWriteMany, ReadWriteOnce
           - ReadWriteMany
+
+      # The list of dictionaries with network details for the VM (List of Dictionaries).
       network_definition:
-        - name: sapbridge
+        - name: myNetworkBridge
           type: bridge
-          networkName: sapbridge-network-definition
+          networkName: myNetworkBridgeDefinition
           model: virtio
+
+      # The list of dictionaries with storage details for the VM (List of Dictionaries).
       storage_definition:
         - name: hana
           mountpoint: /hana
-          disk_count: 1                  # default: 1
-          disk_size: 2048                # size in GB, integer
-          disk_type: sapstorage          # KubeVirt Storage Class
-          access_modes:                  # e.g. ReadWriteMany | ReadWriteOnce
+          disk_size: 50                   # The size in GiB (Integer).
+          access_modes:                   # The access modes for the disk, e.g. ReadWriteMany, ReadWriteOnce
             - ReadWriteMany
+          # The KubeVirt Storage Class name available on selected distribution (String).
+          # E.g. 'sapstorage' for OpenShift and 'harvester-longhorn' for Harvester.
+          disk_type: sapstorage
+
+      # The dictionary with cloud-init configuration for the VM (Dictionary).
+      # NOTE: The role does not validate the dictionary keys, so ensure they are correct according to KubeVirt documentation.
       cloudinit:
+        # The text definition of userData for cloud-init (String).
+        # NOTE: This is limited in size and 'secretRef' is recommended for larger cloud-init data.
+        # The default sets the OS user 'sap_vm_provision_kubevirt_vm_os_user' with SSH public key access, as required by this role.
+        # The public key is read from 'sap_vm_provision_ssh_host_public_key_file_path',
+        # or from the path of 'sap_vm_provision_ssh_host_private_key_file_path' with suffix '.pub'.
+        # Password login is enabled only when 'sap_vm_provision_kubevirt_vm_os_user_password' is set.
+        # NOTE: The password is stored in plain text in the VM definition, use 'secretRef' for sensitive environments.
+        # NOTE: Using this default 'userData' has dependencies, which are not needed when custom cloud-init is defined:
+        # - The variable 'sap_vm_provision_kubevirt_vm_os_user' must be set.
+        # - An SSH public key file must exist, otherwise the file lookup fails:
+        #   'sap_vm_provision_ssh_host_public_key_file_path' or the path of 'sap_vm_provision_ssh_host_private_key_file_path' with suffix '.pub'.
         userData: |-
           #cloud-config
-          timezone: Europe/Berlin
-          hostname: host1
-          user: {{ sap_vm_provision_kubevirt_vm_os_user if sap_vm_provision_kubevirt_vm_os_user is defined }}
-          password: {{ sap_vm_provision_kubevirt_vm_os_user_password if sap_vm_provision_kubevirt_vm_os_user_password is defined }}
+          user: {{ sap_vm_provision_kubevirt_vm_os_user }}
+          {% if sap_vm_provision_kubevirt_vm_os_user_password | d('') | length > 0 %}
+          password: {{ sap_vm_provision_kubevirt_vm_os_user_password }}
           chpasswd:
             expire: false
+          ssh_pwauth: true
+          {% else %}
+          ssh_pwauth: false
+          {% endif %}
           ssh_authorized_keys:
-            - "{{ lookup('ansible.builtin.file', sap_vm_provision_ssh_host_public_key_file ) if sap_vm_provision_ssh_host_public_key_file is defined }}"
-        networkData: |-
-          version: 2
-          ethernets:
-            eth0:
-              dhcp4: true
+            - "{{ lookup('ansible.builtin.file', sap_vm_provision_ssh_host_public_key_file_path
+              | d(sap_vm_provision_ssh_host_private_key_file_path ~ '.pub', true)) }}"
+
+        # The text definition of networkData for cloud-init (String). Example:
+        # networkData: |-
+        #   version: 2
+        #   ethernets:
+        #     eth0:
+        #       dhcp4: true
+
+        # The secret reference for cloud-init 'userData' (Dictionary).
+        # secretRef:
+        #   name: 'mySecretName'
+        # The secret reference for cloud-init 'networkData' (Dictionary).
+        # networkDataSecretRef:
+        #   name: 'mySecretName'
+
+
+# Validation of TLS certificate of the cluster URL (Boolean).
+# Set to 'false' for clusters without certificate or with self-signed certificates.
+# NOTE: This is recommended to disable only when using non-Production clusters with self-signed certificates.
+sap_vm_provision_kubevirt_vm_validate_certs: true
+
 
 # OVirt
 sap_vm_provision_ovirt_vm_boot_menu: false

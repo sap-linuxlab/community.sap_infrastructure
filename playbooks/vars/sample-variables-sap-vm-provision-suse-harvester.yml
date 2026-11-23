@@ -1,0 +1,91 @@
+---
+############################################
+# SUSE Harvester                           #
+############################################
+
+# Distribution the VMs are provisioned on.
+sap_vm_provision_kubevirt_vm_distribution: harvester
+
+# kubeconfig for the Harvester cluster connection.
+# If not provided, the kubeconfig is read from the environment variables KUBECONFIG or K8S_AUTH_KUBECONFIG.
+# sap_vm_provision_kubevirt_vm_kubeconfig: /path/to/kubeconfig
+
+# Set to false for clusters with self-signed certificates.
+sap_vm_provision_kubevirt_vm_validate_certs: true
+
+# Namespace where the VM and volumes are created in.
+sap_vm_provision_kubevirt_vm_target_namespace: sap
+
+# OS user to access the VM, the default cloud-init below creates it.
+sap_vm_provision_kubevirt_vm_os_user: root
+
+# Optional password for the OS user, if empty the login is possible only with the SSH key.
+sap_vm_provision_kubevirt_vm_os_user_password: ""
+
+# SSH key files, must be accessible on the Ansible Control Node.
+# The public key defaults to the private key path with suffix '.pub'.
+sap_vm_provision_ssh_host_private_key_file_path: /path/to/id_rsa
+# sap_vm_provision_ssh_host_public_key_file_path: /path/to/id_rsa.pub
+
+# Run directly from the Ansible Control Node, without bastion host (e.g. VPN or local execution).
+sap_vm_provision_bastion_execution: false
+
+# DNS root domain of the VMs.
+sap_vm_provision_dns_root_domain: example.com
+
+# Host specification plan to roll out.
+sap_vm_provision_host_specification_plan: example_host_specification_plan
+
+# Harvester nodes do not provide huge pages by default,
+# so dedicated CPU placement with NUMA passthrough must not be used.
+sap_vm_provision_kubevirt_vm_performance_cpu_settings:
+  dedicatedCpuPlacement: false
+
+sap_vm_provision_kubevirt_vm_host_specifications_dictionary:
+  example_host_specification_plan:
+    host1:  # Hostname, must be 13 characters or less
+      kubevirt_vm_cpu_cores: 2
+      kubevirt_vm_cpu_smt: 2
+      kubevirt_vm_memory_gib: 24
+      sap_host_type: hana_primary  # e.g. hana_primary, hana_secondary, nwas_ascs, nwas_ers, nwas_pas, nwas_aas
+
+      # OS image imported into Harvester, either 'source_pvc_name' (Display Name) or 'source_pvc_id' (ID, e.g. image-ds9jb).
+      os_image:
+        source_pvc_name: sles-sap-16.1-minimal-vm-x86_64-cloud-gm.qcow2
+        namespace: default
+        size: "50Gi"
+        access_modes:
+          - ReadWriteMany
+
+      # Find the network name via: kubectl get network-attachment-definitions -A
+      network_definition:
+        - name: nic-0
+          type: bridge
+          networkName: default/my-network
+          model: virtio
+
+      storage_definition:
+        - name: hana
+          mountpoint: /hana
+          disk_size: 512  # Size in GiB (Integer).
+          disk_type: harvester-longhorn  # Storage Class
+          access_modes:
+            - ReadWriteMany
+
+      # Default cloud-init, which creates the OS user with the SSH public key.
+      # It requires 'sap_vm_provision_kubevirt_vm_os_user' and an existing SSH public key file.
+      cloudinit:
+        userData: |-
+          #cloud-config
+          user: {{ sap_vm_provision_kubevirt_vm_os_user }}
+          {% if sap_vm_provision_kubevirt_vm_os_user_password | d('') | length > 0 %}
+          password: {{ sap_vm_provision_kubevirt_vm_os_user_password }}
+          chpasswd:
+            expire: false
+          ssh_pwauth: true
+          {% else %}
+          ssh_pwauth: false
+          {% endif %}
+          ssh_authorized_keys:
+            - "{{ lookup('ansible.builtin.file', sap_vm_provision_ssh_host_public_key_file_path
+              | d(sap_vm_provision_ssh_host_private_key_file_path ~ '.pub', true)) }}"

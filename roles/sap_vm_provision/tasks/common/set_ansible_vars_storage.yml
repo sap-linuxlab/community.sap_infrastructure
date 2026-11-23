@@ -6,6 +6,10 @@
 # For end user ease of use, the host specifications dictionary uses disk_count to indicate how many disks will be provisioned
 # However the sap_storage_setup Ansible Role can not detect disk_count, and requires the key to be renamed lvm_lv_stripes
 
+# Rules for storage definition transformation before setting the 'sap_storage_setup_definition' variable:
+# - Key 'disk_count' is renamed to 'lvm_lv_stripes' for sap_storage_setup role compatibility.
+# - Keys 'disk_type', 'disk_iops', and 'access_modes' are excluded to avoid failure during argument_spec parsing.
+
 # Reason for noqa: Because we are setting helper variables for subsequent roles from sap-linuxlab collection.
 - name: SAP VM Provision - Convert host_specifications_dictionary.storage_definition to sap_storage_setup_definition  # noqa var-naming[no-role-prefix]
   ansible.builtin.set_fact:
@@ -22,7 +26,7 @@
               'value': entry.value,
             }
           ]) %}
-        {%- elif (not "disk_type" in entry.key) and (not "disk_iops" in entry.key) %}
+        {%- elif entry.key not in ['disk_type', 'disk_iops', 'access_modes'] %}
           {%- set add_entry = new_element.extend([
             {
               'key': entry.key,

@@ -1,0 +1,96 @@
+# SPDX-License-Identifier: Apache-2.0
+---
+
+# Distribution specific task file for Red Hat OpenShift Virtualization.
+# Volumes are defined as CDI DataVolume templates that are created during VM creation.
+
+# DEV NOTE: Jinja2 dictionaries were removed in favour of native Ansible dictionaries.
+# This change improves readability of the Ansible code and avoids data type inconsistencies.
+
+- name: SAP VM Provision - KubeVirt - OpenShift - Set facts for OpenShift provisioning
+  ansible.builtin.set_fact:
+    # DownwardMetrics device and huge pages default.
+    # Feature gate DownwardMetrics is enabled by Ansible Role sap_hypervisor_node_preconfigure,
+    # huge pages are used by default, as configured by Ansible Role sap_hypervisor_node_preconfigure.
+    # NOTE: Can be set per host with 'kubevirt_vm_memory_hypervisor_hugepages' in the host specification.
+    __sap_vm_provision_fact_downward_metrics: true
+    __sap_vm_provision_fact_hugepages_default: '1Gi'
+
+    # Name of the cloud-init disk and volume.
+    __sap_vm_provision_fact_cloud_init_name: cloudinit
+
+    # Volumes of the VM reference the CDI DataVolume (volumes[].dataVolume.name).
+    __sap_vm_provision_fact_volume_source_type: dataVolume
+    __sap_vm_provision_fact_volume_source_name_key: name
+
+    # Memory request is guest memory + overhead for container runtime.
+    # Both values are added as integers, converted to string and then concatenated with the 'Gi' unit.
+    __sap_vm_provision_fact_domain_resources:
+      requests:
+        memory: "{{ (__sap_vm_provision_fact_vm_config.kubevirt_vm_memory_gib| int
+          + sap_vm_provision_kubevirt_vm_container_memory_overhead | int) | string ~ 'Gi' }}"
+
+    # Empty list for disk mapping.
+    __sap_vm_provision_fact_storage_disks_map: []
+
+
+- name: SAP VM Provision - KubeVirt - Set fact for OS Image download
+  ansible.builtin.set_fact:
+    __sap_vm_provision_fact_os_image:
+      - metadata:
+          name: "{{ __sap_vm_provision_fact_boot_disk_name }}"
+        spec:
+          source:
+            registry:
+              url: "{{ __sap_vm_provision_fact_vm_config.os_image.url }}"
+              pullMethod: node
+          storage:
+            accessModes: "{{ __sap_vm_provision_fact_vm_config.os_image.access_modes | d(['ReadWriteMany']) }}"
+            resources:
+              requests:
+                storage: "{{ __sap_vm_provision_fact_vm_config.os_image.size }}"
+  when: __sap_vm_provision_fact_vm_config.os_image.url | d('') | length > 0
+
+- name: SAP VM Provision - KubeVirt - Set fact for existing OS Image
+  ansible.builtin.set_fact:
+    __sap_vm_provision_fact_os_image:
+      - metadata:
+          name: "{{ __sap_vm_provision_fact_boot_disk_name }}"
+        spec:
+          source:
+            pvc:
+              name: "{{ __sap_vm_provision_fact_vm_config.os_image.source_pvc_name }}"
+              namespace: "{{ __sap_vm_provision_fact_vm_config.os_image.namespace }}"
+          storage:
+            accessModes: "{{ __sap_vm_provision_fact_vm_config.os_image.access_modes | d(['ReadWriteMany']) }}"
+            resources:
+              requests:
+                storage: "{{ __sap_vm_provision_fact_vm_config.os_image.size }}"
+  when: __sap_vm_provision_fact_vm_config.os_image.source_pvc_name | d('') | length > 0
+
+
+- name: SAP VM Provision - KubeVirt - Append storage volume templates to map
+  ansible.builtin.set_fact:
+    __sap_vm_provision_fact_storage_disks_map:
+      "{{ __sap_vm_provision_fact_storage_disks_map + [__sap_vm_provision_fact_storage_disk] }}"
+  vars:
+    __sap_vm_provision_fact_storage_disk:
+      metadata:
+        name: "{{ (__sap_vm_provision_fact_vm_name ~ '-' ~ storage_item.name) | replace('_', '-') }}"
+      spec:
+        source:
+          blank: {}
+        storage:
+          accessModes: "{{ storage_item.access_modes | d(['ReadWriteMany']) }}"
+          resources:
+            requests:
+              storage: "{{ storage_item.disk_size ~ 'Gi' }}"
+          storageClassName: "{{ storage_item.disk_type }}"
+  # NFS storage items must be ignored as we are not creating them.
+  # Keys 'nfs_server' and 'nfs_path' are aligned with the 'sap_storage_setup' role variables.
+  loop: "{{ __sap_vm_provision_fact_vm_config.storage_definition | d([])
+    | rejectattr('nfs_server', 'defined')
+    | rejectattr('nfs_path', 'defined') }}"
+  loop_control:
+    loop_var: storage_item
+    label: "{{ storage_item.name }}"

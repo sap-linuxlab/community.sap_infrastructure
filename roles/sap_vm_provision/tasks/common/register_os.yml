@@ -5,6 +5,7 @@
 
 - name: Ansible Task block for RHEL Package Repositories setup with Registration Script
   when:
+    - sap_vm_provision_os_registration | d(true)
     - ansible_facts['os_family'] == 'RedHat'
     - sap_vm_provision_os_registration_script_command | d('') | length > 0
     - sap_vm_provision_os_online_registration_user | d('') | length == 0
@@ -45,6 +46,7 @@
 
 - name: Ansible Task block for SLES Package Repositories setup with Registration Script
   when:
+    - sap_vm_provision_os_registration | d(true)
     - ansible_facts['os_family'] == 'Suse'
     - sap_vm_provision_os_registration_script_command | d('') | length > 0
     - sap_vm_provision_os_online_registration_user | d('') | length == 0
@@ -77,6 +79,7 @@
 
 - name: Ansible Task block for RHEL Package Repositories setup via Public Internet
   when:
+    - sap_vm_provision_os_registration | d(true)
     - ansible_facts['os_family'] == 'RedHat'
     - sap_vm_provision_os_registration_script_command | d('') | length == 0
     - sap_vm_provision_os_online_registration_user | d('') | length > 0
@@ -96,6 +99,7 @@
 
 - name: Ansible Task block for SLES Package Repositories setup via Public Internet
   when:
+    - sap_vm_provision_os_registration | d(true)
     - ansible_facts['os_family'] == 'Suse'
     - sap_vm_provision_os_registration_script_command | d('') | length == 0
     - sap_vm_provision_os_online_registration_user | d('') | length > 0

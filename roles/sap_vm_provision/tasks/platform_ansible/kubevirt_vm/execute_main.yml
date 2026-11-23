@@ -1,20 +1,49 @@
 # SPDX-License-Identifier: Apache-2.0
 ---
 
+# KubeVirt Environment Variables are passed on role block level, instead of playbook level.
+# Empty dictionary is used when 'sap_vm_provision_kubevirt_vm_kubeconfig' is not set or empty.
+- name: SAP VM Provision - KubeVirt - Set fact with KubeVirt VM environment variables
+  ansible.builtin.set_fact:
+    __sap_vm_provision_fact_kubevirt_vm_environment:
+      K8S_AUTH_KUBECONFIG: "{{ sap_vm_provision_kubevirt_vm_kubeconfig }}"
+      KUBECONFIG: "{{ sap_vm_provision_kubevirt_vm_kubeconfig }}"
+  when: sap_vm_provision_kubevirt_vm_kubeconfig | d('') | length > 0
+
 - name: Ansible Task block for looped provisioning of KubeVirt Virtual Machines
   any_errors_fatal: true
+  environment: "{{ __sap_vm_provision_fact_kubevirt_vm_environment | d({}) }}"
   block:
 
     - name: SAP VM Provision - KubeVirt - Provision hosts to KubeVirt
       ansible.builtin.include_tasks:
         file: "{{ __sap_vm_provision_task_file }}/execute_provision.yml"
 
+
+    # Provisioned hosts are reached via SSH ProxyJump through the execution host only if bastion execution is used,
+    # otherwise they are reached directly from the Ansible control node (e.g. VPN or local execution)
+    - name: SAP VM Provision - KubeVirt - Set Bastion SSH argument facts
+      ansible.builtin.set_fact:
+        __sap_vm_provision_fact_ssh_args_bastion: |
+          -o ProxyJump={{ __execution_host_user }}@{{ sap_vm_provision_execution_host }}
+      vars:
+        # When not set, the user defaults to the Ansible user, or to the OS user running Ansible.
+        __execution_host_user: "{{ sap_vm_provision_kubevirt_vm_execution_host_user
+          | d(ansible_user | d(lookup('ansible.builtin.env', 'USER'), true), true) }}"
+      when:
+        - sap_vm_provision_bastion_execution
+        - __execution_host_user | length > 0
+        - sap_vm_provision_execution_host | d('') != ''
+
     - name: SAP VM Provision - KubeVirt - Add hosts provisioned to the Ansible Inventory
       ansible.builtin.add_host:
         name: "{{ add_item[0].host_node }}"
-        groups: "{{ add_item[0].sap_system_type + '_' if (add_item[0].sap_system_type != '') }}{{ add_item[0].sap_host_type }}"
+        groups: "{{ add_item[0].sap_system_type + '_' if (add_item[0].sap_system_type | d('') != '') }}{{ add_item[0].sap_host_type }}"
         ansible_host: "{{ add_item[0].__sap_vm_provision_fact_private_ip }}"
         ansible_user: "{{ sap_vm_provision_kubevirt_vm_os_user }}"
+        # NOTE: Moved here from vars section, because we need all hosts in inventory to retain the SSH parameters.
+        ansible_ssh_private_key_file: "{{ sap_vm_provision_ssh_host_private_key_file_path }}"
+        ansible_ssh_common_args: "{{ sap_vm_provision_ssh_host_ssh_args }} {{ __sap_vm_provision_fact_ssh_args_bastion | d('') }}"
       loop: "{{ ansible_play_hosts | map('extract', hostvars, '__sap_vm_provision_fact_provisioned_hosts') }}"
       loop_control:
         label: "{{ add_item[0].host_node }}"
@@ -78,12 +107,11 @@
   become: true
   become_user: root
   delegate_to: "{{ inventory_hostname }}"
-  vars:
-    ansible_ssh_private_key_file: "{{ sap_vm_provision_ssh_host_private_key_file_path }}"
-    ansible_ssh_common_args: >-
-      {{ sap_vm_provision_ssh_host_ssh_args }}
-      -o ProxyJump={{ sap_vm_provision_kubevirt_vm_execution_host_user }}@{{ sap_vm_provision_execution_host }}
   block:
+
+    - name: SAP VM Provision - KubeVirt - Wait until SSH connection is available
+      ansible.builtin.wait_for_connection:
+        timeout: 300
 
     # Required to collect the remote host's facts for further processing in the following steps.
     # Collected facts can be used for all conditional tasks on provisioned hosts like ansible_facts['os_family'].
